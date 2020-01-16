@@ -6,6 +6,43 @@ except ImportError:
     InPlaceABN = None
 
 
+class SeparableConv(nn.Sequential):
+    def __init__(self, in_channels, out_channels, kernel_size, padding=0, stride=1, use_batchnorm= True,dilate=1):
+        super(SeparableConv, self).__init__()
+        self.depthwise_conv = nn.Conv2d(in_channels,
+                                        in_channels,
+                                        kernel_size=kernel_size,
+                                        padding=padding,
+                                        groups=in_channels,
+                                        stride=stride,
+                                        dilate=dilate,
+                                        bias=not use_batchnorm)
+        self.pointwise_conv = nn.Conv2d(in_channels,
+                                        out_channels,
+                                        kernel_size=1,
+                                        bias=not use_batchnorm)
+        self.relu = nn.ReLU(inplace=True)
+        self.bn = None
+
+        if use_batchnorm == "inplace":
+            self.bn = InPlaceABN(out_channels, activation="leaky_relu", activation_param=0.0)
+            self.relu = nn.Identity()
+        elif use_batchnorm and use_batchnorm != "inplace":
+            self.bn = nn.BatchNorm2d(out_channels)
+
+        else:
+            self.bn = nn.Identity()
+
+    def forward(self, x):
+        out = self.depthwise_conv(x)
+        out = self.pointwise_conv(out)
+        if self.bn:
+            out = self.bn(out)
+        out = self.relu(out)
+
+        return out
+
+
 class Conv2dReLU(nn.Sequential):
     def __init__(
             self,
