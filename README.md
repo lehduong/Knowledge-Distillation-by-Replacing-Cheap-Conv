@@ -1,49 +1,4 @@
 # On searching an effective and efficient Pipeline for Distillating Knowledge in Convolutional Neural Networks
-
-## Folder Structure
-  ```
-  Knowledge-Distillation-CNN/
-  │
-  ├── train.py - main script to start training
-  ├── test.py - evaluation of trained model
-  │
-  ├── config.json - holds configuration for training
-  ├── parse_config.py - class to handle config file and cli options
-  │
-  ├── new_project.py - initialize new project with template files
-  │
-  ├── base/ - abstract base classes
-  │   ├── base_data_loader.py
-  │   ├── base_model.py
-  │   └── base_trainer.py
-  │
-  ├── data_loader/ - anything about data loading goes here
-  │   └── data_loaders.py
-  │
-  ├── data/ - default directory for storing input data
-  │
-  ├── models/ - models, losses, and metrics
-  │   ├── model
-  │   ├── metric.py
-  │   └── loss.py
-  │
-  ├── saved/
-  │   ├── models/ - trained models are saved here
-  │   └── log/ - default logdir for tensorboard and logging output
-  │
-  ├── trainer/ - trainers
-  │   └── trainer.py
-  │
-  ├── logger/ - module for tensorboard visualization and logging
-  │   ├── visualization.py
-  │   ├── logger.py
-  │   └── logger_config.json
-  │  
-  └── utils/ - small utility functions
-      ├── util.py
-      └── ...
-  ```
-
 ## Usage
 
 Try `python train.py -c config.json` to run code with default settings.
@@ -52,17 +7,17 @@ Try `python train.py -c config.json` to run code with default settings.
 Config files are in `.json` format:
 ```javascript
 {
-  "name": "Mnist_LeNet",        // training session name
+  "name": "Distil_Resnet150",        // training session name
   "n_gpu": 1,                   // number of GPUs to use for training.
   
   "arch": {
-    "type": "MnistModel",       // name of model architecture to train
+    "type": "Unet",       // name of model architecture to train
     "args": {
 
     }                
   },
   "data_loader": {
-    "type": "MnistDataLoader",         // selecting data loader
+    "type": "",         // selecting data loader
     "args":{
       "data_dir": "data/",             // dataset path
       "batch_size": 64,                // batch size
@@ -106,13 +61,6 @@ Config files are in `.json` format:
 
 Add addional configurations if you need.
 
-### Using config files
-Modify the configurations in `.json` config files, then run:
-
-  ```
-  python train.py --config config.json
-  ```
-
 ### Resuming from checkpoints
 You can resume from a previously saved checkpoint by:
 
@@ -132,59 +80,7 @@ Specify indices of available GPUs by cuda environmental variable.
   CUDA_VISIBLE_DEVICES=2,3 python train.py -c config.py
   ```
 
-## Customization
-
-### Project initialization
-Use the `new_project.py` script to make your new project directory with template files.
-`python new_project.py ../NewProject` then a new project folder named 'NewProject' will be made.
-This script will filter out unneccessary files like cache, git files or readme file. 
-
-### Custom CLI options
-
-Changing values of config file is a clean, safe and easy way of tuning hyperparameters. However, sometimes
-it is better to have command line options if some values need to be changed too often or quickly.
-
-This template uses the configurations stored in the json file by default, but by registering custom options as follows
-you can change some of them using CLI flags.
-
-  ```python
-  # simple class-like object having 3 attributes, `flags`, `type`, `target`.
-  CustomArgs = collections.namedtuple('CustomArgs', 'flags type target')
-  options = [
-      CustomArgs(['--lr', '--learning_rate'], type=float, target=('optimizer', 'args', 'lr')),
-      CustomArgs(['--bs', '--batch_size'], type=int, target=('data_loader', 'args', 'batch_size'))
-      # options added here can be modified by command line flags.
-  ]
-  ```
-`target` argument should be sequence of keys, which are used to access that option in the config dict. In this example, `target` 
-for the learning rate option is `('optimizer', 'args', 'lr')` because `config['optimizer']['args']['lr']` points to the learning rate.
-`python train.py -c config.json --bs 256` runs training with options given in `config.json` except for the `batch size`
-which is increased to 256 by command line options.
-
-
 ### Data Loader
-* **Writing your own data loader**
-
-1. **Inherit ```BaseDataLoader```**
-
-    `BaseDataLoader` is a subclass of `torch.utils.data.DataLoader`, you can use either of them.
-
-    `BaseDataLoader` handles:
-    * Generating next batch
-    * Data shuffling
-    * Generating validation data loader by calling
-    `BaseDataLoader.split_validation()`
-
-* **DataLoader Usage**
-
-  `BaseDataLoader` is an iterator, to iterate through batches:
-  ```python
-  for batch_idx, (x_batch, y_batch) in data_loader:
-      pass
-  ```
-* **Example**
-
-  Please refer to `data_loader/data_loaders.py` for an MNIST data loading example.
 
 ### Trainer
 * **Writing your own trainer**

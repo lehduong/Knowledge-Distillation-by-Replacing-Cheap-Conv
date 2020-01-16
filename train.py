@@ -2,10 +2,10 @@ import argparse
 import collections
 import torch
 import numpy as np
-import data_loader.data_loaders as module_data
+import data_loader as module_data
 import models.loss as module_loss
 import models.metric as module_metric
-import models.model as module_arch
+import models as module_arch
 from parse_config import ConfigParser
 from trainer import Trainer
 
