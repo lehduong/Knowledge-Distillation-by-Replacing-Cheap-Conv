@@ -1,5 +1,4 @@
-from .unet import Unet
-from .fpn import FPN
+from .deeplabv3 import DeepWV3Plus
 import logging
 import importlib
 
