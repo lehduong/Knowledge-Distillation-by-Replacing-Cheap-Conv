@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+scripts/download_cityscapes.sh
 
 # C extensions
 *.so
@@ -101,7 +102,6 @@ ENV/
 .mypy_cache/
 
 # input data, saved log, checkpoints
-data/
 input/
 saved/
 datasets/
@@ -110,3 +110,4 @@ datasets/
 .vscode/
 .idea/
 __MACOSX/
+.DS_Store
