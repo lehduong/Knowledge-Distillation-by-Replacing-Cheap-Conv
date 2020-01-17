@@ -1,13 +1,13 @@
 {
-    "name": "Mnist_LeNet",
+    "name": "KnowledgeDistillation",
     "n_gpu": 1,
 
     "student": {
-        "arch": "MnistModel",
+        "arch": "DeepWV3Plus",
         "args": {}
     },
     "teacher": {
-        "type": "MnistModel",
+        "type": "DeepWV3Plus",
         "args": {},
         "snapshot": "checkpoints/cityscapes_best.pth"
     },
