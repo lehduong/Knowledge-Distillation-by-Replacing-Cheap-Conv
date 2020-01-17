@@ -6,6 +6,7 @@ import data_loader as module_data
 import models.loss as module_loss
 import models.metric as module_metric
 import models as module_arch
+from data_loader import _create_transform
 from parse_config import ConfigParser
 from trainer import SegmentationTrainer, TrainerTeacherAssistant
 
@@ -21,15 +22,16 @@ def main(config):
     logger = config.get_logger('train')
 
     # setup data_loader instances
-    train_data_loader = config.init_obj('train_data_loader', module_data)
-    valid_data_loader = config.init_obj('val_data_loader', module_data)
+    train_joint_transform_list, train_input_transform, target_transform, val_input_transform = _create_transform(config)
+    train_data_loader = config.init_obj('train_data_loader', module_data, transform=train_input_transform, transforms=train_joint_transform_list, target_transform=target_transform)
+    valid_data_loader = config.init_obj('val_data_loader', module_data, transform=val_input_transform, target_transform=target_transform)
 
     # build models architecture, then print to console
     student = config.init_obj('student', module_arch)
     logger.info(student)
 
     # build teacher architecture
-    teacher = config.restore_snapshot('teacher_arch', module_arch)
+    teacher = config.restore_snapshot('teacher', module_arch)
     teacher.eval()
     logger.info(teacher)
 
