@@ -12,6 +12,18 @@
         "snapshot": "checkpoints/cityscapes_best.pth"
     },
     "ta": false,
+    "transforms": {
+        "joint_transforms": {
+            "crop_size": 896,
+            "scale_min": 0.5,
+            "scale_max": 2,
+            "ignore_index": 255
+        },
+        "extended_transforms": {
+            "color_aug": 0,
+            "blur": "gaussian"
+        }
+    },
     "train_data_loader": {
         "type": "CityScapesDataloader",
         "args":{
