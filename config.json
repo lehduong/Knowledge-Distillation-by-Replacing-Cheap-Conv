@@ -46,5 +46,14 @@
         "early_stop": 10,
 
         "tensorboard": true
+    }, 
+    "TA": {
+        "tc_path": "./pretrained_models/cityscapes_best.pth",
+        "tc_arch": "models.deeplabv3.DeepWV3Plus",
+        "lambda_student": 0.5,
+        "T_student": 1
+    },
+    "segmentation":{
+        "num_classes":19
     }
 }

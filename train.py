@@ -7,7 +7,8 @@ import models.loss as module_loss
 import models.metric as module_metric
 import models as module_arch
 from parse_config import ConfigParser
-from trainer import Trainer
+from trainer import Trainer, TrainerTeacherAssistant
+from optimizer import restore_snapshot
 
 
 # fix random seeds for reproducibility
@@ -16,6 +17,16 @@ torch.manual_seed(SEED)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 np.random.seed(SEED)
+
+def prepare_teacher(config):
+    tc = module_arch.get_net(config, criterion=None)
+    tc = torch.nn.DataParallel(tc).cuda()
+    print('Net built.')
+    tc, _ = restore_snapshot(tc, optimizer=None, snapshot=config['TA']['tc_path'], 
+                restore_optimizer_bool=False)
+    tc.eval()
+    print('Net restored.')
+    return tc
 
 def main(config):
     logger = config.get_logger('train')
@@ -38,11 +49,21 @@ def main(config):
 
     lr_scheduler = config.init_obj('lr_scheduler', torch.optim.lr_scheduler, optimizer)
 
-    trainer = Trainer(model, criterion, metrics, optimizer,
+    if not config['TA']:
+        trainer = Trainer(model, criterion, metrics, optimizer,
                       config=config,
                       data_loader=data_loader,
                       valid_data_loader=valid_data_loader,
                       lr_scheduler=lr_scheduler)
+
+    else:
+        teacher = prepare_teacher(config)
+        trainer = TrainerTeacherAssistant(model, criterion, metrics, optimizer, 
+                    config=config, 
+                    data_loader=data_loader, 
+                    valid_data_loader=valid_data_loader, 
+                    lr_scheduler=lr_scheduler, 
+                    teacher=teacher)
 
     trainer.train()
 
