@@ -43,11 +43,21 @@ def main(config):
 
     lr_scheduler = config.init_obj('lr_scheduler', torch.optim.lr_scheduler, optimizer)
 
-    trainer = SegmentationTrainer(student, teacher, criterion, metrics, optimizer,
+    if not config['TA']:
+        trainer = SegmentationTrainer(student, teacher, criterion, metrics, optimizer,
                                   config=config,
                                   data_loader=train_data_loader,
                                   valid_data_loader=valid_data_loader,
                                   lr_scheduler=lr_scheduler)
+
+    else:
+        teacher = prepare_teacher(config)
+        trainer = TrainerTeacherAssistant(model, criterion, metrics, optimizer, 
+                    config=config, 
+                    data_loader=data_loader, 
+                    valid_data_loader=valid_data_loader, 
+                    lr_scheduler=lr_scheduler, 
+                    teacher=teacher)
 
     trainer.train()
 

@@ -1,6 +1,8 @@
 import numpy as np
 import torch
 from torchvision.utils import make_grid
+import torch.nn as nn
+import torch.nn.functional as F
 from base import BaseTrainer
 from utils import inf_loop, MetricTracker
 
@@ -47,17 +49,7 @@ class Trainer(BaseTrainer):
             loss.backward()
             self.optimizer.step()
 
-            self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
-            self.train_metrics.update('loss', loss.item())
-            for met in self.metric_ftns:
-                self.train_metrics.update(met.__name__, met(output, target))
-
-            if batch_idx % self.log_step == 0:
-                self.logger.debug('Train Epoch: {} {} Loss: {:.6f}'.format(
-                    epoch,
-                    self._progress(batch_idx),
-                    loss.item()))
-                self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
+            self._logging(batch_idx, epoch, data, output, target, loss)
 
             if batch_idx == self.len_epoch:
                 break
@@ -107,3 +99,59 @@ class Trainer(BaseTrainer):
             current = batch_idx
             total = self.len_epoch
         return base.format(current, total, 100.0 * current / total)
+    
+    def _logging(self, batch_idx, epoch, data, output, target, loss):
+        self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
+        self.train_metrics.update('loss', loss.item())
+        for met in self.metric_ftns:
+            self.train_metrics.update(met.__name__, met(output, target))
+
+        if batch_idx % self.log_step == 0:
+            self.logger.debug('Train Epoch: {} {} Loss: {:.6f}'.format(
+                epoch,
+                self._progress(batch_idx),
+                loss.item()))
+            self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
+
+
+class TrainerTeacherAssistant(Trainer):
+    """
+       Trainer use TA technique 
+    """
+    def __init__(self, student, criterion, metric_ftns, optimizer, config, data_loader, 
+            valid_data_loader=None, lr_scheduler=None, len_epoch=None, teacher=None):
+
+        super.__init__(student, criterion, metric_ftns, optimizer, config, data_loader,
+            valid_data_loader=None, lr_scheduler=None, len_epoch=None)
+        self.teacher = teacher
+
+    def _train_epoch(self, epoch):
+        lambda_st = self.config['TA']['lambda_student']
+        t_st = self.config['TA']['T_student']
+        self.model.train()
+        self.train_metrics.reset()
+
+        for batch_idx, (data, target) in enumerate(self.data_loader):
+            data, target = data.to(self.device), target.to(self.device)
+            self.optimizer.zero_grad()
+
+            output_st = self.model(data)
+            loss_output_st = self.criterion(output_st, target)
+            output_tc = self.teacher(data)
+            loss_KD = nn.KLDivLoss()(F.log_softmax(output_st / t_st, dim=1),
+                        F.softmax(output_tc / t_st, dim=1))
+            
+            loss = (1-lambda_st)*loss_output_st + lambda_st * t_st * t_st * loss_KD
+            loss.backward()
+            self.optimizer.step()
+
+            self._logging(batch_idx, epoch, data, output_st, target, loss)
+            
+            if batch_idx == self.len_epoch:
+                break
+
+
+
+
+
+    
