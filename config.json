@@ -11,6 +11,7 @@
         "args": {"num_classes": 19},
         "snapshot": "checkpoints/cityscapes_best.pth"
     },
+    "ta": false,
     "train_data_loader": {
         "type": "CityScapesDataloader",
         "args":{

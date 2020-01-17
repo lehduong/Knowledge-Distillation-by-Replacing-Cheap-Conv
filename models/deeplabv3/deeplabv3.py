@@ -1,15 +1,18 @@
 import logging
 import torch.nn as nn
 import torch
-from common.initialization import initialize_weights
-from encoders.wider_resnet import WiderResNetA2
+from ..common.initialization import initialize_weights
+from ..encoders.wider_resnet import WiderResNetA2
+
 
 def Norm2d(in_channels):
     return nn.BatchNorm2d(in_channels)
 
+
 def Upsample(x, size):
-    return nn.functional.interpolate(x, size=size, 
-        mode='bilinear', align_corners=True)
+    return nn.functional.interpolate(x, size=size,
+                                     mode='bilinear', align_corners=True)
+
 
 class _AtrousSpatialPyramidPoolingModule(nn.Module):
     """
@@ -89,7 +92,7 @@ class DeepWV3Plus(nn.Module):
         self.criterion = criterion
         logging.info("Trunk: %s", trunk)
 
-        wide_resnet = WiderResNetA2(classes=1000, dilation=True)
+        wide_resnet = WiderResNetA2(structure=[3, 3, 6, 3, 1, 1], classes=1000, dilation=True)
         wide_resnet = nn.DataParallel(wide_resnet)
         if criterion is not None:
             try:
@@ -97,8 +100,10 @@ class DeepWV3Plus(nn.Module):
                 wide_resnet.load_state_dict(checkpoint['state_dict'])
                 del checkpoint
             except:
-                print("Please download the ImageNet weights of WideResNet38 in our repo to ./pretrained_models/wider_resnet38.pth.tar.")
-                raise RuntimeError("=====================Could not load ImageNet weights of WideResNet38 network.=======================")
+                print(
+                    "Please download the ImageNet weights of WideResNet38 in our repo to ./pretrained_models/wider_resnet38.pth.tar.")
+                raise RuntimeError(
+                    "=====================Could not load ImageNet weights of WideResNet38 network.=======================")
         wide_resnet = wide_resnet.module
 
         self.mod1 = wide_resnet.mod1
