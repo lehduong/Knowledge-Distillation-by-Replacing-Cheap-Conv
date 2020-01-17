@@ -3,12 +3,12 @@
     "n_gpu": 1,
 
     "student": {
-        "arch": "DeepWV3Plus",
-        "args": {}
+        "type": "DeepWV3Plus",
+        "args": {"num_classes": 19}
     },
     "teacher": {
         "type": "DeepWV3Plus",
-        "args": {},
+        "args": {"num_classes": 19},
         "snapshot": "checkpoints/cityscapes_best.pth"
     },
     "train_data_loader": {
@@ -20,7 +20,7 @@
             "validation_split": 0.0,
             "num_workers": 2,
             "split": "train",
-            "mode": "gtFine",
+            "mode": "fine",
             "target_type": "semantic"
         }
     },
@@ -33,7 +33,7 @@
             "validation_split": 0,
             "num_workers": 2,
             "split": "val",
-            "mode": "gtFine",
+            "mode": "fine",
             "target_type": "semantic"
         }
     },
