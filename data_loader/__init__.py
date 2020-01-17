@@ -48,7 +48,7 @@ def _create_transform(config):
 
     target_transform = train_joint_transforms.MaskToTensor()
 
-    return train_joint_transform_list, train_input_transform, target_transform, val_input_transform
+    return train_joint_transforms, train_input_transform, target_transform, val_input_transform
 
 
 
