@@ -1,5 +1,6 @@
 import os
 import logging
+import models
 from pathlib import Path
 from functools import reduce, partial
 from operator import getitem
@@ -92,6 +93,19 @@ class ConfigParser:
         module_args.update(kwargs)
         return getattr(module, module_name)(*args, **module_args)
 
+    def restore_snapshot(self,name, module, *args, **kwargs):
+        """
+        Finds a function handle with the name given as 'type' in config, and create the
+        instance initialized with corresponding arguments given and load the parameters from snapshot file.
+        """
+        module_name = self[name]['type']
+        module_args = dict(self[name]['args'])
+        assert all([k not in module_args for k in kwargs]), 'Overwriting kwargs given in config file is not allowed'
+        module_args.update(kwargs)
+        net =  getattr(module, module_name)(*args, **module_args)
+        net, _ = models.load_weights(self[name]['snapshot'], net, None, False)
+        return net
+
     def init_ftn(self, name, module, *args, **kwargs):
         """
         Finds a function handle with the name given as 'type' in config, and returns the
@@ -155,3 +169,4 @@ def _set_by_path(tree, keys, value):
 def _get_by_path(tree, keys):
     """Access a nested object in tree by sequence of keys."""
     return reduce(getitem, keys, tree)
+

@@ -2,18 +2,39 @@
     "name": "Mnist_LeNet",
     "n_gpu": 1,
 
-    "arch": {
-        "type": "MnistModel",
+    "student": {
+        "arch": "MnistModel",
         "args": {}
     },
-    "data_loader": {
-        "type": "MnistDataLoader",
+    "teacher": {
+        "type": "MnistModel",
+        "args": {},
+        "snapshot": "checkpoints/cityscapes_best.pth"
+    },
+    "train_data_loader": {
+        "type": "CityScapesDataloader",
         "args":{
             "data_dir": "data/",
-            "batch_size": 128,
+            "batch_size": 16,
             "shuffle": true,
-            "validation_split": 0.1,
-            "num_workers": 2
+            "validation_split": 0.0,
+            "num_workers": 2,
+            "split": "train",
+            "mode": "gtFine",
+            "target_type": "semantic"
+        }
+    },
+    "val_data_loader": {
+        "type": "CityScapesDataloader",
+        "args":{
+            "data_dir": "data/",
+            "batch_size": 16,
+            "shuffle": false,
+            "validation_split": 0,
+            "num_workers": 2,
+            "split": "val",
+            "mode": "gtFine",
+            "target_type": "semantic"
         }
     },
     "optimizer": {

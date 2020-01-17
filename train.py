@@ -7,8 +7,7 @@ import models.loss as module_loss
 import models.metric as module_metric
 import models as module_arch
 from parse_config import ConfigParser
-from trainer import Trainer
-
+from trainer import SegmentationTrainer
 
 # fix random seeds for reproducibility
 SEED = 123
@@ -17,38 +16,44 @@ torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 np.random.seed(SEED)
 
+
 def main(config):
     logger = config.get_logger('train')
 
     # setup data_loader instances
-    data_loader = config.init_obj('data_loader', module_data)
-    valid_data_loader = data_loader.split_validation()
+    train_data_loader = config.init_obj('train_data_loader', module_data)
+    valid_data_loader = config.init_obj('val_data_loader', module_data)
 
     # build models architecture, then print to console
-    model = config.init_obj('arch', module_arch)
-    logger.info(model)
+    student = config.init_obj('student', module_arch)
+    logger.info(student)
+
+    # build teacher architecture
+    teacher = config.restore_snapshot('teacher_arch', module_arch)
+    teacher.eval()
+    logger.info(teacher)
 
     # get function handles of loss and metrics
     criterion = getattr(module_loss, config['loss'])
     metrics = [getattr(module_metric, met) for met in config['metrics']]
 
     # build optimizer, learning rate scheduler. delete every lines containing lr_scheduler for disabling scheduler
-    trainable_params = filter(lambda p: p.requires_grad, model.parameters())
+    trainable_params = filter(lambda p: p.requires_grad, student.parameters())
     optimizer = config.init_obj('optimizer', torch.optim, trainable_params)
 
     lr_scheduler = config.init_obj('lr_scheduler', torch.optim.lr_scheduler, optimizer)
 
-    trainer = Trainer(model, criterion, metrics, optimizer,
-                      config=config,
-                      data_loader=data_loader,
-                      valid_data_loader=valid_data_loader,
-                      lr_scheduler=lr_scheduler)
+    trainer = SegmentationTrainer(student, teacher, criterion, metrics, optimizer,
+                                  config=config,
+                                  data_loader=train_data_loader,
+                                  valid_data_loader=valid_data_loader,
+                                  lr_scheduler=lr_scheduler)
 
     trainer.train()
 
 
 if __name__ == '__main__':
-    args = argparse.ArgumentParser(description='PyTorch Template')
+    args = argparse.ArgumentParser(description='Knowledge Distillation')
     args.add_argument('-c', '--config', default=None, type=str,
                       help='config file path (default: None)')
     args.add_argument('-r', '--resume', default=None, type=str,
