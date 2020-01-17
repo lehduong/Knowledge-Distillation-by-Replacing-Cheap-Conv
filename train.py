@@ -7,7 +7,7 @@ import models.loss as module_loss
 import models.metric as module_metric
 import models as module_arch
 from parse_config import ConfigParser
-from trainer import SegmentationTrainer
+from trainer import SegmentationTrainer, TrainerTeacherAssistant
 
 # fix random seeds for reproducibility
 SEED = 123
@@ -45,19 +45,18 @@ def main(config):
 
     if not config['TA']:
         trainer = SegmentationTrainer(student, teacher, criterion, metrics, optimizer,
-                                  config=config,
-                                  data_loader=train_data_loader,
-                                  valid_data_loader=valid_data_loader,
-                                  lr_scheduler=lr_scheduler)
+                                      config=config,
+                                      data_loader=train_data_loader,
+                                      valid_data_loader=valid_data_loader,
+                                      lr_scheduler=lr_scheduler)
 
     else:
-        teacher = prepare_teacher(config)
-        trainer = TrainerTeacherAssistant(model, criterion, metrics, optimizer, 
-                    config=config, 
-                    data_loader=data_loader, 
-                    valid_data_loader=valid_data_loader, 
-                    lr_scheduler=lr_scheduler, 
-                    teacher=teacher)
+        trainer = TrainerTeacherAssistant(student, criterion, metrics, optimizer,
+                                          config=config,
+                                          data_loader=train_data_loader,
+                                          valid_data_loader=valid_data_loader,
+                                          lr_scheduler=lr_scheduler,
+                                          teacher=teacher)
 
     trainer.train()
 
