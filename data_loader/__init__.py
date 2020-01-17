@@ -46,7 +46,7 @@ def _create_transform(config):
         standard_transforms.Normalize(*mean_std)
     ])
 
-    target_transform = train_joint_transforms.MaskToTensor()
+    target_transform = extended_transforms.MaskToTensor()
 
     return train_joint_transforms, train_input_transform, target_transform, val_input_transform
 
