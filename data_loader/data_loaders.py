@@ -77,7 +77,7 @@ class CityscapesDataloader(BaseDataLoader):
                  transform=None, target_transform=None, transforms=None, mode='fine'):
         # TODO: add some augmentation tfs
         self.data_dir = data_dir
-        self.dataset = Cityscapes(self.data_dir, transform=transform, transforms=transforms,
+        self.dataset = datasets.Cityscapes(self.data_dir, transform=transform, transforms=transforms,
                                   target_transform=target_transform, split=split, mode=mode,
                                   target_type='semantic')
 

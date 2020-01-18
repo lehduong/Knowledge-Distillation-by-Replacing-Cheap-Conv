@@ -5,6 +5,7 @@ from collections import namedtuple
 from torchvision.datasets.utils import extract_archive, verify_str_arg, iterable_to_str
 from .datasets import VisionDataset
 from PIL import Image
+import numpy as np
 
 
 class Cityscapes(VisionDataset):
@@ -96,7 +97,8 @@ class Cityscapes(VisionDataset):
         CityscapesClass('bicycle', 33, 18, 'vehicle', 7, True, False, (119, 11, 32)),
         CityscapesClass('license plate', -1, -1, 'vehicle', 7, False, True, (0, 0, 142)),
     ]
-
+    ignore_label = 255
+    
     def __init__(self, root, split='train', mode='fine', target_type='instance',
                  transform=None, target_transform=None, transforms=None):
         super(Cityscapes, self).__init__(root, transforms, transform, target_transform)
@@ -107,6 +109,12 @@ class Cityscapes(VisionDataset):
         self.split = split
         self.images = []
         self.targets = []
+        self.id_to_trainid = {-1: self.ignore_label, 0: self.ignore_label, 1: self.ignore_label, 2: self.ignore_label,
+                              3: self.ignore_label, 4: self.ignore_label, 5: self.ignore_label, 6: self.ignore_label,
+                              7: 0, 8: 1, 9: self.ignore_label, 10: self.ignore_label, 11: 2, 12: 3, 13: 4,
+                              14: self.ignore_label, 15: self.ignore_label, 16: self.ignore_label, 17: 5,
+                              18: self.ignore_label, 19: 6, 20: 7, 21: 8, 22: 9, 23: 10, 24: 11, 25: 12, 26: 13, 27: 14,
+                              28: 15, 29: self.ignore_label, 30: self.ignore_label, 31: 16, 32: 17, 33: 18}
 
         verify_str_arg(mode, "mode", ("fine", "coarse"))
         if mode == "fine":
@@ -178,14 +186,21 @@ class Cityscapes(VisionDataset):
 
         target = tuple(targets) if len(targets) > 1 else targets[0]
 
+        # relabel target
+        target = np.array(target)
+        target_copy = target.copy()
+        for k, v in self.id_to_trainid.items():
+            target_copy[target == k] = v
+        target = Image.fromarray(target_copy.astype(np.uint8))
+
         if self.transforms is not None:
             image, target = self.transforms(image, target)
 
         if self.transform is not None:
-            image = self.transform
+            image = self.transform(image)
 
         if self.target_transform is not None:
-            target = self.target_transform
+            target = self.target_transform(target)
 
         return image, target
 
