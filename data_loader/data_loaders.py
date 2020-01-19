@@ -1,6 +1,7 @@
 from torchvision import datasets
 from torchvision import transforms as tfs
 from base import BaseDataLoader
+from .cityscapes import Cityscapes
 
 
 class MnistDataLoader(BaseDataLoader):
@@ -67,14 +68,17 @@ class ImageNetDataloader(BaseDataLoader):
         super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers)
 
 
-class CityScapesDataloader(BaseDataLoader):
+class CityscapesDataloader(BaseDataLoader):
     """
     CityScape data loading using BaseDataLoader
     """
 
     def __init__(self, data_dir, batch_size, shuffle=True, validation_split=0.0, num_workers=1, split='train',
-                 mode='gtFine', target_type='semantic',transform=None, target_transform=None, transforms=None):
+                 transform=None, target_transform=None, transforms=None, mode='fine'):
         # TODO: add some augmentation tfs
         self.data_dir = data_dir
-        self.dataset = datasets.Cityscapes(self.data_dir, transform=transform, transforms=transforms, target_transform=target_transform, split=split, mode=mode, target_type=target_type)
+        self.dataset = datasets.Cityscapes(self.data_dir, transform=transform, transforms=transforms,
+                                  target_transform=target_transform, split=split, mode=mode,
+                                  target_type='semantic')
+
         super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers)

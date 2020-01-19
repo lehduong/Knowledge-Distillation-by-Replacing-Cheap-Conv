@@ -2,7 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
+scripts/download_cityscapes.sh
 # C extensions
 *.so
 
@@ -110,3 +110,4 @@ datasets/
 .vscode/
 .idea/
 __MACOSX/
+.DS_Store
