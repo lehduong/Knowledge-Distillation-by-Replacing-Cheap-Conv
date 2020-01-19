@@ -155,7 +155,4 @@ class DeepWV3Plus(nn.Module):
         dec1 = self.final(dec0)
         out = Upsample(dec1, x_size[2:])
 
-        if self.training:
-            return self.criterion(out, gts)
-
         return out

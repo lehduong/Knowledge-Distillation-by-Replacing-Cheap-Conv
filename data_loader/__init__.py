@@ -18,7 +18,7 @@ def _create_transform(config):
         joint_transforms.Resize(joint_transforms_params['crop_size']),
         joint_transforms.RandomHorizontallyFlip()
     ]
-    train_joint_transforms = standard_transforms.Compose(train_joint_transform_list)
+    train_joint_transform = joint_transforms.Compose(train_joint_transform_list)
 
     # Image appearance transformations
     extended_transforms_params = config['transforms']['extended_transforms']
@@ -48,9 +48,4 @@ def _create_transform(config):
 
     target_transform = extended_transforms.MaskToTensor()
 
-    return train_joint_transforms, train_input_transform, target_transform, val_input_transform
-
-
-
-
-
+    return train_joint_transform, train_input_transform, target_transform, val_input_transform
