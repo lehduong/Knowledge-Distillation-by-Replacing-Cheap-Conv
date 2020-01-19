@@ -7,7 +7,7 @@ from utils import inf_loop, MetricTracker
 
 class SegmentationTrainer(BaseTrainer):
     """
-    Trainer class for Distillating Knowledge of Classification Model
+    Trainer class for Distillating Knowledge of Segmentation Model
     """
     def __init__(self, student, teacher, criterion, metric_ftns, optimizer, config, data_loader,
                  valid_data_loader=None, lr_scheduler=None, len_epoch=None):
