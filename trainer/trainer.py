@@ -1,3 +1,5 @@
+from abc import ABC
+
 import numpy as np
 import torch
 from torchvision.utils import make_grid
@@ -5,6 +7,76 @@ import torch.nn as nn
 import torch.nn.functional as F
 from base import BaseTrainer
 from utils import inf_loop, MetricTracker
+
+
+class BaseKnowledgeDistillationTrainer(BaseTrainer, ABC):
+    """
+    Base class for all Knowledge Distillation trainers
+    """
+
+    def __init__(self, student,teacher, criterion, metric_ftns, optimizer, config):
+        # setup GPU device if available, move models into configured device
+        self.device, device_ids = self._prepare_device(config['n_gpu'])
+        self.teacher = teacher.to(self.device)
+        # TODO: a bug in the implementation that requires the DeepWV3Plus having wrapped by
+        #  nn.DataParallel to give reasonable ouput
+        self.teacher = nn.DataParallel(teacher)
+        self.teacher.eval()
+        super(BaseKnowledgeDistillationTrainer).__init__(self, student, criterion, metric_ftns, optimizer, config)
+        self.student = self.model
+        del self.model
+
+    def _save_checkpoint(self, epoch, save_best=False):
+        """
+        Saving checkpoints
+
+        :param epoch: current epoch number
+        :param log: logging information of the epoch
+        :param save_best: if True, rename the saved checkpoint to 'model_best.pth'
+        """
+        arch = type(self.student).__name__
+        state = {
+            'arch': arch,
+            'epoch': epoch,
+            'state_dict': self.student.state_dict(),
+            'optimizer': self.optimizer.state_dict(),
+            'monitor_best': self.mnt_best,
+            'config': self.config
+        }
+        filename = str(self.checkpoint_dir / 'checkpoint-epoch{}.pth'.format(epoch))
+        torch.save(state, filename)
+        self.logger.info("Saving checkpoint: {} ...".format(filename))
+        if save_best:
+            best_path = str(self.checkpoint_dir / 'model_best.pth')
+            torch.save(state, best_path)
+            self.logger.info("Saving current best: model_best.pth ...")
+
+    def _resume_checkpoint(self, resume_path):
+        """
+        Resume from saved checkpoints
+
+        :param resume_path: Checkpoint path to be resumed
+        """
+        resume_path = str(resume_path)
+        self.logger.info("Loading checkpoint: {} ...".format(resume_path))
+        checkpoint = torch.load(resume_path)
+        self.start_epoch = checkpoint['epoch'] + 1
+        self.mnt_best = checkpoint['monitor_best']
+
+        # load architecture params from checkpoint.
+        if checkpoint['config']['arch'] != self.config['arch']:
+            self.logger.warning("Warning: Architecture configuration given in config file is different from that of "
+                                "checkpoint. This may yield an exception while state_dict is being loaded.")
+        self.student.load_state_dict(checkpoint['state_dict'])
+
+        # load optimizer state from checkpoint only when optimizer type is not changed.
+        if checkpoint['config']['optimizer']['type'] != self.config['optimizer']['type']:
+            self.logger.warning("Warning: Optimizer type given in config file is different from that of checkpoint. "
+                                "Optimizer parameters not being resumed.")
+        else:
+            self.optimizer.load_state_dict(checkpoint['optimizer'])
+
+        self.logger.info("Checkpoint loaded. Resume training from epoch {}".format(self.start_epoch))
 
 
 class Trainer(BaseTrainer):
@@ -114,16 +186,15 @@ class Trainer(BaseTrainer):
             self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
 
 
-class TrainerTeacherAssistant(Trainer):
+class TrainerTeacherAssistant(BaseKnowledgeDistillationTrainer):
     """
        Trainer use TA technique 
     """
-    def __init__(self, student, criterion, metric_ftns, optimizer, config, data_loader, 
-            valid_data_loader=None, lr_scheduler=None, len_epoch=None, teacher=None):
+    def __init__(self, student, teacher, criterion, metric_ftns, optimizer, config, data_loader,
+            valid_data_loader=None, lr_scheduler=None, len_epoch=None):
 
-        super.__init__(student, criterion, metric_ftns, optimizer, config, data_loader,
+        super.__init__(student, teacher, criterion, metric_ftns, optimizer, config, data_loader,
             valid_data_loader=None, lr_scheduler=None, len_epoch=None)
-        self.teacher = teacher
 
     def _train_epoch(self, epoch):
         lambda_st = self.config['TA']['lambda_student']
@@ -149,9 +220,3 @@ class TrainerTeacherAssistant(Trainer):
             
             if batch_idx == self.len_epoch:
                 break
-
-
-
-
-
-    
