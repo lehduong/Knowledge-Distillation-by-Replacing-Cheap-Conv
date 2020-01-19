@@ -2,6 +2,7 @@ from .deeplabv3 import DeepWV3Plus
 from .deeplabv3 import get_distil_model
 import logging
 import importlib
+import torch
 
 def get_net(config, criterion):
     """

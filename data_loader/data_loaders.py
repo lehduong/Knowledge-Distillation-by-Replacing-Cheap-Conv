@@ -74,11 +74,11 @@ class CityscapesDataloader(BaseDataLoader):
     """
 
     def __init__(self, data_dir, batch_size, shuffle=True, validation_split=0.0, num_workers=1, split='train',
-                 transform=None, target_transform=None, transforms=None, mode='fine'):
+                 transform=None, target_transform=None, transforms=None, mode='fine', target_type='semantic'):
         # TODO: add some augmentation tfs
         self.data_dir = data_dir
-        self.dataset = datasets.Cityscapes(self.data_dir, transform=transform, transforms=transforms,
+        self.dataset = Cityscapes(root=self.data_dir, transform=transform, transforms=transforms,
                                   target_transform=target_transform, split=split, mode=mode,
-                                  target_type='semantic')
+                                  target_type=target_type)
 
         super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers)
