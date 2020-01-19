@@ -28,14 +28,16 @@ def main(config):
     valid_data_loader = config.init_obj('val_data_loader', module_data, transform=val_input_transform,
                                         target_transform=target_transform)
 
-    # build models architecture, then print to console
-    student = config.init_obj('student', module_arch)
-    logger.info(student)
-
     # build teacher architecture
     teacher = config.restore_snapshot('teacher', module_arch)
     teacher.eval()
     logger.info(teacher)
+
+    # build models architecture, then print to console
+    # student = config.init_obj('student', module_arch)
+    student = module_arch.get_distil_model(teacher)
+    logger.info(student)
+
 
     # get function handles of loss and metrics
     criterion = getattr(module_loss, config['loss'])
@@ -47,7 +49,7 @@ def main(config):
 
     lr_scheduler = config.init_obj('lr_scheduler', torch.optim.lr_scheduler, optimizer)
 
-    if not config['TA']:
+    if not config['use_TA']:
         trainer = SegmentationTrainer(student, teacher, criterion, metrics, optimizer,
                                       config=config,
                                       data_loader=train_data_loader,
