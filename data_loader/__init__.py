@@ -11,7 +11,7 @@ def _create_transform(config):
     train_joint_transform_list = [
         joint_transforms.RandomSizeAndCrop(joint_transforms_params['crop_size'],
                                            False,
-                                           pre_size=None,
+                                           pre_size=joint_transforms_params.get('pre_size'),
                                            scale_min=joint_transforms_params['crop_size'],
                                            scale_max=joint_transforms_params['scale_max'],
                                            ignore_index=joint_transforms_params['ignore_label']),

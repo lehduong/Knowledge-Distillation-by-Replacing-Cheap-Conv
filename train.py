@@ -30,7 +30,7 @@ def main(config):
 
     # build teacher architecture
     teacher = config.restore_snapshot('teacher', module_arch)
-    teacher.eval()
+    # teacher.eval()
     logger.info(teacher)
 
     # build models architecture, then print to console
@@ -48,11 +48,19 @@ def main(config):
 
     lr_scheduler = config.init_obj('lr_scheduler', torch.optim.lr_scheduler, optimizer)
 
-    trainer = TrainerTeacherAssistant(student, teacher, criterion, metrics, optimizer,
+    if not config['use_TA']:
+        trainer = SegmentationTrainer(student, teacher, criterion, metrics, optimizer,
                                       config=config,
                                       data_loader=train_data_loader,
                                       valid_data_loader=valid_data_loader,
                                       lr_scheduler=lr_scheduler)
+
+    else:
+        trainer = TrainerTeacherAssistant(student, teacher, criterion, metrics, optimizer,
+                                          config=config,
+                                          data_loader=train_data_loader,
+                                          valid_data_loader=valid_data_loader,
+                                          lr_scheduler=lr_scheduler)
 
     trainer.train()
 

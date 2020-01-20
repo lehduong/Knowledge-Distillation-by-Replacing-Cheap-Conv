@@ -11,10 +11,9 @@
         "args": {"num_classes": 19},
         "snapshot": "checkpoints/cityscapes_best.pth"
     },
-    "ta": false,
     "transforms": {
         "joint_transforms": {
-            "crop_size": 720,
+            "crop_size": 512,
             "scale_min": 0.5,
             "scale_max": 2,
             "ignore_label": 255
@@ -28,7 +27,7 @@
         "type": "CityscapesDataloader",
         "args":{
             "data_dir": "data/",
-            "batch_size": 16,
+            "batch_size": 2,
             "shuffle": true,
             "validation_split": 0.0,
             "num_workers": 0,
@@ -41,7 +40,7 @@
         "type": "CityscapesDataloader",
         "args":{
             "data_dir": "data/",
-            "batch_size": 16,
+            "batch_size": 2,
             "shuffle": false,
             "validation_split": 0,
             "num_workers": 0,
@@ -58,7 +57,7 @@
             "amsgrad": true
         }
     },
-    "loss": "nll_loss",
+    "loss": "ce_loss",
     "metrics": [
         "accuracy", "top_k_acc"
     ],
@@ -81,7 +80,7 @@
 
         "tensorboard": true
     }, 
-    "use_TA": false,
+    "use_TA": true,
     "TA": {
         "tc_path": "./pretrained_models/cityscapes_best.pth",
         "tc_arch": "models.deeplabv3.DeepWV3Plus",
