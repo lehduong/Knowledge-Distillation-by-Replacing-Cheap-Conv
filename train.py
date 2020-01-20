@@ -38,7 +38,6 @@ def main(config):
     student = module_arch.get_distil_model(teacher)
     logger.info(student)
 
-
     # get function handles of loss and metrics
     criterion = getattr(module_loss, config['loss'])
     metrics = [getattr(module_metric, met) for met in config['metrics']]
@@ -49,12 +48,11 @@ def main(config):
 
     lr_scheduler = config.init_obj('lr_scheduler', torch.optim.lr_scheduler, optimizer)
 
-    trainer = TrainerTeacherAssistant(student, criterion, metrics, optimizer,
-                                          config=config,
-                                          data_loader=train_data_loader,
-                                          valid_data_loader=valid_data_loader,
-                                          lr_scheduler=lr_scheduler,
-                                          teacher=teacher)
+    trainer = TrainerTeacherAssistant(student, teacher, criterion, metrics, optimizer,
+                                      config=config,
+                                      data_loader=train_data_loader,
+                                      valid_data_loader=valid_data_loader,
+                                      lr_scheduler=lr_scheduler)
 
     trainer.train()
 
