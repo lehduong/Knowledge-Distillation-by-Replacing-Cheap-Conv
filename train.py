@@ -8,7 +8,7 @@ import models.metric as module_metric
 import models as module_arch
 from data_loader import _create_transform
 from parse_config import ConfigParser
-from trainer import SegmentationTrainer, TrainerTeacherAssistant
+from trainer import TrainerTeacherAssistant
 
 # fix random seeds for reproducibility
 SEED = 123
@@ -39,7 +39,7 @@ def main(config):
     logger.info(student)
 
     # get function handles of loss and metrics
-    criterion = getattr(module_loss, config['loss'])
+    criterion = config.init_obj('loss', module_loss)
     metrics = [getattr(module_metric, met) for met in config['metrics']]
 
     # build optimizer, learning rate scheduler. delete every lines containing lr_scheduler for disabling scheduler
@@ -48,17 +48,12 @@ def main(config):
 
     lr_scheduler = config.init_obj('lr_scheduler', torch.optim.lr_scheduler, optimizer)
 
-    if not config['use_TA']:
-        trainer = SegmentationTrainer(student, teacher, criterion, metrics, optimizer,
-                                      config=config,
-                                      data_loader=train_data_loader,
-                                      valid_data_loader=valid_data_loader,
-                                      lr_scheduler=lr_scheduler)
-
-    else:
-        trainer = TrainerTeacherAssistant(student, teacher, criterion, metrics, optimizer,
+    # Knowledge Distillation only
+    if config["KD"]["use"]:
+        kd_criterion = getattr(module_loss,config["KD"]["kd_loss"])(config["KD"]["temperature"])
+        trainer = TrainerTeacherAssistant(student, teacher, criterion, kd_criterion, metrics, optimizer,
                                           config=config,
-                                          data_loader=train_data_loader,
+                                          train_data_loader=train_data_loader,
                                           valid_data_loader=valid_data_loader,
                                           lr_scheduler=lr_scheduler)
 

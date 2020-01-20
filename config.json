@@ -57,7 +57,12 @@
             "amsgrad": true
         }
     },
-    "loss": "ce_loss",
+    "loss": {
+        "type": "CrossEntropyLoss2d",
+        "args": {
+            "ignore_index": 255
+        }
+    },
     "metrics": [
         "accuracy", "top_k_acc"
     ],
@@ -77,15 +82,17 @@
         
         "monitor": "min val_loss",
         "early_stop": 10,
+        "accumulation_steps": 1,
 
         "tensorboard": true
     }, 
-    "use_TA": true,
-    "TA": {
+    "KD": {
+        "use": true,
         "tc_path": "./pretrained_models/cityscapes_best.pth",
-        "tc_arch": "models.deeplabv3.DeepWV3Plus",
-        "lambda_student": 0.5,
-        "T_student": 1
+        "tc_arch": "DeepWV3Plus",
+        "kd_loss": "KLDivergenceLoss",
+        "temperature": 1,
+        "lambda": 0.5
     },
     "segmentation":{
         "num_classes":19

@@ -7,6 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from base import BaseTrainer
 from utils import inf_loop, MetricTracker
+from models.loss import KLDivergenceLoss
 
 
 class BaseKnowledgeDistillationTrainer(BaseTrainer, ABC):
@@ -14,7 +15,7 @@ class BaseKnowledgeDistillationTrainer(BaseTrainer, ABC):
     Base class for all Knowledge Distillation trainers
     """
 
-    def __init__(self, student, teacher, criterion, metric_ftns, optimizer, config):
+    def __init__(self, student, teacher, criterion, kd_criterion, metric_ftns, optimizer, config):
         # setup GPU device if available, move models into configured device
         self.device, device_ids = self._prepare_device(config['n_gpu'])
         self.teacher = teacher.to(self.device)
@@ -22,59 +23,12 @@ class BaseKnowledgeDistillationTrainer(BaseTrainer, ABC):
         #  nn.DataParallel to give reasonable ouput
         self.teacher = nn.DataParallel(teacher)
         self.teacher.eval()
+        # TODO: making it's easier to configurate the distil_criterion
+        self.kd_criterion = kd_criterion
+        self.lamb = config['KD']['lamb']
         super(BaseKnowledgeDistillationTrainer).__init__(self, student, criterion, metric_ftns, optimizer, config)
-
-    def _save_checkpoint(self, epoch, save_best=False):
-        """
-        Saving checkpoints
-
-        :param epoch: current epoch number
-        :param log: logging information of the epoch
-        :param save_best: if True, rename the saved checkpoint to 'model_best.pth'
-        """
-        arch = type(self.student).__name__
-        state = {
-            'arch': arch,
-            'epoch': epoch,
-            'state_dict': self.student.state_dict(),
-            'optimizer': self.optimizer.state_dict(),
-            'monitor_best': self.mnt_best,
-            'config': self.config
-        }
-        filename = str(self.checkpoint_dir / 'checkpoint-epoch{}.pth'.format(epoch))
-        torch.save(state, filename)
-        self.logger.info("Saving checkpoint: {} ...".format(filename))
-        if save_best:
-            best_path = str(self.checkpoint_dir / 'model_best.pth')
-            torch.save(state, best_path)
-            self.logger.info("Saving current best: model_best.pth ...")
-
-    def _resume_checkpoint(self, resume_path):
-        """
-        Resume from saved checkpoints
-
-        :param resume_path: Checkpoint path to be resumed
-        """
-        resume_path = str(resume_path)
-        self.logger.info("Loading checkpoint: {} ...".format(resume_path))
-        checkpoint = torch.load(resume_path)
-        self.start_epoch = checkpoint['epoch'] + 1
-        self.mnt_best = checkpoint['monitor_best']
-
-        # load architecture params from checkpoint.
-        if checkpoint['config']['arch'] != self.config['arch']:
-            self.logger.warning("Warning: Architecture configuration given in config file is different from that of "
-                                "checkpoint. This may yield an exception while state_dict is being loaded.")
-        self.student.load_state_dict(checkpoint['state_dict'])
-
-        # load optimizer state from checkpoint only when optimizer type is not changed.
-        if checkpoint['config']['optimizer']['type'] != self.config['optimizer']['type']:
-            self.logger.warning("Warning: Optimizer type given in config file is different from that of checkpoint. "
-                                "Optimizer parameters not being resumed.")
-        else:
-            self.optimizer.load_state_dict(checkpoint['optimizer'])
-
-        self.logger.info("Checkpoint loaded. Resume training from epoch {}".format(self.start_epoch))
+        # create alias to increase the readable of
+        self.student = self.model
 
 
 class Trainer(BaseTrainer):
@@ -114,11 +68,13 @@ class Trainer(BaseTrainer):
         for batch_idx, (data, target) in enumerate(self.data_loader):
             data, target = data.to(self.device), target.to(self.device)
 
-            self.optimizer.zero_grad()
             output = self.model(data)
             loss = self.criterion(output, target)
+            loss = loss / self.accumulation_steps
             loss.backward()
-            self.optimizer.step()
+            if (batch_idx+1) % self.accumulation_steps == 0:
+                self.optimizer.step()
+                self.optimizer.zero_grad()
 
             self._logging(batch_idx, epoch, data, output, target, loss)
 
@@ -190,11 +146,11 @@ class TrainerTeacherAssistant(BaseKnowledgeDistillationTrainer, BaseTrainer):
        Trainer use TA technique 
     """
 
-    def __init__(self, student, teacher, criterion, metric_ftns, optimizer, config, data_loader,
+    def __init__(self, student, teacher, criterion, metric_ftns, optimizer, config, train_data_loader,
                  valid_data_loader=None, lr_scheduler=None, len_epoch=None):
 
         super(TrainerTeacherAssistant).__init__(student, teacher, criterion, metric_ftns, optimizer, config)
-        self.train_data_loader = data_loader
+        self.train_data_loader = train_data_loader
         self.valid_data_loader = valid_data_loader
         self.lr_scheduler = lr_scheduler
         self.do_validation = self.valid_data_loader is not None
@@ -212,26 +168,27 @@ class TrainerTeacherAssistant(BaseKnowledgeDistillationTrainer, BaseTrainer):
         self.valid_metrics = MetricTracker('loss', *[m.__name__ for m in self.metric_ftns], writer=self.writer)
 
     def _train_epoch(self, epoch):
-        lambda_st = self.config['TA']['lambda_student']
-        t_st = self.config['TA']['T_student']
         self.student.train()
         self.train_metrics.reset()
         
         for batch_idx, (data, target) in enumerate(self.data_loader):
             data, target = data.to(self.device), target.to(self.device)
-            self.optimizer.zero_grad()
 
             output_tc = self.teacher(data)
+            # TODO: Find an elegant way to free the feature map and computation graph
             output_tc = torch.tensor(output_tc.detach().cpu().numpy()).cuda()
             
-            output_st = self.model(data)
-            loss_output_st = self.criterion(output_st, target)
-            loss_KD = nn.KLDivLoss()(F.log_softmax(output_st / t_st, dim=1),
-                                     F.softmax(output_tc / t_st, dim=1))
+            output_st = self.student(data)
+            supervised_loss = self.criterion(output_st, target)
+            kd_loss = self.kd_criterion(output_st, output_tc)
 
-            loss = (1 - lambda_st) * loss_output_st + lambda_st * t_st * t_st * loss_KD
+            loss = (1 - self.lamb) * supervised_loss + self.lamb* kd_loss
+            loss = loss / self.accumulation_steps
             loss.backward()
-            self.optimizer.step()
+
+            if (batch_idx+1) % self.accumulation_steps == 0:
+                self.optimizer.step()
+                self.optimizer.zero_grad()
 
             self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
             self.train_metrics.update('loss', loss.item())
