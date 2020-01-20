@@ -13,6 +13,7 @@ class KLDivergenceLoss(nn.Module):
     """
 
     def __init__(self, temperature=1):
+        super(KLDivergenceLoss, self).__init__()
         self.temperature = temperature
         self.kldiv = nn.KLDivLoss()
 
@@ -32,6 +33,7 @@ class JSDivergenceLoss(nn.Module):
     """
 
     def __init__(self, temperature=1):
+        super(JSDivergenceLoss, self).__init__()
         self.temperature = temperature
         self.kldiv = nn.KLDivLoss()
 

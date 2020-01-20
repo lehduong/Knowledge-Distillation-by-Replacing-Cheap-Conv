@@ -23,7 +23,7 @@ class BaseTrainer:
         self.optimizer = optimizer
 
         cfg_trainer = config['trainer']
-        self.accumulation_steps = cfg_trainer['accumulation_']
+        self.accumulation_steps = cfg_trainer['accumulation_steps']
         self.epochs = cfg_trainer['epochs']
         self.save_period = cfg_trainer['save_period']
         self.monitor = cfg_trainer.get('monitor', 'off')
