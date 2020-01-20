@@ -57,12 +57,11 @@ def main(config):
                                       lr_scheduler=lr_scheduler)
 
     else:
-        trainer = TrainerTeacherAssistant(student, criterion, metrics, optimizer,
+        trainer = TrainerTeacherAssistant(student, teacher, criterion, metrics, optimizer,
                                           config=config,
                                           data_loader=train_data_loader,
                                           valid_data_loader=valid_data_loader,
-                                          lr_scheduler=lr_scheduler,
-                                          teacher=teacher)
+                                          lr_scheduler=lr_scheduler)
 
     trainer.train()
 
