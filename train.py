@@ -35,7 +35,7 @@ def main(config):
 
     # build models architecture, then print to console
     # student = config.init_obj('student', module_arch)
-    student = module_arch.get_distil_model(teacher)
+    student, lst_bl_tc, lst_bl_st = module_arch.get_distil_model(teacher)
     logger.info(student)
 
     # get function handles of loss and metrics
@@ -60,7 +60,7 @@ def main(config):
                                           config=config,
                                           data_loader=train_data_loader,
                                           valid_data_loader=valid_data_loader,
-                                          lr_scheduler=lr_scheduler)
+                                          lr_scheduler=lr_scheduler, lst_bl=[lst_bl_tc, lst_bl_st])
 
     trainer.train()
 

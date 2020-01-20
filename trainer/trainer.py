@@ -18,6 +18,7 @@ class BaseKnowledgeDistillationTrainer(BaseTrainer, ABC):
         # setup GPU device if available, move models into configured device
         self.device, device_ids = self._prepare_device(config['n_gpu'])
         self.teacher = teacher.to(self.device)
+        self.student = student
         # TODO: a bug in the implementation that requires the DeepWV3Plus having wrapped by
         #  nn.DataParallel to give reasonable ouput
         self.teacher = nn.DataParallel(teacher)
@@ -185,27 +186,30 @@ class Trainer(BaseTrainer):
             self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
 
 
-class TrainerTeacherAssistant(BaseKnowledgeDistillationTrainer, BaseTrainer):
+class TrainerTeacherAssistant(BaseKnowledgeDistillationTrainer):
     """
        Trainer use TA technique 
     """
 
     def __init__(self, student, teacher, criterion, metric_ftns, optimizer, config, data_loader,
-                 valid_data_loader=None, lr_scheduler=None, len_epoch=None):
+                 valid_data_loader=None, lr_scheduler=None, len_epoch=None, lst_bl=None):
 
         super(TrainerTeacherAssistant).__init__(student, teacher, criterion, metric_ftns, optimizer, config)
         self.train_data_loader = data_loader
         self.valid_data_loader = valid_data_loader
         self.lr_scheduler = lr_scheduler
         self.do_validation = self.valid_data_loader is not None
-        self.log_step = int(np.sqrt(train_data_loader.batch_size))
+        self.log_step = int(np.sqrt(self.train_data_loader.batch_size))
+        self.list_bl_tc = lst_bl[0]
+        self.list_bl_st = lst_bl[1]
+        self.teacher = teacher
 
         if len_epoch is None:
             # epoch-based training
             self.len_epoch = len(self.train_data_loader)
         else:
             # iteration-based training
-            self.train_data_loader = inf_loop(train_data_loader)
+            self.train_data_loader = inf_loop(self.train_data_loader)
             self.len_epoch = len_epoch
 
         self.train_metrics = MetricTracker('loss', *[m.__name__ for m in self.metric_ftns], writer=self.writer)
@@ -217,14 +221,18 @@ class TrainerTeacherAssistant(BaseKnowledgeDistillationTrainer, BaseTrainer):
         self.student.train()
         self.train_metrics.reset()
         
-        for batch_idx, (data, target) in enumerate(self.data_loader):
+        for batch_idx, (data, target) in enumerate(self.train_data_loader):
             data, target = data.to(self.device), target.to(self.device)
             self.optimizer.zero_grad()
-
+            
+            self.assign_block(st=False)
+            self.teacher.eval()
             output_tc = self.teacher(data)
             output_tc = torch.tensor(output_tc.detach().cpu().numpy()).cuda()
             
-            output_st = self.model(data)
+            self.assign_block(True)
+            self.student.train()
+            output_st = self.student(data)
             loss_output_st = self.criterion(output_st, target)
             loss_KD = nn.KLDivLoss()(F.log_softmax(output_st / t_st, dim=1),
                                      F.softmax(output_tc / t_st, dim=1))
@@ -260,9 +268,9 @@ class TrainerTeacherAssistant(BaseKnowledgeDistillationTrainer, BaseTrainer):
     
     def _progress(self, batch_idx):
         base = '[{}/{} ({:.0f}%)]'
-        if hasattr(self.data_loader, 'n_samples'):
-            current = batch_idx * self.data_loader.batch_size
-            total = self.data_loader.n_samples
+        if hasattr(self.train_data_loader, 'n_samples'):
+            current = batch_idx * self.train_data_loader.batch_size
+            total = self.train_data_loader.n_samples
         else:
             current = batch_idx
             total = self.len_epoch
@@ -294,3 +302,17 @@ class TrainerTeacherAssistant(BaseKnowledgeDistillationTrainer, BaseTrainer):
         for name, p in self.model.named_parameters():
             self.writer.add_histogram(name, p, bins='auto')
         return self.valid_metrics.result()
+
+    def assign_block(self, st=False):
+        if not st:
+            self.teacher.mod2.block3 = self.list_bl_tc[0]
+            self.teacher.mod3.block3 = self.list_bl_tc[1]
+            self.teacher.mod4.block3 = self.list_bl_tc[2]
+            self.teacher.mod4.block6 = self.list_bl_tc[3]
+            self.teacher.mod5.block3 = self.list_bl_tc[4]
+        else:
+            self.student.mod2.block3 = self.list_bl_st[0]
+            self.student.mod3.block3 = self.list_bl_st[1]
+            self.student.mod4.block3 = self.list_bl_st[2]
+            self.student.mod4.block6 = self.list_bl_st[3]
+            self.student.mod5.block3 = self.list_bl_st[4]
