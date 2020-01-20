@@ -25,8 +25,8 @@ class BaseKnowledgeDistillationTrainer(BaseTrainer, ABC):
         self.teacher.eval()
         # TODO: making it's easier to configurate the distil_criterion
         self.kd_criterion = kd_criterion
-        self.lamb = config['KD']['lamb']
-        super(BaseKnowledgeDistillationTrainer).__init__(self, student, criterion, metric_ftns, optimizer, config)
+        self.lamb = config['KD']['lambda']
+        super(BaseKnowledgeDistillationTrainer, self).__init__(student, criterion, metric_ftns, optimizer, config)
         # create alias to increase the readable of
         self.student = self.model
 
@@ -149,7 +149,7 @@ class TrainerTeacherAssistant(BaseKnowledgeDistillationTrainer, BaseTrainer):
     def __init__(self, student, teacher, criterion, kd_criterion, metric_ftns, optimizer, config, train_data_loader,
                  valid_data_loader=None, lr_scheduler=None, len_epoch=None):
 
-        super(TrainerTeacherAssistant).__init__(student, teacher, criterion, kd_criterion, metric_ftns, optimizer,
+        super(TrainerTeacherAssistant, self).__init__(student, teacher, criterion, kd_criterion, metric_ftns, optimizer,
                                                 config)
         self.train_data_loader = train_data_loader
         self.valid_data_loader = valid_data_loader
@@ -172,7 +172,7 @@ class TrainerTeacherAssistant(BaseKnowledgeDistillationTrainer, BaseTrainer):
         self.student.train()
         self.train_metrics.reset()
         
-        for batch_idx, (data, target) in enumerate(self.data_loader):
+        for batch_idx, (data, target) in enumerate(self.train_data_loader):
             data, target = data.to(self.device), target.to(self.device)
 
             output_tc = self.teacher(data)
@@ -218,9 +218,9 @@ class TrainerTeacherAssistant(BaseKnowledgeDistillationTrainer, BaseTrainer):
     
     def _progress(self, batch_idx):
         base = '[{}/{} ({:.0f}%)]'
-        if hasattr(self.data_loader, 'n_samples'):
-            current = batch_idx * self.data_loader.batch_size
-            total = self.data_loader.n_samples
+        if hasattr(self.train_data_loader, 'n_samples'):
+            current = batch_idx * self.train_data_loader.batch_size
+            total = self.train_data_loader.n_samples
         else:
             current = batch_idx
             total = self.len_epoch

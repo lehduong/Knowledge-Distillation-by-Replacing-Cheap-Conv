@@ -1,9 +1,19 @@
 import json
+import torch
 import pandas as pd
 from pathlib import Path
 from itertools import repeat
 from collections import OrderedDict
 
+
+def stat_cuda(msg):
+    print('--', msg)
+    print('allocated: %dM, max allocated: %dM, cached: %dM, max cached: %dM' % (
+        torch.cuda.memory_allocated() / 1024 / 1024,
+        torch.cuda.max_memory_allocated() / 1024 / 1024,
+        torch.cuda.memory_cached() / 1024 / 1024,
+        torch.cuda.max_memory_cached() / 1024 / 1024
+    ))
 
 def ensure_dir(dirname):
     dirname = Path(dirname)

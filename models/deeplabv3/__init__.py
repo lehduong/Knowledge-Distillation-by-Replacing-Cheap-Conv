@@ -1,6 +1,8 @@
-from .deeplabv3 import DeepWV3Plus
-from torch import nn
+import copy
 from collections import OrderedDict
+from torch import nn
+
+from .deeplabv3 import DeepWV3Plus
 from ..common.initialization import initialize_weights
 
 
@@ -144,7 +146,7 @@ from ..common.initialization import initialize_weights
 #     return [mod1, mod2, mod3, mod4, mod5, mod6, mod7]
 
 def get_distil_model(teacher):
-    teacher = teacher.deepcopy()
+    teacher = copy.deepcopy(teacher)
     for param in teacher.parameters():
         param.requires_grad = False
 
