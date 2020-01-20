@@ -1,6 +1,8 @@
 from .deeplabv3 import DeepWV3Plus
+from .deeplabv3 import get_distil_model
 import logging
 import importlib
+import torch
 
 def get_net(config, criterion):
     """
@@ -65,3 +67,5 @@ def forgiving_state_restore(net, loaded_dict):
     net_state_dict.update(new_loaded_dict)
     net.load_state_dict(net_state_dict)
     return net
+
+teacher = DeepWV3Plus

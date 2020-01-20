@@ -14,10 +14,10 @@
     "ta": false,
     "transforms": {
         "joint_transforms": {
-            "crop_size": 896,
+            "crop_size": 720,
             "scale_min": 0.5,
             "scale_max": 2,
-            "ignore_index": 255
+            "ignore_label": 255
         },
         "extended_transforms": {
             "color_aug": 0,
@@ -25,7 +25,7 @@
         }
     },
     "train_data_loader": {
-        "type": "CityScapesDataloader",
+        "type": "CityscapesDataloader",
         "args":{
             "data_dir": "data/",
             "batch_size": 16,
@@ -81,6 +81,7 @@
 
         "tensorboard": true
     }, 
+    "use_TA": false,
     "TA": {
         "tc_path": "./pretrained_models/cityscapes_best.pth",
         "tc_arch": "models.deeplabv3.DeepWV3Plus",
