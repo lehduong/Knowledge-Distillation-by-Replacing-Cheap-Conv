@@ -24,9 +24,6 @@ class BaseKnowledgeDistillationTrainer(BaseTrainer, ABC):
         self.teacher.eval()
         super(BaseKnowledgeDistillationTrainer).__init__(self, student, criterion, metric_ftns, optimizer, config)
 
-        self.train_metrics = MetricTracker('loss', *[m.__name__ for m in self.metric_ftns], writer=self.writer)
-        self.valid_metrics = MetricTracker('loss', *[m.__name__ for m in self.metric_ftns], writer=self.writer)
-
     def _save_checkpoint(self, epoch, save_best=False):
         """
         Saving checkpoints
@@ -84,6 +81,7 @@ class Trainer(BaseTrainer):
     """
     Trainer class
     """
+
     def __init__(self, model, criterion, metric_ftns, optimizer, config, data_loader,
                  valid_data_loader=None, lr_scheduler=None, len_epoch=None):
         super().__init__(model, criterion, metric_ftns, optimizer, config)
@@ -130,7 +128,7 @@ class Trainer(BaseTrainer):
 
         if self.do_validation:
             val_log = self._valid_epoch(epoch)
-            log.update(**{'val_'+k : v for k, v in val_log.items()})
+            log.update(**{'val_' + k: v for k, v in val_log.items()})
 
         if self.lr_scheduler is not None:
             self.lr_scheduler.step()
@@ -172,7 +170,7 @@ class Trainer(BaseTrainer):
             current = batch_idx
             total = self.len_epoch
         return base.format(current, total, 100.0 * current / total)
-    
+
     def _logging(self, batch_idx, epoch, data, output, target, loss):
         self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
         self.train_metrics.update('loss', loss.item())
@@ -187,35 +185,36 @@ class Trainer(BaseTrainer):
             self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
 
 
-class TrainerTeacherAssistant(BaseKnowledgeDistillationTrainer):
+class TrainerTeacherAssistant(BaseKnowledgeDistillationTrainer, BaseTrainer):
     """
        Trainer use TA technique 
     """
-    def __init__(self, student, teacher, criterion, metric_ftns, optimizer, config, data_loader,
-            valid_data_loader=None, lr_scheduler=None, len_epoch=None):
 
-        super.__init__(student.cuda(), teacher, criterion, metric_ftns, optimizer, config)
-        self.config = config
-        self.data_loader = data_loader
-        
+    def __init__(self, student, teacher, criterion, metric_ftns, optimizer, config, data_loader,
+                 valid_data_loader=None, lr_scheduler=None, len_epoch=None):
+
+        super(TrainerTeacherAssistant).__init__(student, teacher, criterion, metric_ftns, optimizer, config)
+        self.train_data_loader = data_loader
+        self.valid_data_loader = valid_data_loader
+        self.lr_scheduler = lr_scheduler
+        self.do_validation = self.valid_data_loader is not None
+        self.log_step = int(np.sqrt(train_data_loader.batch_size))
+
         if len_epoch is None:
             # epoch-based training
-            self.len_epoch = len(self.data_loader)
+            self.len_epoch = len(self.train_data_loader)
         else:
             # iteration-based training
-            self.data_loader = inf_loop(data_loader)
+            self.train_data_loader = inf_loop(train_data_loader)
             self.len_epoch = len_epoch
-        
-        self.valid_data_loader = valid_data_loader
-        self.do_validation = self.valid_data_loader is not None
-        self.lr_scheduler = lr_scheduler
-        self.log_step = int(np.sqrt(data_loader.batch_size))
-        self.teacher = teacher
+
+        self.train_metrics = MetricTracker('loss', *[m.__name__ for m in self.metric_ftns], writer=self.writer)
+        self.valid_metrics = MetricTracker('loss', *[m.__name__ for m in self.metric_ftns], writer=self.writer)
 
     def _train_epoch(self, epoch):
         lambda_st = self.config['TA']['lambda_student']
         t_st = self.config['TA']['T_student']
-        self.model.train()
+        self.student.train()
         self.train_metrics.reset()
         
         for batch_idx, (data, target) in enumerate(self.data_loader):
@@ -228,9 +227,9 @@ class TrainerTeacherAssistant(BaseKnowledgeDistillationTrainer):
             output_st = self.model(data)
             loss_output_st = self.criterion(output_st, target)
             loss_KD = nn.KLDivLoss()(F.log_softmax(output_st / t_st, dim=1),
-                        F.softmax(output_tc / t_st, dim=1))
-            
-            loss = (1-lambda_st)*loss_output_st + lambda_st * t_st * t_st * loss_KD
+                                     F.softmax(output_tc / t_st, dim=1))
+
+            loss = (1 - lambda_st) * loss_output_st + lambda_st * t_st * t_st * loss_KD
             loss.backward()
             self.optimizer.step()
 

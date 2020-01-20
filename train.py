@@ -38,7 +38,6 @@ def main(config):
     student = module_arch.get_distil_model(teacher)
     logger.info(student)
 
-
     # get function handles of loss and metrics
     criterion = getattr(module_loss, config['loss'])
     metrics = [getattr(module_metric, met) for met in config['metrics']]
