@@ -73,7 +73,7 @@ class CityscapesDataloader(BaseDataLoader):
     CityScape data loading using BaseDataLoader
     """
 
-    def __init__(self, data_dir, batch_size, shuffle=True, validation_split=0.0, num_workers=1, split='train',
+    def __init__(self, data_dir, batch_size, shuffle=True, validation_split=0.0, num_workers=0, split='train',
                  transform=None, target_transform=None, transforms=None, mode='fine', target_type='semantic'):
         # TODO: add some augmentation tfs
         self.data_dir = data_dir

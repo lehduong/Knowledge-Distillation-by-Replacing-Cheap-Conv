@@ -30,7 +30,7 @@ def main(config):
 
     # build teacher architecture
     teacher = config.restore_snapshot('teacher', module_arch)
-    teacher.eval()
+    # teacher.eval()
     logger.info(teacher)
 
     # build models architecture, then print to console

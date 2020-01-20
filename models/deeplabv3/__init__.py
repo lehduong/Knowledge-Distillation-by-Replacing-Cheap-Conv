@@ -1,7 +1,7 @@
 from .deeplabv3 import DeepWV3Plus
 from torch import nn
 from collections import OrderedDict
-from common.initialization import initialize_weights
+from ..common.initialization import initialize_weights
 
 # def get_distil_model(model):
 #     """
