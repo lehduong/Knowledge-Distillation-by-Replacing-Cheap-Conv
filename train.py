@@ -50,7 +50,7 @@ def main(config):
 
     trainer = TrainerTeacherAssistant(student, teacher, criterion, metrics, optimizer,
                                       config=config,
-                                      data_loader=train_data_loader,
+                                      train_data_loader=train_data_loader,
                                       valid_data_loader=valid_data_loader,
                                       lr_scheduler=lr_scheduler)
 
