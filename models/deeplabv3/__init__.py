@@ -3,6 +3,7 @@ from torch import nn
 from collections import OrderedDict
 from ..common.initialization import initialize_weights
 
+
 # def get_distil_model(model):
 #     """
 #     :param model: a pretrained DeepWV3Plus model
@@ -143,6 +144,7 @@ from ..common.initialization import initialize_weights
 #     return [mod1, mod2, mod3, mod4, mod5, mod6, mod7]
 
 def get_distil_model(teacher):
+    teacher = teacher.deepcopy()
     for param in teacher.parameters():
         param.requires_grad = False
 
