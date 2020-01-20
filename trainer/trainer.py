@@ -146,10 +146,11 @@ class TrainerTeacherAssistant(BaseKnowledgeDistillationTrainer, BaseTrainer):
        Trainer use TA technique 
     """
 
-    def __init__(self, student, teacher, criterion, metric_ftns, optimizer, config, train_data_loader,
+    def __init__(self, student, teacher, criterion, kd_criterion, metric_ftns, optimizer, config, train_data_loader,
                  valid_data_loader=None, lr_scheduler=None, len_epoch=None):
 
-        super(TrainerTeacherAssistant).__init__(student, teacher, criterion, metric_ftns, optimizer, config)
+        super(TrainerTeacherAssistant).__init__(student, teacher, criterion, kd_criterion, metric_ftns, optimizer,
+                                                config)
         self.train_data_loader = train_data_loader
         self.valid_data_loader = valid_data_loader
         self.lr_scheduler = lr_scheduler
