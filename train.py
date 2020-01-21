@@ -3,7 +3,7 @@ import collections
 import torch
 import numpy as np
 import data_loader as module_data
-import models.loss as module_loss
+import losses as module_loss
 import models.metric as module_metric
 import models as module_arch
 from data_loader import _create_transform
@@ -50,7 +50,7 @@ def main(config):
 
     # Knowledge Distillation only
     if config["KD"]["use"]:
-        kd_criterion = getattr(module_loss,config["KD"]["kd_loss"])(config["KD"]["temperature"])
+        kd_criterion = getattr(module_loss, config["KD"]["kd_loss"])(config["KD"]["temperature"])
         trainer = TrainerTeacherAssistant(student, teacher, criterion, kd_criterion, metrics, optimizer,
                                           config=config,
                                           train_data_loader=train_data_loader,
