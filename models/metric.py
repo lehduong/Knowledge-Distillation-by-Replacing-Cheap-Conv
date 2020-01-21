@@ -1,23 +1,30 @@
 import torch
-
+import torch.nn.functional as F
 
 SMOOTH = 1e-6
+num_classes = 19
+ignore_label = 255
 
 # https://www.kaggle.com/iezepov/fast-iou-scoring-metric-in-pytorch-and-numpy
 def iou(outputs, labels):
     # You can comment out this line if you are passing tensors of equal shape
     # But if you are passing output from UNet or something it will most probably
     # be with the BATCH x 1 x H x W shape
-    outputs = outputs.squeeze(1)  # BATCH x 1 x H x W => BATCH x H x W
-    
-    intersection = (outputs & labels).float().sum((1, 2))  # Will be zero if Truth=0 or Prediction=0
-    union = (outputs | labels).float().sum((1, 2))         # Will be zzero if both are 0
+    # outputs = outputs.squeeze(1)  # BATCH x 1 x H x W => BATCH x H x W
+
+    outputs = result_to_mask(outputs)
+    labels_mk = get_masks_from_label(labels)
+    n_ignore = (labels==ignore_label).sum((1, 2))
+
+    intersection = (outputs & labels_mk).float().sum((1, 2, 3))  # Will be zero if Truth=0 or Prediction=0
+    union = (outputs | labels_mk).float().sum((1, 2, 3)) - n_ignore  # Will be zero if both are 0
     
     iou = (intersection + SMOOTH) / (union + SMOOTH)  # We smooth our devision to avoid 0/0
     
-    thresholded = torch.clamp(20 * (iou - 0.5), 0, 10).ceil() / 10  # This is equal to comparing with thresolds
+    # If iou < 0.5 => iou = 0
+    # thresholded = torch.clamp(20 * (iou - 0.5), 0, 10).ceil() / 10  # This is equal to comparing with thresolds
     
-    return thresholded  # Or thresholded.mean() if you are interested in average across the batch
+    return iou.mean()  # Or iou.mean() if you are interested in average across the batch
 
 
 def accuracy(output, target):
@@ -37,3 +44,18 @@ def top_k_acc(output, target, k=3):
         for i in range(k):
             correct += torch.sum(pred[:, i] == target).item()
     return correct / len(target)
+
+def get_masks_from_label(labels):
+  labels[labels==ignore_label] = num_classes
+  lbl_size = labels.size()
+  mk_size = (lbl_size[0], num_classes + 1, lbl_size[1], lbl_size[2])
+  labels.unsqueeze_(1) # convert to Nx1xHxW
+  one_hot = torch.cuda.IntTensor(*mk_size).zero_()
+  one_hot.scatter_(1, labels.cuda(), 1) 
+  return one_hot
+
+def result_to_mask(outputs):
+  outputs = F.softmax(outputs, dim=1)
+  idxs = torch.argmax(outputs, dim=1)
+  one_hot = get_masks_from_label(idxs)
+  return one_hot

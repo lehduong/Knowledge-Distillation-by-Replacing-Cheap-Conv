@@ -59,7 +59,7 @@
     },
     "loss": "ce_loss",
     "metrics": [
-        "accuracy", "top_k_acc"
+        "iou"
     ],
     "lr_scheduler": {
         "type": "StepLR",
@@ -72,7 +72,7 @@
         "epochs": 100,
 
         "save_dir": "saved/",
-        "save_period": 1,
+        "save_period": 10,
         "verbosity": 2,
         
         "monitor": "min val_loss",

@@ -12,7 +12,7 @@ def _create_transform(config):
         joint_transforms.RandomSizeAndCrop(joint_transforms_params['crop_size'],
                                            False,
                                            pre_size=joint_transforms_params.get('pre_size'),
-                                           scale_min=joint_transforms_params['crop_size'],
+                                           scale_min=joint_transforms_params['scale_min'],
                                            scale_max=joint_transforms_params['scale_max'],
                                            ignore_index=joint_transforms_params['ignore_label']),
         joint_transforms.Resize(joint_transforms_params['crop_size']),
