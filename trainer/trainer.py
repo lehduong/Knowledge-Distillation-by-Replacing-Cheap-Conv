@@ -23,7 +23,7 @@ class BaseKnowledgeDistillationTrainer(BaseTrainer, ABC):
         #  nn.DataParallel to give reasonable ouput
         self.teacher = nn.DataParallel(teacher)
         self.teacher.eval()
-        super(BaseKnowledgeDistillationTrainer).__init__(self, student, criterion, metric_ftns, optimizer, config)
+        super().__init__(student, criterion, metric_ftns, optimizer, config)
 
     def _save_checkpoint(self, epoch, save_best=False):
         """
@@ -194,7 +194,7 @@ class TrainerTeacherAssistant(BaseKnowledgeDistillationTrainer):
     def __init__(self, student, teacher, criterion, metric_ftns, optimizer, config, data_loader,
                  valid_data_loader=None, lr_scheduler=None, len_epoch=None, lst_bl=None):
 
-        super(TrainerTeacherAssistant).__init__(student, teacher, criterion, metric_ftns, optimizer, config)
+        super().__init__(student, teacher, criterion, metric_ftns, optimizer, config)
         self.train_data_loader = data_loader
         self.valid_data_loader = valid_data_loader
         self.lr_scheduler = lr_scheduler
