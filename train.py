@@ -22,9 +22,9 @@ def main(config):
     logger = config.get_logger('train')
 
     # setup data_loader instances
-    train_joint_transforms, train_input_transform, target_transform, val_input_transform = _create_transform(config)
+    train_joint_transform, train_input_transform, target_transform, val_input_transform = _create_transform(config)
     train_data_loader = config.init_obj('train_data_loader', module_data, transform=train_input_transform,
-                                        transforms=train_joint_transforms, target_transform=target_transform)
+                                        transforms=train_joint_transform, target_transform=target_transform)
     valid_data_loader = config.init_obj('val_data_loader', module_data, transform=val_input_transform,
                                         target_transform=target_transform)
 
