@@ -13,7 +13,7 @@
     },
     "transforms": {
         "joint_transforms": {
-            "crop_size": 512,
+            "crop_size": 720,
             "scale_min": 0.5,
             "scale_max": 2,
             "ignore_label": 255
@@ -33,7 +33,8 @@
             "num_workers": 0,
             "split": "train",
             "mode": "fine",
-            "target_type": "semantic"
+            "target_type": "semantic",
+            "num_samples": 100
         }
     },
     "val_data_loader": {

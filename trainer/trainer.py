@@ -155,7 +155,8 @@ class TrainerTeacherAssistant(BaseKnowledgeDistillationTrainer, BaseTrainer):
         self.valid_data_loader = valid_data_loader
         self.lr_scheduler = lr_scheduler
         self.do_validation = self.valid_data_loader is not None
-        self.log_step = int(np.sqrt(train_data_loader.batch_size))
+        #self.log_step = int(np.sqrt(train_data_loader.batch_size))
+        self.log_step = self.accumulation_steps
 
         if len_epoch is None:
             # epoch-based training
@@ -171,7 +172,11 @@ class TrainerTeacherAssistant(BaseKnowledgeDistillationTrainer, BaseTrainer):
     def _train_epoch(self, epoch):
         self.student.train()
         self.train_metrics.reset()
-        
+
+        avg_loss = 0.0
+        avg_supervised_loss = 0.0
+        avg_kd_loss = 0.0
+
         for batch_idx, (data, target) in enumerate(self.train_data_loader):
             data, target = data.to(self.device), target.to(self.device)
 
@@ -180,16 +185,28 @@ class TrainerTeacherAssistant(BaseKnowledgeDistillationTrainer, BaseTrainer):
             output_tc = torch.tensor(output_tc.detach().cpu().numpy()).cuda()
             
             output_st = self.student(data)
-            supervised_loss = self.criterion(output_st, target)
-            kd_loss = self.kd_criterion(output_st, output_tc)
+            supervised_loss = self.criterion(output_st, target)/self.accumulation_steps
+            kd_loss = self.kd_criterion(output_st, output_tc)/self.accumulation_steps
 
-            loss = (1 - self.lamb) * supervised_loss + self.lamb* kd_loss
-            loss = loss / self.accumulation_steps
+            loss = (1 - self.lamb) * supervised_loss + self.lamb * kd_loss
             loss.backward()
+
+            avg_loss += loss.item()
+            avg_kd_loss += kd_loss.item()
+            avg_supervised_loss += supervised_loss.item()
 
             if (batch_idx+1) % self.accumulation_steps == 0:
                 self.optimizer.step()
                 self.optimizer.zero_grad()
+                self.logger.debug('Train Epoch: {} {} Loss: {:.6f} Supervised Loss: {:.6f} Knowledge Distillation Loss: {:.6f}'.format(
+                    epoch,
+                    self._progress(batch_idx),
+                    avg_loss,
+                    avg_supervised_loss,
+                    avg_kd_loss))
+                avg_loss = 0.0
+                avg_supervised_loss = 0.0
+                avg_kd_loss = 0.0
 
             self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
             self.train_metrics.update('loss', loss.item())
@@ -197,12 +214,8 @@ class TrainerTeacherAssistant(BaseKnowledgeDistillationTrainer, BaseTrainer):
                 self.train_metrics.update(met.__name__, met(output_st, target))
 
             if batch_idx % self.log_step == 0:
-                self.logger.debug('Train Epoch: {} {} Loss: {:.6f}'.format(
-                    epoch,
-                    self._progress(batch_idx),
-                    loss.item()))
                 self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
-            
+
             if batch_idx == self.len_epoch:
                 break
 
