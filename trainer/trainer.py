@@ -179,9 +179,10 @@ class TrainerTeacherAssistant(BaseKnowledgeDistillationTrainer, BaseTrainer):
         for batch_idx, (data, target) in enumerate(self.train_data_loader):
             data, target = data.to(self.device), target.to(self.device)
 
-            output_tc = self.teacher(data)
-            # TODO: Find an elegant way to free the feature map and computation graph
-            output_tc = torch.tensor(output_tc.detach().cpu().numpy()).cuda()
+            with torch.no_grad():
+                output_tc = self.teacher(data)
+                # TODO: Find an elegant way to free the feature map and computation graph
+                #output_tc = torch.tensor(output_tc.detach().cpu().numpy()).cuda()
             
             output_st = self.student(data)
             supervised_loss = self.criterion(output_st, target)/self.accumulation_steps
