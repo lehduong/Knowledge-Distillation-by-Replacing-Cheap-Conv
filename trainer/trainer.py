@@ -154,8 +154,8 @@ class TrainerTeacherAssistant(BaseKnowledgeDistillationTrainer, BaseTrainer):
         self.valid_data_loader = valid_data_loader
         self.lr_scheduler = lr_scheduler
         self.do_validation = self.valid_data_loader is not None
-        #self.log_step = int(np.sqrt(train_data_loader.batch_size))
-        self.log_step = self.accumulation_steps
+        self.log_step = int(np.sqrt(train_data_loader.batch_size*self.accumulation_steps))
+        #self.log_step = self.accumulation_steps
 
         if len_epoch is None:
             # epoch-based training
@@ -197,12 +197,14 @@ class TrainerTeacherAssistant(BaseKnowledgeDistillationTrainer, BaseTrainer):
             if (batch_idx+1) % self.accumulation_steps == 0:
                 self.optimizer.step()
                 self.optimizer.zero_grad()
-                self.logger.debug('Train Epoch: {} {} Loss: {:.6f} Supervised Loss: {:.6f} Knowledge Distillation Loss: {:.6f}'.format(
-                    epoch,
-                    self._progress(batch_idx),
-                    avg_loss,
-                    avg_supervised_loss,
-                    avg_kd_loss))
+                self.logger.debug(
+                    'Train Epoch: {} [{}]/[{}] Loss: {:.6f} Supervised Loss: {:.6f} Knowledge Distillation Loss: {:.6f}'.format(
+                        epoch,
+                        batch_idx,
+                        len(self.train_data_loader),
+                        avg_loss,
+                        avg_supervised_loss,
+                        avg_kd_loss))
                 avg_loss = 0.0
                 avg_supervised_loss = 0.0
                 avg_kd_loss = 0.0
