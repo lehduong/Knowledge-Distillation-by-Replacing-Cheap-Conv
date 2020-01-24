@@ -14,17 +14,17 @@ def iou(outputs, labels):
 
     outputs = result_to_mask(outputs)
     labels_mk = get_masks_from_label(labels)
-    n_ignore = (labels==ignore_label).sum((1, 2))
 
-    intersection = (outputs & labels_mk).float().sum((1, 2, 3))  # Will be zero if Truth=0 or Prediction=0
-    union = (outputs | labels_mk).float().sum((1, 2, 3)) - n_ignore  # Will be zero if both are 0
+    intersection = (outputs & labels_mk).float().sum((2, 3))  # Will be zero if Truth=0 or Prediction=0
+    union = (outputs | labels_mk).float().sum((2, 3))  # Will be zero if both are 0
     
     iou = (intersection + SMOOTH) / (union + SMOOTH)  # We smooth our devision to avoid 0/0
+    iou = iou.sum(1) / num_classes
     
     # If iou < 0.5 => iou = 0
     # thresholded = torch.clamp(20 * (iou - 0.5), 0, 10).ceil() / 10  # This is equal to comparing with thresolds
     
-    return iou.mean()  # Or iou.mean() if you are interested in average across the batch
+    return iou.mean(0)  # Or iou.mean() if you are interested in average across the batch
 
 
 def accuracy(output, target):

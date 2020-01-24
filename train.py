@@ -29,8 +29,11 @@ def main(config):
                                         target_transform=target_transform)
 
     # build teacher architecture
-    teacher = config.restore_snapshot('teacher', module_arch)
+    # teacher = config.restore_snapshot('teacher', module_arch)
     # teacher.eval()
+    teacher = module_arch.DeepWV3Plus(num_classes=19, criterion=None)
+    teacher = torch.nn.DataParallel(teacher).cuda()
+    teacher, _ = module_arch.restore_snapshot(teacher, None, config['teacher']['snapshot'], False)
     logger.info(teacher)
 
     # build models architecture, then print to console

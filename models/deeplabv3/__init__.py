@@ -184,15 +184,16 @@ def get_distil_model(teacher):
     added_bl = [block3_mod2, block3_mod3, block3_mod4, block6_mod4, block3_mod5]
     _ = [initialize_weights(bl) for bl in added_bl]
 
-    lst_block_tc = [teacher.mod2.block3, teacher.mod3.block3, teacher.mod4.block3, 
-                        teacher.mod4.block6, teacher.mod5.block3]
+    modules_tc = teacher.module
+    lst_block_tc = [modules_tc.mod2.block3, modules_tc.mod3.block3, modules_tc.mod4.block3, 
+                        modules_tc.mod4.block6, modules_tc.mod5.block3]
 
     lst_block_st = [block3_mod2, block3_mod3, block3_mod4, block6_mod4, block3_mod5]
 
-    teacher.mod2.block3 = block3_mod2
-    teacher.mod3.block3 = block3_mod3
-    teacher.mod4.block3 = block3_mod4
-    teacher.mod4.block6 = block6_mod4
-    teacher.mod5.block3 = block3_mod5
+    modules_tc.mod2.block3 = block3_mod2
+    modules_tc.mod3.block3 = block3_mod3
+    modules_tc.mod4.block3 = block3_mod4
+    modules_tc.mod4.block6 = block6_mod4
+    modules_tc.mod5.block3 = block3_mod5
 
     return teacher, lst_block_tc, lst_block_st

@@ -304,15 +304,17 @@ class TrainerTeacherAssistant(BaseKnowledgeDistillationTrainer):
         return self.valid_metrics.result()
 
     def assign_block(self, st=False):
+        modules_tc = self.teacher.module
+        modules_st = self.student.module
         if not st:
-            self.teacher.mod2.block3 = self.list_bl_tc[0]
-            self.teacher.mod3.block3 = self.list_bl_tc[1]
-            self.teacher.mod4.block3 = self.list_bl_tc[2]
-            self.teacher.mod4.block6 = self.list_bl_tc[3]
-            self.teacher.mod5.block3 = self.list_bl_tc[4]
+            modules_tc.mod2.block3 = self.list_bl_tc[0]
+            modules_tc.mod3.block3 = self.list_bl_tc[1]
+            modules_tc.mod4.block3 = self.list_bl_tc[2]
+            modules_tc.mod4.block6 = self.list_bl_tc[3]
+            modules_tc.mod5.block3 = self.list_bl_tc[4]
         else:
-            self.student.mod2.block3 = self.list_bl_st[0]
-            self.student.mod3.block3 = self.list_bl_st[1]
-            self.student.mod4.block3 = self.list_bl_st[2]
-            self.student.mod4.block6 = self.list_bl_st[3]
-            self.student.mod5.block3 = self.list_bl_st[4]
+            modules_st.mod2.block3 = self.list_bl_st[0]
+            modules_st.mod3.block3 = self.list_bl_st[1]
+            modules_st.mod4.block3 = self.list_bl_st[2]
+            modules_st.mod4.block6 = self.list_bl_st[3]
+            modules_st.mod5.block3 = self.list_bl_st[4]
