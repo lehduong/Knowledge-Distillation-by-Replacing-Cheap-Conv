@@ -1,19 +1,24 @@
 from .deeplabv3 import DeepWV3Plus
 from .deeplabv3 import get_distil_model
+from functools import reduce
+from torch import nn
+import torch
 import logging
 import importlib
-import torch
+
 
 def get_net(config, criterion):
     """
     Get Network Architecture based on arguments provided
     """
-    net = get_model(network=config['TA']['tc_arch'], num_classes=config['segmentation']['num_classes'], criterion=criterion)
+    net = get_model(network=config['TA']['tc_arch'], num_classes=config['segmentation']['num_classes'],
+                    criterion=criterion)
     num_params = sum([param.nelement() for param in net.parameters()])
     logging.info('Model params = {:2.1f}M'.format(num_params / 1000000))
 
     net = net.cuda()
     return net
+
 
 def get_model(network, num_classes, criterion):
     """
@@ -59,6 +64,12 @@ def forgiving_state_restore(net, loaded_dict):
     """
     net_state_dict = net.state_dict()
     new_loaded_dict = {}
+
+    # check if state dict checkpoint saved nn.DataParallel module or not
+    is_parallel = reduce(lambda acc, elem: acc and elem.startswith('module.'), list(loaded_dict.keys()))
+    if is_parallel:
+        net = nn.DataParallel(net)
+
     for k in net_state_dict:
         if k in loaded_dict and net_state_dict[k].size() == loaded_dict[k].size():
             new_loaded_dict[k] = loaded_dict[k]
@@ -66,4 +77,8 @@ def forgiving_state_restore(net, loaded_dict):
             logging.info("Skipped loading parameter %s", k)
     net_state_dict.update(new_loaded_dict)
     net.load_state_dict(net_state_dict)
+
+    if is_parallel:
+        net = net.module
+
     return net

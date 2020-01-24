@@ -1,2 +1,2 @@
 from .trainer import Trainer, TrainerTeacherAssistant
-from .segmentation_trainer import SegmentationTrainer
+from .kd_trainer import SegmentationTrainer
