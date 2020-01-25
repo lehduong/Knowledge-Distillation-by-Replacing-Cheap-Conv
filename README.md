@@ -1,5 +1,11 @@
 # On searching an effective and efficient Pipeline for Distillating Knowledge in Convolutional Neural Networks
+This repository contains the code for Knowledge Distillation in Convolutional Neural Network in **Low-resource settings**. The code is usable for both Classification and Semantic Segmantation tasks. 
 ## Usage
+Running below instructions for running with Cityscapes dataset:
+
+Download the dataset to `data` folder, the folder structure should be: `data\gtFine\train` as the sample set provided
+
+Download the pretrained model as a teacher from [here](https://github.com/NVIDIA/semantic-segmentation) and put it in `checkpoints`
 
 Try `python train.py -c config.json` to run code with default settings.
 
@@ -11,4 +17,4 @@ You can resume from a previously saved checkpoint by:
   ```
 
 ## Acknowledgements
-This repository is heavily borrowed from the project [Pytorch-Template](https://github.com/MrGemy95/Tensorflow-Project-Template) by [Mahmoud Gemy](https://github.com/MrGemy95)
+This repository is borrowed from the project [Pytorch-Template](https://github.com/victoresque/pytorch-template) and [NVIDIA semantic-segmentation](https://github.com/NVIDIA/semantic-segmentation)
