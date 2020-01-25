@@ -1,7 +1,7 @@
 # On searching an effective and efficient Pipeline for Distillating Knowledge in Convolutional Neural Networks
 This repository contains the code for Knowledge Distillation in Convolutional Neural Network in **Low-resource settings**. The code is usable for both Classification and Semantic Segmantation tasks. 
 ## Usage
-Running below instructions for running with Cityscapes dataset:
+Following below instructions for running with Cityscapes dataset:
 
 Download the dataset to `data` folder, the folder structure should be: `data\gtFine\train` as the sample set provided
 
