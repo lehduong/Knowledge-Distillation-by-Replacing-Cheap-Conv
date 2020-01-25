@@ -62,13 +62,14 @@ def forgiving_state_restore(net, loaded_dict):
     Because we want to use models that were trained off a different
     number of classes.
     """
-    net_state_dict = net.state_dict()
-    new_loaded_dict = {}
-
     # check if state dict checkpoint saved nn.DataParallel module or not
+    # if ALL modules state dict in checkpoints start with module. then this is a state dict of nn.DataParallel instance
     is_parallel = reduce(lambda acc, elem: acc and elem.startswith('module.'), list(loaded_dict.keys()))
     if is_parallel:
         net = nn.DataParallel(net)
+
+    net_state_dict = net.state_dict()
+    new_loaded_dict = {}
 
     for k in net_state_dict:
         if k in loaded_dict and net_state_dict[k].size() == loaded_dict[k].size():

@@ -6,9 +6,12 @@ import data_loader as module_data
 import losses as module_loss
 import models.metric as module_metric
 import models as module_arch
+from models.student import BaseStudent
+from models.deeplabv3 import get_distillation_args
 from data_loader import _create_transform
 from parse_config import ConfigParser
 from trainer import TrainerTeacherAssistant
+from trainer.kd_trainer import KnowledgeDistillationTrainer
 
 # fix random seeds for reproducibility
 SEED = 123
@@ -28,34 +31,31 @@ def main(config):
     valid_data_loader = config.init_obj('val_data_loader', module_data, transform=val_input_transform,
                                         target_transform=target_transform)
 
-    # build teacher architecture
+    # Load pretrained teacher model
     teacher = config.restore_snapshot('teacher', module_arch)
-    # teacher.eval()
-    logger.info(teacher)
+    teacher = teacher.cpu() # saved some memory as student network will use a (deep) copy of teacher model
 
     # build models architecture, then print to console
-    # student = config.init_obj('student', module_arch)
-    student = module_arch.get_distil_model(teacher)
+    args = get_distillation_args()
+    student = BaseStudent(teacher, args)
     logger.info(student)
 
     # get function handles of loss and metrics
-    criterion = config.init_obj('loss', module_loss)
+    supervised_criterion = config.init_obj('supervised_loss', module_loss)
+    div_criterion = config.init_obj('div_loss', module_loss)
+    kd_criterion = config.init_obj('kd_loss', module_loss)
+    criterions = [supervised_criterion, div_criterion, kd_criterion]
     metrics = [getattr(module_metric, met) for met in config['metrics']]
 
     # build optimizer, learning rate scheduler. delete every lines containing lr_scheduler for disabling scheduler
     trainable_params = filter(lambda p: p.requires_grad, student.parameters())
     optimizer = config.init_obj('optimizer', torch.optim, trainable_params)
-
     lr_scheduler = config.init_obj('lr_scheduler', torch.optim.lr_scheduler, optimizer)
 
     # Knowledge Distillation only
     if config["KD"]["use"]:
-        kd_criterion = getattr(module_loss, config["KD"]["kd_loss"])(config["KD"]["temperature"])
-        trainer = TrainerTeacherAssistant(student, teacher, criterion, kd_criterion, metrics, optimizer,
-                                          config=config,
-                                          train_data_loader=train_data_loader,
-                                          valid_data_loader=valid_data_loader,
-                                          lr_scheduler=lr_scheduler)
+        trainer = KnowledgeDistillationTrainer(student, criterions, metrics, optimizer, config, train_data_loader,
+                                               valid_data_loader, lr_scheduler)
 
     trainer.train()
 

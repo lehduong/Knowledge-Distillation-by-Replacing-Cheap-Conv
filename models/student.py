@@ -106,9 +106,12 @@ class BaseStudent(BaseModel):
         block_name_split = block_name.split(BLOCKS_LEVEL_SPLIT_CHAR)
         # suppose the blockname is abc.def.ghk then get module self.teacher.abc.def and set that object's attribute \
         # (in this case 'ghk') to block value
-        obj = self._get_block(BLOCKS_LEVEL_SPLIT_CHAR.join(block_name_split[:-1]))
-        attr = block_name_split[-1]
-        setattr(obj, attr, block)
+        if len(block_name_split) == 1:
+            setattr(self.model, block_name, block)
+        else:
+            obj = self._get_block(BLOCKS_LEVEL_SPLIT_CHAR.join(block_name_split[:-1]))
+            attr = block_name_split[-1]
+            setattr(obj, attr, block)
 
     def forward(self, x):
         # flush the output of last forward

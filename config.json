@@ -2,10 +2,6 @@
     "name": "KnowledgeDistillation",
     "n_gpu": 1,
 
-    "student": {
-        "type": "DeepWV3Plus",
-        "args": {"num_classes": 19}
-    },
     "teacher": {
         "type": "DeepWV3Plus",
         "args": {"num_classes": 19},
@@ -19,7 +15,7 @@
             "ignore_label": 255
         },
         "extended_transforms": {
-            "color_aug": 0,
+            "color_aug": 0.1,
             "blur": "gaussian"
         }
     },
@@ -58,14 +54,25 @@
             "amsgrad": true
         }
     },
-    "loss": {
+    "supervised_loss": {
         "type": "CrossEntropyLoss2d",
         "args": {
             "ignore_index": 255
         }
     },
+    "div_loss": {
+        "type": "KLDivergenceLoss",
+        "args": {
+            "temperature": 1.1
+        }
+    },
+    "kd_loss": {
+        "type": "MSELoss",
+        "args": {
+            "reduction": "mean"
+        }
+    },
     "metrics": [
-        "accuracy", "top_k_acc"
     ],
     "lr_scheduler": {
         "type": "StepLR",
@@ -83,19 +90,13 @@
         
         "monitor": "min val_loss",
         "early_stop": 10,
-        "accumulation_steps": 1,
+        "accumulation_steps": 8,
 
         "tensorboard": true
     }, 
     "KD": {
         "use": true,
-        "tc_path": "./pretrained_models/cityscapes_best.pth",
-        "tc_arch": "DeepWV3Plus",
-        "kd_loss": "KLDivergenceLoss",
-        "temperature": 1,
-        "lambda": 0.5
-    },
-    "segmentation":{
-        "num_classes":19
+        "alpha": 0.1,
+        "beta": 0.4
     }
 }
