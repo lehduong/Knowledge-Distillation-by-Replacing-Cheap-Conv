@@ -7,6 +7,10 @@ from base import BaseTrainer
 from utils import inf_loop, MetricTracker
 import gc
 
+# balance the weight between divergence loss, supervised loss and knowledge distillation loss
+WEIGHT_ANNEALING_FACTOR = 1.3
+
+
 class KnowledgeDistillationTrainer(BaseTrainer):
     """
     Base trainer class for knowledge distillation with unified teacher-student network
@@ -49,6 +53,10 @@ class KnowledgeDistillationTrainer(BaseTrainer):
         self.model.student_hidden_outputs, self.model.teacher_hidden_outputs = None, None
         gc.collect()
         torch.cuda.empty_cache()
+
+    def step_weight(self):
+        self.alpha = np.clip(WEIGHT_ANNEALING_FACTOR*self.alpha, 0, 0.5)
+        self.beta = np.clip(WEIGHT_ANNEALING_FACTOR*self.beta, 0, 0.5)
 
     def _train_epoch(self, epoch):
         self.model.train()
@@ -112,6 +120,9 @@ class KnowledgeDistillationTrainer(BaseTrainer):
 
         if self.lr_scheduler is not None:
             self.lr_scheduler.step()
+
+        self.step_weight()
+
         return log
     
     def _valid_epoch(self, epoch):

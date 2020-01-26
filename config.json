@@ -98,6 +98,6 @@
     "KD": {
         "use": true,
         "alpha": 0.1,
-        "beta": 0.4
+        "beta": 0.1
     }
 }
