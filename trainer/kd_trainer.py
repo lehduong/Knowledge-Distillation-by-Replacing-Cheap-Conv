@@ -46,8 +46,7 @@ class KnowledgeDistillationTrainer(BaseTrainer):
         del self.criterion
 
     def _clean_cache(self):
-        hidden_st, hidden_tc = None, None
-        self.model._student_hidden_outputs, self.model._teacher_hidden_outputs = None, None
+        self.model.student_hidden_outputs, self.model.teacher_hidden_outputs = None, None
         gc.collect()
         torch.cuda.empty_cache()
 
@@ -58,12 +57,12 @@ class KnowledgeDistillationTrainer(BaseTrainer):
         for batch_idx, (data, target) in enumerate(self.train_data_loader):
             data, target = data.to(self.device), target.to(self.device)
 
-            output_st, output_tc, hidden_st, hidden_tc = self.model(data)
-            
+            output_st, output_tc = self.model(data)
+
             supervised_loss = self.criterions[0](output_st, target)/self.accumulation_steps
             div_loss = self.criterions[1](output_st, output_tc)/self.accumulation_steps
             kd_loss = reduce(lambda acc, elem: acc+self.criterions[2](elem[0], elem[1]),
-                             zip(hidden_st, hidden_tc),
+                             zip(self.model.student_hidden_outputs, self.model.teacher_hidden_outputs),
                              0)/self.accumulation_steps
             #TODO: Early stop with teacher loss
             teacher_loss = self.criterions[0](output_tc, target) # for comparision
@@ -127,25 +126,15 @@ class KnowledgeDistillationTrainer(BaseTrainer):
         with torch.no_grad():
             for batch_idx, (data, target) in enumerate(self.valid_data_loader):
                 data, target = data.to(self.device), target.to(self.device)
-                output_st, output_tc, hidden_st, hidden_tc = self.model(data)
+                output = self.model(data)
 
-                supervised_loss = self.criterions[0](output_st, target)
-                div_loss = self.criterions[1](output_st, output_tc)
-                kd_loss = reduce(lambda acc, elem: acc + self.criterions[2](elem[0], elem[1]),
-                                 zip(hidden_st, hidden_tc),
-                                 0)
-                teacher_loss = self.criterions[0](output_tc, target)  # for comparision
-                loss = self.alpha * supervised_loss + self.beta * div_loss + (1 - self.alpha - self.beta) * kd_loss
+                supervised_loss = self.criterions[0](output, target)
                 self._clean_cache()
 
                 self.writer.set_step((epoch - 1) * len(self.valid_data_loader) + batch_idx, 'valid')
-                self.valid_metrics.update('loss', loss.item())
                 self.valid_metrics.update('supervised_loss', supervised_loss.item())
-                self.valid_metrics.update('div_loss', div_loss.item())
-                self.valid_metrics.update('kd_loss', kd_loss.item())
-                self.valid_metrics.update('teacher_loss', teacher_loss.item())
                 for met in self.metric_ftns:
-                    self.valid_metrics.update(met.__name__, met(output_st, target))
+                    self.valid_metrics.update(met.__name__, met(output, target))
                 self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
 
         # add histogram of models parameters to the tensorboard

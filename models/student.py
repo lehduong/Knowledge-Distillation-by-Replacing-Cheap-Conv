@@ -26,8 +26,8 @@ class BaseStudent(BaseModel):
         self._teaching = True  # teaching mode
         self.distillation_args = distillation_args
         # stored output of intermediate layers when
-        self._student_hidden_outputs = list()
-        self._teacher_hidden_outputs = list()
+        self.student_hidden_outputs = list()
+        self.teacher_hidden_outputs = list()
 
         self.student_blocks = list()
         self.teacher_blocks = list()
@@ -58,12 +58,12 @@ class BaseStudent(BaseModel):
     def _register_hooks(self):
         # register hook for saving student hidden outputs
         for block in self.student_blocks:
-            handler = block.register_forward_hook(lambda m, inp, out: self._student_hidden_outputs.append(out))
+            handler = block.register_forward_hook(lambda m, inp, out: self.student_hidden_outputs.append(out))
             self._student_hook_handlers.append(handler)
 
         # register hook for saving teacher hidden outputs
         for block in self.teacher_blocks:
-            handler = block.register_forward_hook(lambda m, inp, out: self._teacher_hidden_outputs.append(out))
+            handler = block.register_forward_hook(lambda m, inp, out: self.teacher_hidden_outputs.append(out))
             self._teacher_hook_handlers.append(handler)
 
     def _remove_hooks(self):
@@ -129,8 +129,8 @@ class BaseStudent(BaseModel):
 
     def forward(self, x):
         # flush the output of last forward
-        self._student_hidden_outputs = []
-        self._teacher_hidden_outputs = []
+        self.student_hidden_outputs = []
+        self.teacher_hidden_outputs = []
 
         # in training mode, the network has to forward 2 times, one for computing teacher's prediction \
         # and another for student's one
@@ -139,21 +139,16 @@ class BaseStudent(BaseModel):
             teacher_pred = self.model(x)
         self._assign_blocks(student_mode=True)
         student_pred = self.model(x)
-        if len(self._student_hidden_outputs) > len(self._student_hook_handlers):
-            raise Exception('Number of Hidden outputs {} is greater then number of handlers {}, this problem can cause memory leak'.format(
-                len(self._student_hidden_outputs),
-                len(self._student_hook_handlers)
-            ))
-        return student_pred, teacher_pred, self._student_hidden_outputs, self._teacher_hidden_outputs
+
+        return student_pred, teacher_pred
 
     def inference(self, x):
         if self._teaching:
             self._assign_blocks(student_mode=True)
-        self._student_hidden_outputs = []
-        self._teacher_hidden_outputs = []
+        self.student_hidden_outputs = []
+        self.teacher_hidden_outputs = []
         out = self.model(x)
-        if len(self._student_hidden_outputs) > 0:
-            raise Exception('Hidden outputs is expected to have length equals 0 but got '+str(len(self._student_hidden_outputs)))
+
         return out
 
     def eval(self):
