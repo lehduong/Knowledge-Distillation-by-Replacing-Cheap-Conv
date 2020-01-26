@@ -77,35 +77,27 @@ def get_distillation_args(level=1):
     ret = list()
     ret.append(DistillationArgs("mod2.block3",
                                 nn.Sequential(
-                                    nn.BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True),
-                                    nn.ReLU(inplace=True),
-                                    nn.Conv2d(128, 128, kernel_size=3, padding=2, dilation=2, groups=128, bias=False),
-                                    nn.Conv2d(128, 128, kernel_size=1, bias=False)
+                                    nn.Conv2d(128, 128, kernel_size=3, padding=2, dilation=2, groups=128),
+                                    nn.Conv2d(128, 128, kernel_size=1)
                                 ),
                                 "mod2.block3"))
 
     ret.append(DistillationArgs("mod3.block3",
                                 nn.Sequential(
-                                    nn.BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True),
-                                    nn.ReLU(inplace=True),
-                                    nn.Conv2d(256, 256, kernel_size=3, padding=2, dilation=2, groups=256, bias=False),
-                                    nn.Conv2d(256, 256, kernel_size=1, bias=False)
+                                    nn.Conv2d(256, 256, kernel_size=3, padding=2, dilation=2, groups=256),
+                                    nn.Conv2d(256, 256, kernel_size=1)
                                 ),
                                 "mod3.block3"))
 
     ret.append(DistillationArgs("mod4.block3",
                                 nn.Sequential(
-                                    nn.BatchNorm2d(512, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True),
-                                    nn.ReLU(inplace=True),
-                                    nn.Conv2d(512, 512, kernel_size=3, padding=2, dilation=2, groups=512, bias=False),
-                                    nn.Conv2d(512, 512, kernel_size=1, bias=False)
+                                    nn.Conv2d(512, 512, kernel_size=3, padding=2, dilation=2, groups=512),
+                                    nn.Conv2d(512, 512, kernel_size=1)
                                 ),
                                 "mod4.block3"))
 
     ret.append(DistillationArgs("mod4.block3",
                                 nn.Sequential(
-                                    nn.BatchNorm2d(512, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True),
-                                    nn.ReLU(inplace=True),
                                     nn.Conv2d(512, 512, kernel_size=3, padding=2, dilation=2, groups=512, bias=False),
                                     nn.Conv2d(512, 512, kernel_size=1, bias=False)
                                 ),
@@ -113,10 +105,8 @@ def get_distillation_args(level=1):
 
     ret.append(DistillationArgs("mod4.block6",
                                 nn.Sequential(
-                                    nn.BatchNorm2d(512, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True),
-                                    nn.ReLU(inplace=True),
-                                    nn.Conv2d(512, 512, kernel_size=3, padding=2, dilation=2, groups=512, bias=False),
-                                    nn.Conv2d(512, 512, kernel_size=1, bias=False)
+                                    nn.Conv2d(512, 512, kernel_size=3, padding=2, dilation=2, groups=512),
+                                    nn.Conv2d(512, 512, kernel_size=1)
                                 ),
                                 "mod4.block6"))
 
