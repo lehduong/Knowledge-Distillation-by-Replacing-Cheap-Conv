@@ -69,7 +69,8 @@
     "kd_loss": {
         "type": "MSELoss",
         "args": {
-            "reduction": "mean"
+            "reduction": "mean",
+            "num_classes": 19
         }
     },
     "metrics": [
@@ -90,7 +91,7 @@
         
         "monitor": "min val_loss",
         "early_stop": 10,
-        "accumulation_steps": 8,
+        "accumulation_steps": 2,
 
         "tensorboard": true
     }, 

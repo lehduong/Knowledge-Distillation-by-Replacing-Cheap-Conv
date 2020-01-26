@@ -32,7 +32,11 @@ class BaseStudent(BaseModel):
         self.student_blocks = list()
         self.teacher_blocks = list()
         self._prepare_blocks()
-        self._register_hook()
+
+        self._student_hook_handlers = list()
+        self._teacher_hook_handlers = list()
+        self._register_hooks()
+
         self.train()
 
     def _assign_blocks(self, student_mode=True):
@@ -51,14 +55,24 @@ class BaseStudent(BaseModel):
                 self._set_block(block.old_block_name, self.teacher_blocks[idx])
             self._teaching = True
 
-    def _register_hook(self):
+    def _register_hooks(self):
         # register hook for saving student hidden outputs
         for block in self.student_blocks:
-            block.register_forward_hook(lambda m, inp, out: self._student_hidden_outputs.append(out))
+            handler = block.register_forward_hook(lambda m, inp, out: self._student_hidden_outputs.append(out))
+            self._student_hook_handlers.append(handler)
 
         # register hook for saving teacher hidden outputs
         for block in self.teacher_blocks:
-            block.register_forward_hook(lambda m, inp, out: self._teacher_hidden_outputs.append(out))
+            handler = block.register_forward_hook(lambda m, inp, out: self._teacher_hidden_outputs.append(out))
+            self._teacher_hook_handlers.append(handler)
+
+    def _remove_hooks(self):
+        while self._student_hook_handlers:
+            handler = self._student_hook_handlers.pop()
+            handler.remove()
+        while self._teacher_hook_handlers:
+            handler = self._teacher_hook_handlers.pop()
+            handler.remove()
 
     def _prepare_blocks(self):
         # ATTENTION: Must run store teacher block before calling store student block
@@ -125,14 +139,29 @@ class BaseStudent(BaseModel):
             teacher_pred = self.model(x)
         self._assign_blocks(student_mode=True)
         student_pred = self.model(x)
+        if len(self._student_hidden_outputs) > len(self._student_hook_handlers):
+            raise Exception('Number of Hidden outputs {} is greater then number of handlers {}, this problem can cause memory leak'.format(
+                len(self._student_hidden_outputs),
+                len(self._student_hook_handlers)
+            ))
         return student_pred, teacher_pred, self._student_hidden_outputs, self._teacher_hidden_outputs
 
     def inference(self, x):
-        return self.model(x)
+        if self._teaching:
+            self._assign_blocks(student_mode=True)
+        self._student_hidden_outputs = []
+        self._teacher_hidden_outputs = []
+        out = self.model(x)
+        if len(self._student_hidden_outputs) > 0:
+            raise Exception('Hidden outputs is expected to have length equals 0 but got '+str(len(self._student_hidden_outputs)))
+        return out
 
     def eval(self):
+        self.training = False
+
         for block in self.student_blocks:
             block.eval()
+        self._remove_hooks()
 
         return self
 
@@ -141,11 +170,14 @@ class BaseStudent(BaseModel):
         The parameters of teacher's network will always be set to EVAL
         :return: self
         """
+        self.training = True
+
         for block in self.student_blocks:
             block.train()
 
         if self._teaching:
             self._assign_blocks(student_mode=True)
+        self._register_hooks()
 
         return self
 

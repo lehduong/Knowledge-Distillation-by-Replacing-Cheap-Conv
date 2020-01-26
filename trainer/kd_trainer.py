@@ -5,7 +5,7 @@ from torchvision.utils import make_grid
 from functools import reduce
 from base import BaseTrainer
 from utils import inf_loop, MetricTracker
-
+import gc
 
 class KnowledgeDistillationTrainer(BaseTrainer):
     """
@@ -44,7 +44,13 @@ class KnowledgeDistillationTrainer(BaseTrainer):
         if isinstance(self.model, nn.DataParallel):
             self.criterions = nn.DataParallel(self.criterions)
         del self.criterion
-        
+
+    def _clean_cache(self):
+        hidden_st, hidden_tc = None, None
+        self.model._student_hidden_outputs, self.model._teacher_hidden_outputs = None, None
+        gc.collect()
+        torch.cuda.empty_cache()
+
     def _train_epoch(self, epoch):
         self.model.train()
         self.train_metrics.reset()
@@ -64,6 +70,7 @@ class KnowledgeDistillationTrainer(BaseTrainer):
 
             loss = self.alpha * supervised_loss + self.beta * div_loss + (1-self.alpha-self.beta)*kd_loss
             loss.backward()
+            self._clean_cache()
 
             if (batch_idx+1) % self.accumulation_steps == 0:
                 self.optimizer.step()
@@ -129,6 +136,7 @@ class KnowledgeDistillationTrainer(BaseTrainer):
                                  0)
                 teacher_loss = self.criterions[0](output_tc, target)  # for comparision
                 loss = self.alpha * supervised_loss + self.beta * div_loss + (1 - self.alpha - self.beta) * kd_loss
+                self._clean_cache()
 
                 self.writer.set_step((epoch - 1) * len(self.valid_data_loader) + batch_idx, 'valid')
                 self.valid_metrics.update('loss', loss.item())
