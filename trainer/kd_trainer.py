@@ -3,8 +3,8 @@ import torch
 import torch.nn as nn
 from torchvision.utils import make_grid
 from functools import reduce
-from ..base import BaseTrainer
-from ..utils import inf_loop, MetricTracker
+from base import BaseTrainer
+from utils import inf_loop, MetricTracker
 
 
 class KnowledgeDistillationTrainer(BaseTrainer):
@@ -52,11 +52,11 @@ class KnowledgeDistillationTrainer(BaseTrainer):
         for batch_idx, (data, target) in enumerate(self.train_data_loader):
             data, target = data.to(self.device), target.to(self.device)
 
-            output_st, output_tc, hidden_st, hidden_tc = self.student(data)
+            output_st, output_tc, hidden_st, hidden_tc = self.model(data)
             
             supervised_loss = self.criterions[0](output_st, target)/self.accumulation_steps
             div_loss = self.criterions[1](output_st, output_tc)/self.accumulation_steps
-            kd_loss = reduce(lambda acc, elem: acc+self.criterion[2](elem[0], elem[1]),
+            kd_loss = reduce(lambda acc, elem: acc+self.criterions[2](elem[0], elem[1]),
                              zip(hidden_st, hidden_tc),
                              0)/self.accumulation_steps
             #TODO: Early stop with teacher loss
@@ -120,11 +120,11 @@ class KnowledgeDistillationTrainer(BaseTrainer):
         with torch.no_grad():
             for batch_idx, (data, target) in enumerate(self.valid_data_loader):
                 data, target = data.to(self.device), target.to(self.device)
-                output_st, output_tc, hidden_st, hidden_tc = self.student(data)
+                output_st, output_tc, hidden_st, hidden_tc = self.model(data)
 
                 supervised_loss = self.criterions[0](output_st, target)
                 div_loss = self.criterions[1](output_st, output_tc)
-                kd_loss = reduce(lambda acc, elem: acc + self.criterion[2](elem[0], elem[1]),
+                kd_loss = reduce(lambda acc, elem: acc + self.criterions[2](elem[0], elem[1]),
                                  zip(hidden_st, hidden_tc),
                                  0)
                 teacher_loss = self.criterions[0](output_tc, target)  # for comparision

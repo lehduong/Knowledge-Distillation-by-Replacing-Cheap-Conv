@@ -9,4 +9,4 @@ from .PKT import PKT
 from .RKD import RKDLoss
 from .SP import Similarity
 from .VID import VIDLoss
-from torch.nn import MSELoss
+from .MSELoss import MSELoss
