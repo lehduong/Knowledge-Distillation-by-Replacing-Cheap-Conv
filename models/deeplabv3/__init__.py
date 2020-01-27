@@ -96,13 +96,6 @@ def get_distillation_args(level=1):
                                 ),
                                 "mod4.block3"))
 
-    ret.append(DistillationArgs("mod4.block3",
-                                nn.Sequential(
-                                    nn.Conv2d(512, 512, kernel_size=3, padding=2, dilation=2, groups=512, bias=False),
-                                    nn.Conv2d(512, 512, kernel_size=1, bias=False)
-                                ),
-                                "mod4.block3"))
-
     ret.append(DistillationArgs("mod4.block6",
                                 nn.Sequential(
                                     nn.Conv2d(512, 512, kernel_size=3, padding=2, dilation=2, groups=512),
