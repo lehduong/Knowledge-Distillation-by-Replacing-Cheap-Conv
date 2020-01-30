@@ -10,7 +10,6 @@ from models.student import BaseStudent
 from models.deeplabv3 import get_distillation_args
 from data_loader import _create_transform
 from parse_config import ConfigParser
-from trainer import TrainerTeacherAssistant
 from trainer.kd_trainer import KnowledgeDistillationTrainer
 
 # fix random seeds for reproducibility

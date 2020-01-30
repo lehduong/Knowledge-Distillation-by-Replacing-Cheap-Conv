@@ -31,12 +31,12 @@ class BaseStudent(BaseModel):
 
         self.student_blocks = list()
         self.teacher_blocks = list()
-        self._prepare_blocks()
+        self._prepare_blocks(distillation_args)
 
         self._student_hook_handlers = list()
         self._teacher_hook_handlers = list()
-        self._register_hooks()
 
+        self.training = False
         self.train()
 
     def _assign_blocks(self, student_mode=True):
@@ -74,41 +74,35 @@ class BaseStudent(BaseModel):
             handler = self._teacher_hook_handlers.pop()
             handler.remove()
 
-    def _prepare_blocks(self):
+    def _prepare_blocks(self, distillation_args):
         # ATTENTION: Must run store teacher block before calling store student block
-        self._store_teacher_blocks()
-        self._store_student_blocks()
+        self._store_teacher_blocks(distillation_args)
+        self._store_student_blocks(distillation_args)
         if len(self.student_blocks) != len(self.teacher_blocks):
             raise Exception("Number of blocks in Student Network must be equal to Teacher Network")
 
-    def _store_teacher_blocks(self):
+    def _store_teacher_blocks(self, distillation_args):
         """
         store teacher blocks that are going to be replaced by distilled blocks
         :return: None
         """
-        for block in self.distillation_args:
+        for block in distillation_args:
             block_name = block.old_block_name
-            self.teacher_blocks.append(self._get_block(block_name))
-        self.teacher_blocks = nn.ModuleList(self.teacher_blocks)
+            self.teacher_blocks.append(self.get_block(block_name))
+        if not isinstance(self.teacher_blocks, nn.ModuleList):
+            self.teacher_blocks = nn.ModuleList(self.teacher_blocks)
 
-    def _store_student_blocks(self):
+    def _store_student_blocks(self, distillation_args):
         """
         store newly initialized distilled blocks of student net
         :return: None
         """
-        for block in self.distillation_args:
+        for block in distillation_args:
             for param in block.new_block.parameters():
                 param.requires_grad = True
             self.student_blocks.append(block.new_block)
-        self.student_blocks = nn.ModuleList(self.student_blocks)
-
-    def _get_block(self, block_name):
-        """
-        get block from block name
-        :param block_name: str - should be st like abc.def.ghk
-        :return: nn.Module
-        """
-        return reduce(lambda acc, elem: getattr(acc, elem), block_name.split(BLOCKS_LEVEL_SPLIT_CHAR), self.model)
+        if not isinstance(self.student_blocks, nn.ModuleList):
+            self.student_blocks = nn.ModuleList(self.student_blocks)
 
     def _set_block(self, block_name, block):
         """
@@ -123,9 +117,31 @@ class BaseStudent(BaseModel):
         if len(block_name_split) == 1:
             setattr(self.model, block_name, block)
         else:
-            obj = self._get_block(BLOCKS_LEVEL_SPLIT_CHAR.join(block_name_split[:-1]))
+            obj = self.get_block(BLOCKS_LEVEL_SPLIT_CHAR.join(block_name_split[:-1]))
             attr = block_name_split[-1]
             setattr(obj, attr, block)
+
+    def get_block(self, block_name):
+        """
+        get block from block name
+        :param block_name: str - should be st like abc.def.ghk
+        :return: nn.Module
+        """
+        return reduce(lambda acc, elem: getattr(acc, elem), block_name.split(BLOCKS_LEVEL_SPLIT_CHAR), self.model)
+
+    def update_pruned_layers(self, distillation_args):
+        """
+        Update the model to be compatible with new distillation args
+        :param distillation_args: list of DistillationArgs
+        :return: None
+        """
+        # remove all registered hooks in previous blocks as we're registing hook all again
+        self._remove_hooks()
+        self.distillation_args += distillation_args
+        # append the new block to student_blocks and teacher_blocks
+        self._prepare_blocks(distillation_args)
+        # registering hooks for all blocks
+        self._register_hooks()
 
     def forward(self, x):
         # flush the output of last forward
@@ -152,6 +168,9 @@ class BaseStudent(BaseModel):
         return out
 
     def eval(self):
+        if not self.training:
+            return
+
         self.training = False
 
         for block in self.student_blocks:
@@ -165,6 +184,9 @@ class BaseStudent(BaseModel):
         The parameters of teacher's network will always be set to EVAL
         :return: self
         """
+        if self.training:
+            return
+
         self.training = True
 
         for block in self.student_blocks:
