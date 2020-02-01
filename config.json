@@ -43,7 +43,8 @@
             "num_workers": 0,
             "split": "val",
             "mode": "fine",
-            "target_type": "semantic"
+            "target_type": "semantic",
+            "num_samples": 50
         }
     },
     "optimizer": {
@@ -99,5 +100,19 @@
         "use": true,
         "alpha": 0.1,
         "beta": 0.1
+    },
+    "pruning": {
+        "pruner": {
+            "dilation": 2,
+            "padding": 2,
+            "kernel_size": 3
+        },
+        "pruning_interval": 3,
+        "pruning_plan": [
+            "mod7.block1.convs.conv3",
+            "mod7.block1.convs.conv2",
+            "mod7.block1.convs.conv1",
+            "mod6.block1.convs.conv3"
+        ]
     }
 }

@@ -2,7 +2,7 @@
 Knowledge distillation via Pruning i.e. KDP
 """
 from .kd_trainer import KnowledgeDistillationTrainer
-from models.student import DistillationArgs
+from models.student import DistillationArgs, BLOCKS_LEVEL_SPLIT_CHAR
 
 
 class KDPTrainer(KnowledgeDistillationTrainer):
@@ -18,15 +18,22 @@ class KDPTrainer(KnowledgeDistillationTrainer):
         self.pruning_plan = self.config['pruning']['pruning_plan']
         self.pruning_interval = self.config['pruning']['pruning_interval']
 
-    def get_layers(self):
-        pass
+    def get_layers(self, layer_name):
+        split_name = layer_name.split('.')
+        layer = self.model
+        for name in split_name:
+            if name.isdigit():
+                layer = layer[int(name)]
+            else:
+                layer = getattr(layer,name)
+        return layer
 
     def prune(self):
         # All layers in pruning plan have been pruned
         if not self.pruning_plan:
             return
         layer_names = self.pruning_plan.pop()
-        layers = [self.model.get_block(name) for name in layer_names]
+        layers = [self.get_layers(name) for name in layer_names]
         new_layer = self.pruner.prune(layers)
 
         # create new Distillation args
