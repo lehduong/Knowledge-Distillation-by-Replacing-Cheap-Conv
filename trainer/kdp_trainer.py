@@ -10,7 +10,7 @@ class KDPTrainer(KnowledgeDistillationTrainer):
     Base trainer class for knowledge distillation with unified teacher-student network
     """
 
-    def __init__(self, model, criterions, pruner, metric_ftns, optimizer, config, train_data_loader,
+    def __init__(self, model, pruner, criterions, metric_ftns, optimizer, config, train_data_loader,
                  valid_data_loader=None, lr_scheduler=None, len_epoch=None):
         super().__init__(self, model, criterions, metric_ftns, optimizer, config, train_data_loader,
                          valid_data_loader, lr_scheduler, len_epoch)

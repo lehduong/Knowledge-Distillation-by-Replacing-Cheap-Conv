@@ -10,7 +10,8 @@ from models.student import BaseStudent
 from models.deeplabv3 import get_distillation_args
 from data_loader import _create_transform
 from parse_config import ConfigParser
-from trainer.kd_trainer import KnowledgeDistillationTrainer
+from trainer import KnowledgeDistillationTrainer, KDPTrainer
+from pruning import PFEC
 
 # fix random seeds for reproducibility
 SEED = 123
@@ -53,8 +54,11 @@ def main(config):
 
     # Knowledge Distillation only
     if config["KD"]["use"]:
-        trainer = KnowledgeDistillationTrainer(student, criterions, metrics, optimizer, config, train_data_loader,
-                                               valid_data_loader, lr_scheduler)
+        pruner = PFEC(student, config, config['pruning']['compress_rate'])
+        trainer = KDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
+                             valid_data_loader, lr_scheduler)
+        # trainer = KnowledgeDistillationTrainer(student, criterions, metrics, optimizer, config, train_data_loader,
+        #                                        valid_data_loader, lr_scheduler)
 
     trainer.train()
 

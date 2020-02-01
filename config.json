@@ -107,6 +107,7 @@
             "padding": 2,
             "kernel_size": 3
         },
+        "compress_rate": 0.5,
         "pruning_interval": 3,
         "pruning_plan": [
             "mod7.block1.convs.conv3",
