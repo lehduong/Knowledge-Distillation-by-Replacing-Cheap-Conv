@@ -51,21 +51,30 @@ class PFEC(BasePruner):
 
         return new_layer
 
-    def transform_block(self, inp_channels, out_channels):
+    def transform_block(self, inp_channels, layer):
         """
         create a block that transform a pruned layer to the same number of filter
         :param inp_channels: int - number of channels of input
-        :param out_channels: int - number of channels of output
+        :param layer: nn.Module - the unpruned layer
         :return:
         """
+        out_channels = layer.out_channels
         ret = nn.Sequential(
             nn.Conv2d(inp_channels, inp_channels, kernel_size=self.kernel_size, padding=self.padding,
                       dilation=self.dilation, groups=inp_channels),
             nn.Conv2d(inp_channels, out_channels, kernel_size=1)
         )
+        self._initializing(layer, ret[0])
+        self._initializing(layer, ret[1])
+
         if self.use_cuda:
             ret = ret.cuda()
         return ret
+
+    def _initializing(self, reference_layer, new_layer):
+        mean = reference_layer.weight.data.mean().item()
+        std = reference_layer.weight.data.std().item()
+        new_layer.weight.data.normal_(mean, std)
 
     def prune(self, layers, compress_rate=None):
         """
@@ -83,6 +92,6 @@ class PFEC(BasePruner):
             new_layer = self.norm_based_pruning(layer, num_kept_filter)
             for param in new_layer.parameters():
                 param.requires_grad = False
-            transform_block = self.transform_block(num_kept_filter, layer.out_channels)
+            transform_block = self.transform_block(num_kept_filter, layer)
             ret.append(nn.Sequential(new_layer, transform_block))
         return ret

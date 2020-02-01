@@ -36,7 +36,7 @@ def main(config):
     teacher = teacher.cpu() # saved some memory as student network will use a (deep) copy of teacher model
 
     # build models architecture, then print to console
-    args = get_distillation_args()
+    args = []
     student = BaseStudent(teacher, args)
     logger.info(student)
 
@@ -48,8 +48,7 @@ def main(config):
     metrics = [getattr(module_metric, met) for met in config['metrics']]
 
     # build optimizer, learning rate scheduler. delete every lines containing lr_scheduler for disabling scheduler
-    trainable_params = filter(lambda p: p.requires_grad, student.parameters())
-    optimizer = config.init_obj('optimizer', torch.optim, trainable_params)
+    optimizer = config.init_obj('optimizer', torch.optim, student.parameters())
     lr_scheduler = config.init_obj('lr_scheduler', torch.optim.lr_scheduler, optimizer)
 
     # Knowledge Distillation only

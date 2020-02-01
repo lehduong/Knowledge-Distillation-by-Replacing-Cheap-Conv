@@ -88,7 +88,10 @@ class BaseStudent(BaseModel):
         """
         for block in distillation_args:
             block_name = block.old_block_name
-            self.teacher_blocks.append(self.get_block(block_name))
+            teacher_block = self.get_block(block_name)
+            for param in teacher_block.parameters():
+                param.requires_grad = False
+            self.teacher_blocks.append(teacher_block)
         if not isinstance(self.teacher_blocks, nn.ModuleList):
             self.teacher_blocks = nn.ModuleList(self.teacher_blocks)
 
@@ -98,9 +101,8 @@ class BaseStudent(BaseModel):
         :return: None
         """
         for block in distillation_args:
-            for param in block.new_block.parameters():
-                param.requires_grad = True
-            self.student_blocks.append(block.new_block)
+            student_block = block.new_block
+            self.student_blocks.append(student_block)
         if not isinstance(self.student_blocks, nn.ModuleList):
             self.student_blocks = nn.ModuleList(self.student_blocks)
 
@@ -127,7 +129,14 @@ class BaseStudent(BaseModel):
         :param block_name: str - should be st like abc.def.ghk
         :return: nn.Module
         """
-        return reduce(lambda acc, elem: getattr(acc, elem), block_name.split(BLOCKS_LEVEL_SPLIT_CHAR), self.model)
+        def _get_block(acc, elem):
+            if elem.isdigit():
+                layer = acc[int(elem)]
+            else:
+                layer = getattr(acc, elem)
+            return layer
+
+        return reduce(lambda acc, elem: _get_block(acc, elem), block_name.split(BLOCKS_LEVEL_SPLIT_CHAR), self.model)
 
     def update_pruned_layers(self, distillation_args):
         """

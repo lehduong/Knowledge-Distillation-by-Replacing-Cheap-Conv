@@ -18,35 +18,25 @@ class KDPTrainer(KnowledgeDistillationTrainer):
         self.pruning_plan = self.config['pruning']['pruning_plan']
         self.pruning_interval = self.config['pruning']['pruning_interval']
 
-    def get_layers(self, layer_name):
-        split_name = layer_name.split('.')
-        layer = self.model.model
-        for name in split_name:
-            if name.isdigit():
-                layer = layer[int(name)]
-            else:
-                layer = getattr(layer,name)
-        return layer
-
     def prune(self):
         # All layers in pruning plan have been pruned
         if not self.pruning_plan:
             return
         layer_names = self.pruning_plan.pop()
-        layers = [self.get_layers(name) for name in layer_names]
-        new_layer = self.pruner.prune(layers)
+        layers = [self.model.get_block(name) for name in layer_names]
+        new_layers = self.pruner.prune(layers)
 
         # create new Distillation args
         args = []
         for i in range(len(layer_names)):
-            args.append(DistillationArgs(layer_names[i], new_layer[i], layer_names[i]))
-            self.optimizer.add_param_group({'params': new_layer[i].parameters(),
+            args.append(DistillationArgs(layer_names[i], new_layers[i], layer_names[i]))
+            self.optimizer.add_param_group({'params': new_layers[i].parameters(),
                                             **self.config['optimizer']['args']})
         self.model.update_pruned_layers(args)
         print(self.model)
 
     def _train_epoch(self, epoch):
-        if epoch % self.pruning_interval == 0:
+        if (epoch-1) % self.pruning_interval == 0:
             self.prune()
 
         return super()._train_epoch(epoch)
