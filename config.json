@@ -29,7 +29,8 @@
             "num_workers": 0,
             "split": "train",
             "mode": "fine",
-            "target_type": "semantic"
+            "target_type": "semantic",
+            "num_samples": 100
         }
     },
     "val_data_loader": {
@@ -42,7 +43,8 @@
             "num_workers": 0,
             "split": "val",
             "mode": "fine",
-            "target_type": "semantic"
+            "target_type": "semantic",
+            "num_samples": 50
         }
     },
     "optimizer": {
@@ -106,9 +108,17 @@
             "kernel_size": 3
         },
         "compress_rate": 0.5,
-        "pruning_interval": 3,
+        "pruning_interval": 2,
         "pruning_plan": [
-            ["mod6.block1.convs.conv3"],
+            ["mod4.block6.convs.conv1"],
+            ["mod4.block6.convs.conv2"],
+            ["mod5.block1.convs.conv1"],
+            ["mod5.block1.convs.conv"],
+            ["mod5.block2.convs.conv1"],
+            ["mod5.block2.convs.conv2"],
+            ["mod5.block3.convs.conv1"],
+            ["mod5.block3.convs.conv2"],
+            ["mod6.block1.convs.conv2"],
             ["mod7.block1.convs.conv1"],
             ["mod7.block1.convs.conv2"]
         ]
