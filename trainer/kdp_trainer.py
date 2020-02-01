@@ -12,7 +12,7 @@ class KDPTrainer(KnowledgeDistillationTrainer):
 
     def __init__(self, model, pruner, criterions, metric_ftns, optimizer, config, train_data_loader,
                  valid_data_loader=None, lr_scheduler=None, len_epoch=None):
-        super().__init__(self, model, criterions, metric_ftns, optimizer, config, train_data_loader,
+        super().__init__(model, criterions, metric_ftns, optimizer, config, train_data_loader,
                          valid_data_loader, lr_scheduler, len_epoch)
         self.pruner = pruner
         self.pruning_plan = self.config['pruning']['pruning_plan']
@@ -20,7 +20,7 @@ class KDPTrainer(KnowledgeDistillationTrainer):
 
     def get_layers(self, layer_name):
         split_name = layer_name.split('.')
-        layer = self.model
+        layer = self.model.model
         for name in split_name:
             if name.isdigit():
                 layer = layer[int(name)]
@@ -40,15 +40,14 @@ class KDPTrainer(KnowledgeDistillationTrainer):
         args = []
         for i in range(len(layer_names)):
             args.append(DistillationArgs(layer_names[i], new_layer[i], layer_names[i]))
-
+            self.optimizer.add_param_group({'params': new_layer[i].parameters(),
+                                            **self.config['optimizer']['args']})
         self.model.update_pruned_layers(args)
+        print(self.model)
 
     def _train_epoch(self, epoch):
         if epoch % self.pruning_interval == 0:
             self.prune()
-        if self.do_validation:
-            print('after pruning:')
-            val_log = self._valid_epoch(epoch)
 
-        super()._train_epoch(epoch)
+        return super()._train_epoch(epoch)
 

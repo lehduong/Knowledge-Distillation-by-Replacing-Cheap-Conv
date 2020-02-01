@@ -29,8 +29,7 @@
             "num_workers": 0,
             "split": "train",
             "mode": "fine",
-            "target_type": "semantic",
-            "num_samples": 100
+            "target_type": "semantic"
         }
     },
     "val_data_loader": {
@@ -43,8 +42,7 @@
             "num_workers": 0,
             "split": "val",
             "mode": "fine",
-            "target_type": "semantic",
-            "num_samples": 50
+            "target_type": "semantic"
         }
     },
     "optimizer": {
@@ -110,10 +108,9 @@
         "compress_rate": 0.5,
         "pruning_interval": 3,
         "pruning_plan": [
-            "mod7.block1.convs.conv3",
-            "mod7.block1.convs.conv2",
-            "mod7.block1.convs.conv1",
-            "mod6.block1.convs.conv3"
+            ["mod6.block1.convs.conv3"],
+            ["mod7.block1.convs.conv1"],
+            ["mod7.block1.convs.conv2"]
         ]
     }
 }

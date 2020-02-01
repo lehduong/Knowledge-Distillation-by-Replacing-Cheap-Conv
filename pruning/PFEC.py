@@ -30,7 +30,7 @@ class PFEC(BasePruner):
         # construct new layer with identical weights with old layer but having smaller number of filters
         if type(layer) is nn.Conv2d:
             new_layer = nn.Conv2d(layer.in_channels, num_kept_filter, layer.kernel_size, layer.stride,
-                                  layer.padding, layer.dillation, layer.groups, layer.bias, layer.padding_mode)
+                                  layer.padding, layer.dilation, layer.groups, layer.bias, layer.padding_mode)
         elif type(layer) is nn.Linear:
             new_layer = nn.Linear(layer.in_features, num_kept_filter, layer.bias)
         else:
@@ -38,10 +38,10 @@ class PFEC(BasePruner):
                             str(type(layer)))
 
         weight = layer.weight.data
-        weight_norm = torch.norm(weight.view(weight.shape[0], -1), 1, 2)
+        weight_norm = torch.norm(weight.view(weight.shape[0], -1), 2, 1)
 
         # index of the top k norm filters
-        idx_kept_filter = torch.topk(weight_norm, num_kept_filter).detach().cpu().numpy().astype(np.int32)
+        idx_kept_filter = torch.topk(weight_norm, num_kept_filter)[1].cpu().numpy().astype(np.int32)
 
         # copy the weight
         new_layer.weight.data = weight[idx_kept_filter]
@@ -79,8 +79,10 @@ class PFEC(BasePruner):
             compress_rate = self.compress_rate
 
         for layer in layers:
-            num_kept_filter = int(compress_rate * layer.shape[0])
+            num_kept_filter = int(compress_rate * layer.weight.shape[0])
             new_layer = self.norm_based_pruning(layer, num_kept_filter)
+            for param in new_layer.parameters():
+                param.requires_grad = False
             transform_block = self.transform_block(num_kept_filter, layer.out_channels)
             ret.append(nn.Sequential(new_layer, transform_block))
         return ret
