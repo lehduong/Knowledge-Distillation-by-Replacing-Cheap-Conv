@@ -64,7 +64,7 @@ class KnowledgeDistillationTrainer(BaseTrainer):
             # the following loss will gradually increase the weight for former layer by exponential of gamma
             # i.e. (loss_layer5*gamma^3 + loss_layer8*gamma^2 + loss_layer12*gamma^1)/(gamma^3+gamma^2+gamma^1)
             gamma = self.weight_scheduler.gamma
-            exponent_magnitude = list(range(1, 1+len(self.model.hidden_teacher_outputs)))
+            exponent_magnitude = list(range(1, 1+len(self.model.teacher_hidden_outputs)))
             normalized_term = reduce(lambda acc, elem: acc+gamma**elem, exponent_magnitude, 0)
             kd_loss = reduce(lambda acc, elem: acc+gamma**elem[2]*self.criterions[2](elem[0], elem[1]),
                              zip(self.model.student_hidden_outputs, self.model.teacher_hidden_outputs,
