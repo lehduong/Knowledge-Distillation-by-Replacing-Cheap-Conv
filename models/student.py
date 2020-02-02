@@ -207,6 +207,25 @@ class BaseStudent(BaseModel):
 
         return self
 
+    def get_distilled_network(self):
+        """
+        Get the distilled student network
+        :return: nn.Module
+        """
+        # prevent side effect of this function
+        flag = False
+        if self._teaching:
+            flag = True
+            self._assign_blocks(student_mode=True)
+
+        ret = copy.deepcopy(self.model)
+
+        # turn the student network to teaching mode as before function call
+        if flag:
+            self._assign_blocks(student_mode=False)
+
+        return ret
+
     @staticmethod
     def __get_number_param(mod):
         return sum(p.numel() for p in mod.parameters())
