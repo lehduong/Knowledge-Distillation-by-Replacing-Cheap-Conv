@@ -97,9 +97,7 @@
         "tensorboard": true
     }, 
     "KD": {
-        "use": true,
-        "alpha": 0.1,
-        "beta": 0.1
+        "use": true
     },
     "pruning": {
         "pruner": {
@@ -113,7 +111,7 @@
             ["mod4.block6.convs.conv1"],
             ["mod4.block6.convs.conv2"],
             ["mod5.block1.convs.conv1"],
-            ["mod5.block1.convs.conv"],
+            ["mod5.block1.convs.conv2"],
             ["mod5.block2.convs.conv1"],
             ["mod5.block2.convs.conv2"],
             ["mod5.block3.convs.conv1"],
@@ -122,5 +120,21 @@
             ["mod7.block1.convs.conv1"],
             ["mod7.block1.convs.conv2"]
         ]
+    },
+    "weight_scheduler": {
+        "alpha": {
+            "value": 0.1,
+            "anneal_rate": 1.05,
+            "max": 0.4
+        },
+        "beta": {
+            "value": 0.15,
+            "anneal_rate": 1.05,
+            "max": 0.5
+        },
+        "gamma": {
+            "value": 1.2,
+            "anneal_rate": 1
+        }
     }
 }

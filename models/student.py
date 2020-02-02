@@ -212,7 +212,7 @@ class BaseStudent(BaseModel):
         return sum(p.numel() for p in mod.parameters())
 
     @staticmethod
-    def __str_module(mod):
+    def __dump_module_name(mod):
         ret = ""
         for param in mod.named_parameters():
             ret += str(param[0]) + "\n"
@@ -240,9 +240,9 @@ class BaseStudent(BaseModel):
 
         for i in range(len(self.student_blocks)):
             table.append_row([self.distillation_args[i].old_block_name,
-                              self.__str_module(self.teacher_blocks[i]),
+                              self.__dump_module_name(self.teacher_blocks[i]),
                               str(self.__get_number_param(self.teacher_blocks[i])),
-                              self.__str_module(self.student_blocks[i]),
+                              self.__dump_module_name(self.student_blocks[i]),
                               str(self.__get_number_param(self.student_blocks[i]))])
 
         return super().__str__() + '\n' + str(table)
