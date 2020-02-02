@@ -30,7 +30,7 @@
             "split": "train",
             "mode": "fine",
             "target_type": "semantic",
-            "num_samples": 100
+            "num_samples": 200
         }
     },
     "val_data_loader": {
@@ -93,6 +93,7 @@
         "monitor": "min val_loss",
         "early_stop": 10,
         "accumulation_steps": 2,
+        "log_step": 24
 
         "tensorboard": true
     }, 

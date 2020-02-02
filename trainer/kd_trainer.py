@@ -1,4 +1,3 @@
-import numpy as np
 import torch
 import torch.nn as nn
 from torchvision.utils import make_grid
@@ -21,7 +20,7 @@ class KnowledgeDistillationTrainer(BaseTrainer):
         self.do_validation = self.valid_data_loader is not None
         self.lr_scheduler = lr_scheduler
         self.weight_scheduler = weight_scheduler
-        self.log_step = int(np.sqrt(train_data_loader.batch_size*self.accumulation_steps))
+        self.log_step = config['trainer']['log_step']
         if len_epoch is None:
             # epoch-based training
             self.len_epoch = len(self.train_data_loader)
@@ -65,8 +64,7 @@ class KnowledgeDistillationTrainer(BaseTrainer):
             # the following loss will gradually increase the weight for former layer by exponential of gamma
             # i.e. (loss_layer5*gamma^3 + loss_layer8*gamma^2 + loss_layer12*gamma^1)/(gamma^3+gamma^2+gamma^1)
             gamma = self.weight_scheduler.gamma
-            exponent_magnitude = list(range(len(self.model.hidden_teacher_outputs)))
-            print(exponent_magnitude)
+            exponent_magnitude = list(range(1, 1+len(self.model.hidden_teacher_outputs)))
             normalized_term = reduce(lambda acc, elem: acc+gamma**elem, exponent_magnitude, 0)
             kd_loss = reduce(lambda acc, elem: acc+gamma**elem[2]*self.criterions[2](elem[0], elem[1]),
                              zip(self.model.student_hidden_outputs, self.model.teacher_hidden_outputs,

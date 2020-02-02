@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 from data_loader.cityscapes import Cityscapes as Dataset
 
 
@@ -42,6 +43,7 @@ def viz_pred_cityscapes(preds):
     masks = []
     for pred in preds:
         masks.append(apply_mask(None, pred))
+    masks = torch.tensor(masks).permute(0, 3, 1, 2)
 
     return masks
 
