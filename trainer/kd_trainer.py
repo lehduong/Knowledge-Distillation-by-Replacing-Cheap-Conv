@@ -128,7 +128,8 @@ class KnowledgeDistillationTrainer(BaseTrainer):
                 break
 
         log = self.train_metrics.result()
-        log.update({'train_mIoU': self.train_teacher_iou_metrics.get_iou()})
+        log.update({'train_teacher_mIoU': self.train_teacher_iou_metrics.get_iou()})
+        log.update({'train_student_mIoU': self.train_iou_metrics.get_iou()})
 
         if self.do_validation:
             # clean cache to prevent out-of-memory with 1 gpu
