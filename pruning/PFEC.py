@@ -30,7 +30,7 @@ class PFEC(BasePruner):
         # construct new layer with identical weights with old layer but having smaller number of filters
         if type(layer) is nn.Conv2d:
             new_layer = nn.Conv2d(layer.in_channels, num_kept_filter, layer.kernel_size, layer.stride,
-                                  layer.padding, layer.dillation, layer.groups, layer.bias, layer.padding_mode)
+                                  layer.padding, layer.dilation, layer.groups, layer.bias, layer.padding_mode)
         elif type(layer) is nn.Linear:
             new_layer = nn.Linear(layer.in_features, num_kept_filter, layer.bias)
         else:
@@ -38,10 +38,10 @@ class PFEC(BasePruner):
                             str(type(layer)))
 
         weight = layer.weight.data
-        weight_norm = torch.norm(weight.view(weight.shape[0], -1), 1, 2)
+        weight_norm = torch.norm(weight.view(weight.shape[0], -1), 2, 1)
 
         # index of the top k norm filters
-        idx_kept_filter = torch.topk(weight_norm, num_kept_filter).detach().cpu().numpy().astype(np.int32)
+        idx_kept_filter = torch.topk(weight_norm, num_kept_filter)[1].cpu().numpy().astype(np.int32)
 
         # copy the weight
         new_layer.weight.data = weight[idx_kept_filter]
@@ -51,21 +51,30 @@ class PFEC(BasePruner):
 
         return new_layer
 
-    def transform_block(self, inp_channels, out_channels):
+    def transform_block(self, inp_channels, layer):
         """
         create a block that transform a pruned layer to the same number of filter
         :param inp_channels: int - number of channels of input
-        :param out_channels: int - number of channels of output
+        :param layer: nn.Module - the unpruned layer
         :return:
         """
+        out_channels = layer.out_channels
         ret = nn.Sequential(
             nn.Conv2d(inp_channels, inp_channels, kernel_size=self.kernel_size, padding=self.padding,
                       dilation=self.dilation, groups=inp_channels),
             nn.Conv2d(inp_channels, out_channels, kernel_size=1)
         )
+        self._initializing(layer, ret[0])
+        self._initializing(layer, ret[1])
+
         if self.use_cuda:
             ret = ret.cuda()
         return ret
+
+    def _initializing(self, reference_layer, new_layer):
+        mean = reference_layer.weight.data.mean().item()
+        std = reference_layer.weight.data.std().item()
+        new_layer.weight.data.normal_(mean, std)
 
     def prune(self, layers, compress_rate=None):
         """
@@ -79,8 +88,10 @@ class PFEC(BasePruner):
             compress_rate = self.compress_rate
 
         for layer in layers:
-            num_kept_filter = int(compress_rate * layer.shape[0])
+            num_kept_filter = int(compress_rate * layer.weight.shape[0])
             new_layer = self.norm_based_pruning(layer, num_kept_filter)
-            transform_block = self.transform_block(num_kept_filter, layer.out_channels)
+            for param in new_layer.parameters():
+                param.requires_grad = False
+            transform_block = self.transform_block(num_kept_filter, layer)
             ret.append(nn.Sequential(new_layer, transform_block))
         return ret

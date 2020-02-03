@@ -10,7 +10,8 @@ from models.student import BaseStudent
 from models.deeplabv3 import get_distillation_args
 from data_loader import _create_transform
 from parse_config import ConfigParser
-from trainer.kd_trainer import KnowledgeDistillationTrainer
+from trainer import KnowledgeDistillationTrainer, KDPTrainer
+from pruning import PFEC
 
 # fix random seeds for reproducibility
 SEED = 123
@@ -35,7 +36,7 @@ def main(config):
     teacher = teacher.cpu() # saved some memory as student network will use a (deep) copy of teacher model
 
     # build models architecture, then print to console
-    args = get_distillation_args()
+    args = []
     student = BaseStudent(teacher, args)
     logger.info(student)
 
@@ -47,14 +48,16 @@ def main(config):
     metrics = [getattr(module_metric, met) for met in config['metrics']]
 
     # build optimizer, learning rate scheduler. delete every lines containing lr_scheduler for disabling scheduler
-    trainable_params = filter(lambda p: p.requires_grad, student.parameters())
-    optimizer = config.init_obj('optimizer', torch.optim, trainable_params)
+    optimizer = config.init_obj('optimizer', torch.optim, student.parameters())
     lr_scheduler = config.init_obj('lr_scheduler', torch.optim.lr_scheduler, optimizer)
 
     # Knowledge Distillation only
     if config["KD"]["use"]:
-        trainer = KnowledgeDistillationTrainer(student, criterions, metrics, optimizer, config, train_data_loader,
-                                               valid_data_loader, lr_scheduler)
+        pruner = PFEC(student, config, config['pruning']['compress_rate'])
+        trainer = KDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
+                             valid_data_loader, lr_scheduler)
+        # trainer = KnowledgeDistillationTrainer(student, criterions, metrics, optimizer, config, train_data_loader,
+        #                                        valid_data_loader, lr_scheduler)
 
     trainer.train()
 
