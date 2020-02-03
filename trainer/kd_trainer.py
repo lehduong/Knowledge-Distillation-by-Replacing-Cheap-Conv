@@ -33,9 +33,12 @@ class KnowledgeDistillationTrainer(BaseTrainer):
         self.train_metrics = MetricTracker('loss', 'supervised_loss', 'kd_loss', 'hint_loss', 'teacher_loss',
                                            *[m.__name__ for m in self.metric_ftns], writer=self.writer)
         self.train_iou_metrics = CityscapesMetricTracker(writer=self.writer)
+        self.train_teacher_iou_metrics = CityscapesMetricTracker(writer=self.writer)
+
         self.valid_metrics = MetricTracker('loss', 'supervised_loss', 'kd_loss', 'hint_loss', 'teacher_loss',
                                            *[m.__name__ for m in self.metric_ftns], writer=self.writer)
         self.valid_iou_metrics = CityscapesMetricTracker(writer=self.writer)
+        self.valid_teacher_iou_metrics = CityscapesMetricTracker(writer=self.writer)
 
         # Only used list of criterions and remove the unused property
         self.criterions = criterions
@@ -95,6 +98,7 @@ class KnowledgeDistillationTrainer(BaseTrainer):
             self.train_metrics.update('hint_loss', hint_loss.item()*self.accumulation_steps)
             self.train_metrics.update('teacher_loss', teacher_loss.item())
             self.train_iou_metrics.update(output_st, target)
+            self.train_teacher_iou_metrics.update(output_tc, target)
 
             for met in self.metric_ftns:
                 self.train_metrics.update(met.__name__, met(output_st, target))
@@ -107,7 +111,7 @@ class KnowledgeDistillationTrainer(BaseTrainer):
                 self.writer.add_image('tc_pred', make_grid(tc_masks, nrow=8, normalize=False))
                 self.logger.debug(
                     'Train Epoch: {} [{}]/[{}] Loss: {:.6f} Supervised Loss: {:.6f} Knowledge Distillation loss: '
-                    '{:.6f} Hint Loss: {:.6f} mIoU: {:.6f} Teacher Loss: {:.6f}'.format(
+                    '{:.6f} Hint Loss: {:.6f} mIoU: {:.6f} Teacher Loss: {:.6f} Techer mIoU: {:.6f}'.format(
                         epoch,
                         batch_idx,
                         len(self.train_data_loader),
@@ -116,13 +120,15 @@ class KnowledgeDistillationTrainer(BaseTrainer):
                         self.train_metrics.avg('kd_loss'),
                         self.train_metrics.avg('hint_loss'),
                         self.train_iou_metrics.get_iou(),
-                        self.train_metrics.avg('teacher_loss')
+                        self.train_metrics.avg('teacher_loss'),
+                        self.train_teacher_iou_metrics.get_iou()
                     ))
 
             if batch_idx == self.len_epoch:
                 break
 
         log = self.train_metrics.result()
+        log.update({'train_mIoU': self.train_teacher_iou_metrics.get_iou()})
 
         if self.do_validation:
             # clean cache to prevent out-of-memory with 1 gpu
