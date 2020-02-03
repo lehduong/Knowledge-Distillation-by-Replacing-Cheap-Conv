@@ -46,16 +46,16 @@ def top_k_acc(output, target, k=3):
     return correct / len(target)
 
 def get_masks_from_label(labels):
-  labels[labels==ignore_label] = num_classes
-  lbl_size = labels.size()
-  mk_size = (lbl_size[0], num_classes + 1, lbl_size[1], lbl_size[2])
-  labels.unsqueeze_(1) # convert to Nx1xHxW
-  one_hot = torch.cuda.IntTensor(*mk_size).zero_()
-  one_hot.scatter_(1, labels.cuda(), 1) 
-  return one_hot
+    labels[labels==ignore_label] = num_classes
+    lbl_size = labels.size()
+    mk_size = (lbl_size[0], num_classes + 1, lbl_size[1], lbl_size[2])
+    labels.unsqueeze_(1) # convert to Nx1xHxW
+    one_hot = torch.cuda.IntTensor(*mk_size).zero_()
+    one_hot.scatter_(1, labels.cuda(), 1) 
+    return one_hot
 
 def result_to_mask(outputs):
-  outputs = F.softmax(outputs, dim=1)
-  idxs = torch.argmax(outputs, dim=1)
-  one_hot = get_masks_from_label(idxs)
-  return one_hot
+    outputs = F.softmax(outputs, dim=1)
+    idxs = torch.argmax(outputs, dim=1)
+    one_hot = get_masks_from_label(idxs)
+    return one_hot
