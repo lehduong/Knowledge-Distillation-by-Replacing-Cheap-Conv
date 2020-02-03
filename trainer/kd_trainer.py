@@ -163,7 +163,7 @@ class KnowledgeDistillationTrainer(BaseTrainer):
 
                 self.writer.set_step((epoch - 1) * len(self.valid_data_loader) + batch_idx, 'valid')
                 self.valid_metrics.update('supervised_loss', supervised_loss.item())
-                self.valid_iou_metrics.update(output, target)
+                self.valid_iou_metrics.update(output.detach().cpu(), target)
 
                 for met in self.metric_ftns:
                     self.valid_metrics.update(met.__name__, met(output, target))
