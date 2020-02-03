@@ -15,7 +15,7 @@ def iou(outputs, labels, ignore_index=255):
         conf = confusion_for_batch(outputs.view(-1), labels.view(-1), num_classes+1)
         iou_pc = iou_per_class(conf, num_classes)
 
-    return np.nanmean(iou_pc, 0)  # Or thresholded.mean() if you are interested in average across the batch
+    return np.nanmean(iou_pc[:num_classes], 0)  # Or thresholded.mean() if you are interested in average across the batch
 
 
 def mask2onehot(masks, num_classes=19, ignore_class=255):
@@ -55,9 +55,7 @@ def confusion_for_batch(output, target, num_classes):
     conf = np.reshape(bincount_2d, (num_classes, num_classes))
     return conf
 
-def iou_per_class(conf_matrix, ignore_class, SMOOTH = 1e-6):
-    conf_matrix[:, ignore_class] = 0
-    conf_matrix[ignore_class, :] = 0
+def iou_per_class(conf_matrix, SMOOTH = 1e-6):
     tp = np.diag(conf_matrix)
     iou_pc = (tp + SMOOTH) / (SMOOTH + np.sum(conf_matrix, 0) + np.sum(conf_matrix, 1) - tp)
     return iou_pc
