@@ -43,9 +43,9 @@ def main(config):
 
     # get function handles of loss and metrics
     supervised_criterion = config.init_obj('supervised_loss', module_loss)
-    div_criterion = config.init_obj('div_loss', module_loss)
     kd_criterion = config.init_obj('kd_loss', module_loss)
-    criterions = [supervised_criterion, div_criterion, kd_criterion]
+    hint_criterion = config.init_obj('hint_loss', module_loss)
+    criterions = [supervised_criterion, kd_criterion, hint_criterion]
     metrics = [getattr(module_metric, met) for met in config['metrics']]
 
     # build optimizer, learning rate scheduler. delete every lines containing lr_scheduler for disabling scheduler

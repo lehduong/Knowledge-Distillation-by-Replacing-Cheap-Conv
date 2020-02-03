@@ -3,7 +3,7 @@ import torch.nn as nn
 from torchvision.utils import make_grid
 from functools import reduce
 from base import BaseTrainer
-from utils import inf_loop, MetricTracker, visualize
+from utils import inf_loop, MetricTracker, visualize, CityscapesMetricTracker
 import gc
 
 
@@ -30,10 +30,12 @@ class KnowledgeDistillationTrainer(BaseTrainer):
             self.len_epoch = len_epoch
 
         # also log teacher loss for comparision
-        self.train_metrics = MetricTracker('loss', 'supervised_loss', 'div_loss', 'kd_loss', 'teacher_loss',
+        self.train_metrics = MetricTracker('loss', 'supervised_loss', 'kd_loss', 'hint_loss', 'teacher_loss',
                                            *[m.__name__ for m in self.metric_ftns], writer=self.writer)
-        self.valid_metrics = MetricTracker('loss', 'supervised_loss', 'div_loss', 'kd_loss', 'teacher_loss',
+        self.train_iou_metrics = CityscapesMetricTracker(writer=self.writer)
+        self.valid_metrics = MetricTracker('loss', 'supervised_loss', 'kd_loss', 'hint_loss', 'teacher_loss',
                                            *[m.__name__ for m in self.metric_ftns], writer=self.writer)
+        self.valid_iou_metrics = CityscapesMetricTracker(writer=self.writer)
 
         # Only used list of criterions and remove the unused property
         self.criterions = criterions
@@ -50,6 +52,7 @@ class KnowledgeDistillationTrainer(BaseTrainer):
     def _train_epoch(self, epoch):
         self.model.train()
         self.train_metrics.reset()
+        self.train_iou_metrics.reset()
 
         for batch_idx, (data, target) in enumerate(self.train_data_loader):
             data, target = data.to(self.device), target.to(self.device)
@@ -57,7 +60,7 @@ class KnowledgeDistillationTrainer(BaseTrainer):
             output_st, output_tc = self.model(data)
 
             supervised_loss = self.criterions[0](output_st, target)/self.accumulation_steps
-            div_loss = self.criterions[1](output_st, output_tc)/self.accumulation_steps
+            kd_loss = self.criterions[1](output_st, output_tc)/self.accumulation_steps
 
             # when computing the loss between output of teacher net and student net, we penalty the shallow layer
             # more than deep layer
@@ -66,7 +69,7 @@ class KnowledgeDistillationTrainer(BaseTrainer):
             gamma = self.weight_scheduler.gamma
             exponent_magnitude = list(range(1, 1+len(self.model.teacher_hidden_outputs)))
             normalized_term = reduce(lambda acc, elem: acc+gamma**elem, exponent_magnitude, 0)
-            kd_loss = reduce(lambda acc, elem: acc+gamma**elem[2]*self.criterions[2](elem[0], elem[1]),
+            hint_loss = reduce(lambda acc, elem: acc+gamma**elem[2]*self.criterions[2](elem[0], elem[1]),
                              zip(self.model.student_hidden_outputs, self.model.teacher_hidden_outputs,
                                  exponent_magnitude),
                              0)/self.accumulation_steps/normalized_term
@@ -76,9 +79,8 @@ class KnowledgeDistillationTrainer(BaseTrainer):
 
             alpha = self.weight_scheduler.alpha
             beta = self.weight_scheduler.beta
-            loss = alpha * supervised_loss + beta * div_loss + (1-alpha-beta)*kd_loss
+            loss = alpha * supervised_loss + beta * kd_loss + (1-alpha-beta)*hint_loss
             loss.backward()
-            self._clean_cache()
 
             if (batch_idx+1) % self.accumulation_steps == 0:
                 self.optimizer.step()
@@ -89,9 +91,11 @@ class KnowledgeDistillationTrainer(BaseTrainer):
             # update metrics
             self.train_metrics.update('loss', loss.item()*self.accumulation_steps)
             self.train_metrics.update('supervised_loss', supervised_loss.item()*self.accumulation_steps)
-            self.train_metrics.update('div_loss', div_loss.item()*self.accumulation_steps)
             self.train_metrics.update('kd_loss', kd_loss.item()*self.accumulation_steps)
+            self.train_metrics.update('hint_loss', hint_loss.item()*self.accumulation_steps)
             self.train_metrics.update('teacher_loss', teacher_loss.item())
+            self.train_iou_metrics.update(output_st, target)
+
             for met in self.metric_ftns:
                 self.train_metrics.update(met.__name__, met(output_st, target))
 
@@ -102,15 +106,16 @@ class KnowledgeDistillationTrainer(BaseTrainer):
                 self.writer.add_image('st_pred', make_grid(st_masks, nrow=8, normalize=False))
                 self.writer.add_image('tc_pred', make_grid(tc_masks, nrow=8, normalize=False))
                 self.logger.debug(
-                    'Train Epoch: {} [{}]/[{}] Loss: {:.6f} Supervised Loss: {:.6f} Divergence loss: {:.6f} Knowledge '
-                    'Distillation Loss: {:.6f} Teacher Loss: {:.6f}'.format(
+                    'Train Epoch: {} [{}]/[{}] Loss: {:.6f} Supervised Loss: {:.6f} Knowledge Distillation loss: '
+                    '{:.6f} Hint Loss: {:.6f} mIoU: {:.6f} Teacher Loss: {:.6f}'.format(
                         epoch,
                         batch_idx,
                         len(self.train_data_loader),
                         self.train_metrics.avg('loss'),
                         self.train_metrics.avg('supervised_loss'),
-                        self.train_metrics.avg('div_loss'),
                         self.train_metrics.avg('kd_loss'),
+                        self.train_metrics.avg('hint_loss'),
+                        self.train_iou_metrics.get_iou(),
                         self.train_metrics.avg('teacher_loss')
                     ))
 
@@ -120,8 +125,11 @@ class KnowledgeDistillationTrainer(BaseTrainer):
         log = self.train_metrics.result()
 
         if self.do_validation:
+            # clean cache to prevent out-of-memory with 1 gpu
+            self._clean_cache()
             val_log = self._valid_epoch(epoch)
             log.update(**{'val_'+k : v for k, v in val_log.items()})
+            log.update(**{'val_mIoU': self.valid_iou_metrics.get_iou()})
 
         if self.lr_scheduler is not None:
             self.lr_scheduler.step()
@@ -139,16 +147,17 @@ class KnowledgeDistillationTrainer(BaseTrainer):
         """
         self.model.eval()
         self.valid_metrics.reset()
+        self.valid_iou_metrics.reset()
         with torch.no_grad():
             for batch_idx, (data, target) in enumerate(self.valid_data_loader):
                 data, target = data.to(self.device), target.to(self.device)
                 output = self.model.inference(data)
-
                 supervised_loss = self.criterions[0](output, target)
-                self._clean_cache()
 
                 self.writer.set_step((epoch - 1) * len(self.valid_data_loader) + batch_idx, 'valid')
                 self.valid_metrics.update('supervised_loss', supervised_loss.item())
+                self.valid_iou_metrics.update(output, target)
+
                 for met in self.metric_ftns:
                     self.valid_metrics.update(met.__name__, met(output, target))
                 self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))

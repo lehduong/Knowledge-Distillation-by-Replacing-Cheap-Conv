@@ -138,13 +138,35 @@ class BaseStudent(BaseModel):
 
         return reduce(lambda acc, elem: _get_block(acc, elem), block_name.split(BLOCKS_LEVEL_SPLIT_CHAR), self.model)
 
+    def to_teacher(self):
+        """
+        promote all the student layers to teacher layer i.e. current student would become teacher assistant
+        # https://arxiv.org/pdf/1902.03393.pdf
+        :return:
+        """
+        # keep a flag to indicate the _teaching mode and revert the network to its mode before calling this function
+        # to prevent unpredictable behaviors
+        is_teaching = False
+        if self._teaching:
+            is_teaching = True
+            self._assign_blocks(student_mode=True)
+
+        self._remove_hooks()
+        for param in self.model.parameters():
+            param.requires_grad = False
+        self.teacher_blocks = []
+        self.student_blocks = []
+
+        if is_teaching:
+            self._assign_blocks(student_mode=False)
+
     def update_pruned_layers(self, distillation_args):
         """
         Update the model to be compatible with new distillation args
         :param distillation_args: list of DistillationArgs
         :return: None
         """
-        # remove all registered hooks in previous blocks as we're registing hook all again
+        # remove all registered hooks in previous blocks as we're registering hooks all again
         self._remove_hooks()
         self.distillation_args += distillation_args
         # append the new block to student_blocks and teacher_blocks

@@ -50,8 +50,8 @@
     "optimizer": {
         "type": "Adam",
         "args":{
-            "lr": 0.0002,
-            "weight_decay": 0,
+            "lr": 0.0001,
+            "weight_decay": 0.0001,
             "amsgrad": true
         }
     },
@@ -63,14 +63,14 @@
             "ignore_index": 255
         }
     },
-    "div_loss": {
+    "kd_loss": {
         "type": "MSELoss",
         "args": {
             "reduction": "mean",
             "num_classes": 19
         }
     },
-    "kd_loss": {
+    "hint_loss": {
         "type": "MSELoss",
         "args": {
             "reduction": "mean",
@@ -82,8 +82,8 @@
     "lr_scheduler": {
         "type": "StepLR",
         "args": {
-            "step_size": 50,
-            "gamma": 0.1
+            "step_size": 1,
+            "gamma": 0.99
         }
     },
     "trainer": {
@@ -109,8 +109,8 @@
             "padding": 2,
             "kernel_size": 3
         },
-        "compress_rate": 0.75,
-        "pruning_interval": 4,
+        "compress_rate": 0.2,
+        "pruning_interval": 3,
         "pruning_plan": [
             ["mod4.block6.convs.conv1"],
             ["mod4.block6.convs.conv2"],
