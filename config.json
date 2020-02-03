@@ -30,7 +30,7 @@
             "split": "train",
             "mode": "fine",
             "target_type": "semantic",
-            "num_samples": 200
+            "num_samples": 500
         }
     },
     "val_data_loader": {

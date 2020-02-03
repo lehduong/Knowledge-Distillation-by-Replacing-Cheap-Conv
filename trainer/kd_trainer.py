@@ -97,8 +97,8 @@ class KnowledgeDistillationTrainer(BaseTrainer):
             self.train_metrics.update('kd_loss', kd_loss.item()*self.accumulation_steps)
             self.train_metrics.update('hint_loss', hint_loss.item()*self.accumulation_steps)
             self.train_metrics.update('teacher_loss', teacher_loss.item())
-            self.train_iou_metrics.update(output_st, target)
-            self.train_teacher_iou_metrics.update(output_tc, target)
+            self.train_iou_metrics.update(output_st.detach().cpu(), target.cpu())
+            self.train_teacher_iou_metrics.update(output_tc.cpu(), target.cpu())
 
             for met in self.metric_ftns:
                 self.train_metrics.update(met.__name__, met(output_st, target))
