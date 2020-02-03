@@ -99,8 +99,8 @@ class Cityscapes(VisionDataset):
     ]
     ignore_label = 255
     
-    def __init__(self, root, split='train', mode='fine', target_type='instance',
-                 transform=None, target_transform=None, transforms=None):
+    def __init__(self, root, split='train', mode='fine', target_type='semantic',
+                 transform=None, target_transform=None, transforms=None,num_samples=None):
         super(Cityscapes, self).__init__(root, transforms, transform, target_transform)
         self.mode = 'gtFine' if mode == 'fine' else 'gtCoarse'
         self.images_dir = os.path.join(self.root, 'leftImg8bit', split)
@@ -163,6 +163,12 @@ class Cityscapes(VisionDataset):
 
                 self.images.append(os.path.join(img_dir, file_name))
                 self.targets.append(target_types)
+
+        # Limit numbers of Dataset
+        if num_samples is not None and num_samples < len(self.images):
+            idx = np.random.choice(len(self.images),num_samples)
+            self.images = [self.images[i] for i in idx]
+            self.targets = [self.targets[i] for i in idx]
 
     def __getitem__(self, index):
         """

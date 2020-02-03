@@ -1,3 +1,6 @@
+"""
+code borrowed from https://github.com/NVIDIA/semantic-segmentation
+"""
 import logging
 import torch.nn as nn
 import torch

@@ -2,10 +2,6 @@
     "name": "KnowledgeDistillation",
     "n_gpu": 1,
 
-    "student": {
-        "type": "DeepWV3Plus",
-        "args": {"num_classes": 19}
-    },
     "teacher": {
         "type": "DeepWV3Plus",
         "args": {"num_classes": 19},
@@ -13,13 +9,13 @@
     },
     "transforms": {
         "joint_transforms": {
-            "crop_size": 512,
+            "crop_size": 720,
             "scale_min": 0.5,
             "scale_max": 2,
             "ignore_label": 255
         },
         "extended_transforms": {
-            "color_aug": 0,
+            "color_aug": 0.1,
             "blur": "gaussian"
         }
     },
@@ -33,7 +29,8 @@
             "num_workers": 0,
             "split": "train",
             "mode": "fine",
-            "target_type": "semantic"
+            "target_type": "semantic",
+            "num_samples": 100
         }
     },
     "val_data_loader": {
@@ -57,9 +54,26 @@
             "amsgrad": true
         }
     },
-    "loss": "ce_loss",
+    "supervised_loss": {
+        "type": "CrossEntropyLoss2d",
+        "args": {
+            "ignore_index": 255
+        }
+    },
+    "div_loss": {
+        "type": "KLDivergenceLoss",
+        "args": {
+            "temperature": 1.1
+        }
+    },
+    "kd_loss": {
+        "type": "MSELoss",
+        "args": {
+            "reduction": "mean",
+            "num_classes": 19
+        }
+    },
     "metrics": [
-        "iou"
     ],
     "lr_scheduler": {
         "type": "StepLR",
@@ -77,17 +91,13 @@
         
         "monitor": "min val_loss",
         "early_stop": 10,
+        "accumulation_steps": 2,
 
         "tensorboard": true
     }, 
-    "use_TA": true,
-    "TA": {
-        "tc_path": "./pretrained_models/cityscapes_best.pth",
-        "tc_arch": "models.deeplabv3.DeepWV3Plus",
-        "lambda_student": 0.5,
-        "T_student": 1
-    },
-    "segmentation":{
-        "num_classes":19
+    "KD": {
+        "use": true,
+        "alpha": 0.1,
+        "beta": 0.1
     }
 }

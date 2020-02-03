@@ -5,26 +5,32 @@ SMOOTH = 1e-6
 num_classes = 19
 ignore_label = 255
 
-# https://www.kaggle.com/iezepov/fast-iou-scoring-metric-in-pytorch-and-numpy
-def iou(outputs, labels):
+
+def iou(outputs, labels, ignore_index=255):
     # You can comment out this line if you are passing tensors of equal shape
     # But if you are passing output from UNet or something it will most probably
     # be with the BATCH x 1 x H x W shape
-    # outputs = outputs.squeeze(1)  # BATCH x 1 x H x W => BATCH x H x W
+    # code is borrowed from https://www.kaggle.com/iezepov/fast-iou-scoring-metric-in-pytorch-and-numpy
+    with torch.no_grad():
+        outputs = torch.argmax(outputs, dim=1)
 
-    outputs = result_to_mask(outputs)
-    labels_mk = get_masks_from_label(labels)
+        intersection = (outputs & labels).float().sum((1, 2))  # Will be zero if Truth=0 or Prediction=0
+        union = (outputs | labels).float().sum((1, 2))         # Will be zzero if both are 0
 
-    intersection = (outputs & labels_mk).float().sum((2, 3))  # Will be zero if Truth=0 or Prediction=0
-    union = (outputs | labels_mk).float().sum((2, 3))  # Will be zero if both are 0
-    
-    iou = (intersection + SMOOTH) / (union + SMOOTH)  # We smooth our devision to avoid 0/0
-    iou = iou.sum(1) / num_classes
-    
-    # If iou < 0.5 => iou = 0
-    # thresholded = torch.clamp(20 * (iou - 0.5), 0, 10).ceil() / 10  # This is equal to comparing with thresolds
-    
-    return iou.mean(0)  # Or iou.mean() if you are interested in average across the batch
+        iou = (intersection + SMOOTH) / (union + SMOOTH)  # We smooth our devision to avoid 0/0
+
+        thresholded = torch.clamp(20 * (iou - 0.5), 0, 10).ceil() / 10  # This is equal to comparing with thresolds
+
+    return thresholded.mean()  # Or thresholded.mean() if you are interested in average across the batch
+
+
+def mask2onehot(masks, num_classes=19, ignore_class=255):
+    """
+    :param masks: Torch.Tensor of shape (Batchsize x H x W)
+    :param num_classes: int - number of classes that would be evaluated
+    :param ignore_class: int - classes that would be ignored during eval phase
+    :return: onehot represent of masks
+    """
 
 
 def accuracy(output, target):

@@ -15,6 +15,7 @@ RUN pip install tensorboardX
 RUN pip install opencv-python
 RUN pip install nose
 RUN pip install ninja
+RUN pip install beautifultable
 
 RUN apt-get update
 RUN apt-get install libgtk2.0-dev -y && rm -rf /var/lib/apt/lists/*
