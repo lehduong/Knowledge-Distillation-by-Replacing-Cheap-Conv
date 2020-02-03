@@ -110,7 +110,7 @@
             "kernel_size": 3
         },
         "compress_rate": 0.2,
-        "pruning_interval": 3,
+        "pruning_interval": 2,
         "pruning_plan": [
             ["mod4.block6.convs.conv1"],
             ["mod4.block6.convs.conv2"],
