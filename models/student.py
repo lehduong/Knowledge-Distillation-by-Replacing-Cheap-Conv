@@ -138,13 +138,35 @@ class BaseStudent(BaseModel):
 
         return reduce(lambda acc, elem: _get_block(acc, elem), block_name.split(BLOCKS_LEVEL_SPLIT_CHAR), self.model)
 
+    def to_teacher(self):
+        """
+        promote all the student layers to teacher layer i.e. current student would become teacher assistant
+        # https://arxiv.org/pdf/1902.03393.pdf
+        :return:
+        """
+        # keep a flag to indicate the _teaching mode and revert the network to its mode before calling this function
+        # to prevent unpredictable behaviors
+        is_teaching = False
+        if self._teaching:
+            is_teaching = True
+            self._assign_blocks(student_mode=True)
+
+        self._remove_hooks()
+        for param in self.model.parameters():
+            param.requires_grad = False
+        self.teacher_blocks = []
+        self.student_blocks = []
+
+        if is_teaching:
+            self._assign_blocks(student_mode=False)
+
     def update_pruned_layers(self, distillation_args):
         """
         Update the model to be compatible with new distillation args
         :param distillation_args: list of DistillationArgs
         :return: None
         """
-        # remove all registered hooks in previous blocks as we're registing hook all again
+        # remove all registered hooks in previous blocks as we're registering hooks all again
         self._remove_hooks()
         self.distillation_args += distillation_args
         # append the new block to student_blocks and teacher_blocks
@@ -207,12 +229,31 @@ class BaseStudent(BaseModel):
 
         return self
 
+    def get_distilled_network(self):
+        """
+        Get the distilled student network
+        :return: nn.Module
+        """
+        # prevent side effect of this function
+        flag = False
+        if self._teaching:
+            flag = True
+            self._assign_blocks(student_mode=True)
+
+        ret = copy.deepcopy(self.model)
+
+        # turn the student network to teaching mode as before function call
+        if flag:
+            self._assign_blocks(student_mode=False)
+
+        return ret
+
     @staticmethod
     def __get_number_param(mod):
         return sum(p.numel() for p in mod.parameters())
 
     @staticmethod
-    def __str_module(mod):
+    def __dump_module_name(mod):
         ret = ""
         for param in mod.named_parameters():
             ret += str(param[0]) + "\n"
@@ -240,9 +281,9 @@ class BaseStudent(BaseModel):
 
         for i in range(len(self.student_blocks)):
             table.append_row([self.distillation_args[i].old_block_name,
-                              self.__str_module(self.teacher_blocks[i]),
+                              self.__dump_module_name(self.teacher_blocks[i]),
                               str(self.__get_number_param(self.teacher_blocks[i])),
-                              self.__str_module(self.student_blocks[i]),
+                              self.__dump_module_name(self.student_blocks[i]),
                               str(self.__get_number_param(self.student_blocks[i]))])
 
         return super().__str__() + '\n' + str(table)

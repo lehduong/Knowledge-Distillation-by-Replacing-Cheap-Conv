@@ -1,6 +1,7 @@
 import json
 import torch
 import pandas as pd
+import numpy as np
 from pathlib import Path
 from itertools import repeat
 from collections import OrderedDict
@@ -62,3 +63,59 @@ class MetricTracker:
 
     def result(self):
         return dict(self._data.average)
+
+
+class CityscapesMetricTracker:
+    class_names = [
+        "road",
+        "sidewalk",
+        "building",
+        "wall",
+        "fence",
+        "pole",
+        "traffic_light",
+        "traffic_sight",
+        "vegetation",
+        "terrain",
+        "sky",
+        "person",
+        "rider",
+        "car",
+        "truck",
+        "bus",
+        "train",
+        "motorcycle",
+        "bicycle"
+    ]
+    num_classes = len(class_names)
+
+    def __init__(self, writer=None, ignore_index=255):
+        self.writer = writer
+        class_iou = list(map(lambda x: "class_iou_"+x, self.class_names))
+        self._data = pd.DataFrame(index=class_iou, columns=['total', 'counts', 'average'])
+        self.ignore_index = ignore_index
+        self.conf = np.zeros((self.num_classes+1, self.num_classes+1)) # 19class + 1 ignore class
+        self.reset()
+
+    def reset(self):
+        self.conf = np.zeros((self.num_classes+1, self.num_classes+1))
+
+    def update(self, outputs, labels):
+        labels[labels == self.ignore_index] = self.num_classes
+        outputs = torch.argmax(outputs, dim=1)
+        conf = self.confusion_for_batch(outputs.view(-1), labels.view(-1))
+        self.conf = self.conf + conf
+
+    def get_iou(self, smooth=1e-6):
+        tp = np.diag(self.conf)
+        iou_pc = (tp + smooth) / (smooth + np.sum(self.conf, 0) + np.sum(self.conf, 1) - tp)
+        return np.nanmean(iou_pc[:self.num_classes], 0)
+
+    def confusion_for_batch(self, output, target):
+        num_classes = self.num_classes + 1  # ignore label +1
+        np_op = output.detach().cpu().numpy()
+        np_tg = target.detach().cpu().numpy()
+        x = np_op + num_classes * np_tg
+        bincount_2d = np.bincount(x.astype(np.int32), minlength=num_classes ** 2)
+        conf = np.reshape(bincount_2d, (num_classes, num_classes))
+        return conf

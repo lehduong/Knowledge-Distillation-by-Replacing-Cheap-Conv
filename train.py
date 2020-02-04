@@ -12,6 +12,7 @@ from data_loader import _create_transform
 from parse_config import ConfigParser
 from trainer import KnowledgeDistillationTrainer, KDPTrainer
 from pruning import PFEC
+from utils import WeightScheduler
 
 # fix random seeds for reproducibility
 SEED = 123
@@ -42,20 +43,22 @@ def main(config):
 
     # get function handles of loss and metrics
     supervised_criterion = config.init_obj('supervised_loss', module_loss)
-    div_criterion = config.init_obj('div_loss', module_loss)
     kd_criterion = config.init_obj('kd_loss', module_loss)
-    criterions = [supervised_criterion, div_criterion, kd_criterion]
+    hint_criterion = config.init_obj('hint_loss', module_loss)
+    criterions = [supervised_criterion, kd_criterion, hint_criterion]
     metrics = [getattr(module_metric, met) for met in config['metrics']]
 
     # build optimizer, learning rate scheduler. delete every lines containing lr_scheduler for disabling scheduler
     optimizer = config.init_obj('optimizer', torch.optim, student.parameters())
     lr_scheduler = config.init_obj('lr_scheduler', torch.optim.lr_scheduler, optimizer)
+    # create weight scheduler to anneal the weights between losses
+    weight_scheduler = WeightScheduler(config['weight_scheduler'])
 
     # Knowledge Distillation only
     if config["KD"]["use"]:
         pruner = PFEC(student, config, config['pruning']['compress_rate'])
         trainer = KDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
-                             valid_data_loader, lr_scheduler)
+                             valid_data_loader, lr_scheduler, weight_scheduler)
         # trainer = KnowledgeDistillationTrainer(student, criterions, metrics, optimizer, config, train_data_loader,
         #                                        valid_data_loader, lr_scheduler)
 

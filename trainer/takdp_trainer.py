@@ -6,9 +6,9 @@ from models.student import DistillationArgs, BLOCKS_LEVEL_SPLIT_CHAR
 from functools import reduce
 
 
-class KDPTrainer(KnowledgeDistillationTrainer):
+class MKDPTrainer(KnowledgeDistillationTrainer):
     """
-    Base trainer class for knowledge distillation with unified teacher-student network
+    Knowledge distillation via mimic last layers + filter pruning
     """
 
     def __init__(self, model, pruner, criterions, metric_ftns, optimizer, config, train_data_loader,

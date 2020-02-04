@@ -1,5 +1,6 @@
 import numpy as np
-from ..data_loader.cityscapes import Cityscapes as Dataset
+import torch
+from data_loader.cityscapes import Cityscapes as Dataset
 
 
 cityscapes_cls2color = {}
@@ -25,6 +26,24 @@ def apply_mask(image, mask, cls2color=cityscapes_cls2color, alpha=0.5):
         mask_copy = np.expand_dims(mask_copy, 2)
         masks.append(mask_copy)
     mask = np.concatenate(masks, axis=-1)
-    ret = image*(1-alpha)+alpha*mask/255.0
+    if image is not None:
+        ret = image*(1-alpha)+alpha*mask/255.0
+    else:
+        ret = mask/255.0
+
     return ret
+
+
+def viz_pred_cityscapes(preds):
+    """
+    :param preds: torch.tensor of shape BxCxHxW
+    :return:
+    """
+    preds = torch.argmax(preds, dim=1).cpu().numpy()
+    masks = []
+    for pred in preds:
+        masks.append(apply_mask(None, pred))
+    masks = torch.tensor(masks).permute(0, 3, 1, 2)
+
+    return masks
 
