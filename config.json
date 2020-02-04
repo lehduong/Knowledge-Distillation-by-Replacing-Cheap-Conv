@@ -113,31 +113,25 @@
             {
                 "name": "mod4.block6.convs.conv1",
                 "lr": 0.0001,
-                "compress_rate": 0.5,
-                "epoch": 36
-            },
-            {
-                "name": "mod4.block6.convs.conv2",
-                "lr": 0.0001,
-                "compress_rate": 0.5,
+                "compress_rate": 0.2,
                 "epoch": 32
             },
             {
                 "name": "mod4.block6.convs.conv2",
                 "lr": 0.0001,
-                "compress_rate": 0.5,
+                "compress_rate": 0.2,
                 "epoch": 28
             },
             {
                 "name": "mod5.block1.convs.conv1",
                 "lr": 0.0001,
-                "compress_rate": 0.25,
+                "compress_rate": 0.2,
                 "epoch": 24
             },
             {
                 "name": "mod5.block1.convs.conv2",
                 "lr": 0.0001,
-                "compress_rate": 0.25,
+                "compress_rate": 0.2,
                 "epoch": 21
             },
             {
@@ -174,31 +168,31 @@
                 "name": "mod7.block1.convs.conv1",
                 "lr": 0.0001,
                 "compress_rate": 0.2,
-                "epoch": 7
+                "epoch": 8
             },
             {
                 "name": "mod7.block1.convs.conv2",
                 "lr": 0.0001,
                 "compress_rate": 0.2,
-                "epoch": 5
+                "epoch": 6
             },
             {
                 "name": "aspp.features.1.0",
                 "lr": 0.0001,
                 "compress_rate": 0.2,
-                "epoch": 3
+                "epoch": 4
             },
             {
                 "name": "aspp.features.2.0",
                 "lr": 0.0001,
-                "compress_rate": 0.2,
-                "epoch": 1
+                "compress_rate": 0.15,
+                "epoch": 2
             },
             {
                 "name": "aspp.features.3.0",
                 "lr": 0.0001,
-                "compress_rate": 0.2,
-                "epoch": 0
+                "compress_rate": 0.15,
+                "epoch": 1
             }
         ]
     },
