@@ -7,7 +7,6 @@
         "args": {"num_classes": 19},
         "snapshot": "checkpoints/cityscapes_best.pth"
     },
-    "trainer": "TAKDPTrainer",
     "transforms": {
         "joint_transforms": {
             "crop_size": 720,
@@ -88,6 +87,7 @@
         }
     },
     "trainer": {
+        "name": "TAKDPTrainer",
         "epochs": 100,
 
         "save_dir": "saved/",

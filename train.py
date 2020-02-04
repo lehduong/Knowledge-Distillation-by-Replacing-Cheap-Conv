@@ -55,10 +55,10 @@ def main(config):
 
     # Knowledge Distillation only
     pruner = PFEC(student, config, config['pruning']['compress_rate'])
-    if config['trainer'] == "TAKDPTrainer":
+    if config['trainer']['name'] == "TAKDPTrainer":
         trainer = TAKDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
                                valid_data_loader, lr_scheduler, weight_scheduler)
-    elif config['trainer'] == 'KDPTrainer':
+    elif config['trainer']['name'] == 'KDPTrainer':
         trainer = KDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
                             valid_data_loader, lr_scheduler, weight_scheduler)
     else:
