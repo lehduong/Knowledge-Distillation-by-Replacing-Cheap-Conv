@@ -9,7 +9,7 @@ import models as module_arch
 from models.student import BaseStudent
 from data_loader import _create_transform
 from parse_config import ConfigParser
-from trainer import KDPTrainer
+from trainer import KDPTrainer, TAKDPTrainer
 from pruning import PFEC
 from utils import WeightScheduler
 
@@ -55,8 +55,14 @@ def main(config):
 
     # Knowledge Distillation only
     pruner = PFEC(student, config, config['pruning']['compress_rate'])
-    trainer = KDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
-                         valid_data_loader, lr_scheduler, weight_scheduler)
+    if config['trainer'] == "TAKDPTrainer":
+        trainer = TAKDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
+                               valid_data_loader, lr_scheduler, weight_scheduler)
+    elif config['trainer'] == 'KDPTrainer':
+        trainer = KDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
+                            valid_data_loader, lr_scheduler, weight_scheduler)
+    else:
+        raise Exception("Unsupported trainer")
 
     trainer.train()
 

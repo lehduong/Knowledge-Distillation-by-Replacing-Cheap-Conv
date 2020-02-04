@@ -2,7 +2,8 @@
 Knowledge distillation via Pruning with Teacher Assistant
 """
 from .kdp_trainer import KDPTrainer
-from models.student import BaseStudent
+import numpy as np
+
 
 class TAKDPTrainer(KDPTrainer):
     """
@@ -17,10 +18,27 @@ class TAKDPTrainer(KDPTrainer):
         self.ta_tol = self.config['teaching_assistant']['tol']
 
     def _train_epoch(self, epoch):
-        if ((epoch+1) % self.ta_interval == 0) or (self._teacher_student_iou_gap < self.ta_tol):
+        if (epoch % self.ta_interval == 0) and (self._teacher_student_iou_gap < self.ta_tol):
+            # transfer student to teaching assistant
             self.model.to_teacher()
+
+            # find the soonest layer that will be pruned and prune it now
+            prune_epoch_to_now = np.array(list(map(lambda x: x['epoch'], self.pruning_plan)))-epoch
+            idx = -1
+            min = np.inf
+            for i in range(len(prune_epoch_to_now)):
+                if min > prune_epoch_to_now[i] > 0:
+                    idx = i
+            if idx < 0:
+                print('Early stop as student mIoU is close enough to teacher')
+                return {}
+
+            self.pruning_plan[idx]['epoch'] = epoch
+
+            # dump the new teacher:
             print('Promoted Student to Teaching Assistant')
-            print('Number of parameters: ' + str(BaseStudent.__get_number_param(self.model)))
+            number_of_param = sum(p.numel() for p in self.model.parameters())
+            print('Number of parameters: ' + str(number_of_param))
 
         return super()._train_epoch(epoch)
 

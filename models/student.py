@@ -155,8 +155,8 @@ class BaseStudent(BaseModel):
         self._remove_hooks()
         for param in self.model.parameters():
             param.requires_grad = False
-        self.teacher_blocks = []
-        self.student_blocks = []
+        self.teacher_blocks = nn.ModuleList()
+        self.student_blocks = nn.ModuleList()
         self.distillation_args = []
 
         # remove cache
