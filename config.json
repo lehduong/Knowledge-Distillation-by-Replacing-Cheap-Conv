@@ -203,7 +203,7 @@
         ]
     },
     "teaching_assistant": {
-        "interval": 2,
+        "interval": 10,
         "tol": 0.02
     },
     "weight_scheduler": {

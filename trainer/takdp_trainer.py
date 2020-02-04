@@ -18,7 +18,7 @@ class TAKDPTrainer(KDPTrainer):
         self.ta_tol = self.config['teaching_assistant']['tol']
 
     def _train_epoch(self, epoch):
-        if (epoch % self.ta_interval == 0) and (self._teacher_student_iou_gap < self.ta_tol):
+        if (epoch % self.ta_interval == 0) or (self._teacher_student_iou_gap < self.ta_tol):
             # transfer student to teaching assistant
             self.model.to_teacher()
 
