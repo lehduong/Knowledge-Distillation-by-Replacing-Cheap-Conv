@@ -7,10 +7,9 @@ import losses as module_loss
 import models.metric as module_metric
 import models as module_arch
 from models.student import BaseStudent
-from models.deeplabv3 import get_distillation_args
 from data_loader import _create_transform
 from parse_config import ConfigParser
-from trainer import KnowledgeDistillationTrainer, KDPTrainer
+from trainer import KDPTrainer
 from pruning import PFEC
 from utils import WeightScheduler
 
@@ -55,12 +54,9 @@ def main(config):
     weight_scheduler = WeightScheduler(config['weight_scheduler'])
 
     # Knowledge Distillation only
-    if config["KD"]["use"]:
-        pruner = PFEC(student, config, config['pruning']['compress_rate'])
-        trainer = KDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
-                             valid_data_loader, lr_scheduler, weight_scheduler)
-        # trainer = KnowledgeDistillationTrainer(student, criterions, metrics, optimizer, config, train_data_loader,
-        #                                        valid_data_loader, lr_scheduler)
+    pruner = PFEC(student, config, config['pruning']['compress_rate'])
+    trainer = KDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
+                         valid_data_loader, lr_scheduler, weight_scheduler)
 
     trainer.train()
 

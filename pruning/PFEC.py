@@ -76,22 +76,21 @@ class PFEC(BasePruner):
         std = reference_layer.weight.data.std().item()
         new_layer.weight.data.normal_(mean, std)
 
-    def prune(self, layers, compress_rate=None):
+    def prune(self, layer, compress_rate=None):
         """
         suppose
         :param compress_rate: float - the ratio of number of kept filters must range from 0 to 1
-        :param layers: list of layers
-        :return: list of blocks which are replaceable for input layers.
+        :param layer: nn.Module - a Conv2d layer that need to be pruned
+        :return: block which is replaceable for input layers.
         """
-        ret = []
         if compress_rate is None:
             compress_rate = self.compress_rate
 
-        for layer in layers:
-            num_kept_filter = int(compress_rate * layer.weight.shape[0])
-            new_layer = self.norm_based_pruning(layer, num_kept_filter)
-            for param in new_layer.parameters():
-                param.requires_grad = False
-            transform_block = self.transform_block(num_kept_filter, layer)
-            ret.append(nn.Sequential(new_layer, transform_block))
-        return ret
+        num_kept_filter = int(compress_rate * layer.weight.shape[0])
+        new_layer = self.norm_based_pruning(layer, num_kept_filter)
+        # keep weight of pre-trained layer
+        for param in new_layer.parameters():
+            param.requires_grad = False
+        transform_block = self.transform_block(num_kept_filter, layer)
+
+        return nn.Sequential(new_layer, transform_block)
