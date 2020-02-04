@@ -47,6 +47,9 @@ class KnowledgeDistillationTrainer(BaseTrainer):
             self.criterions = nn.DataParallel(self.criterions)
         del self.criterion
 
+        # early stop or prune
+        self._teacher_student_iou_gap = 1
+
     def _clean_cache(self):
         self.model.student_hidden_outputs, self.model.teacher_hidden_outputs = None, None
         gc.collect()
@@ -138,6 +141,8 @@ class KnowledgeDistillationTrainer(BaseTrainer):
             val_log = self._valid_epoch(epoch)
             log.update(**{'val_'+k : v for k, v in val_log.items()})
             log.update(**{'val_mIoU': self.valid_iou_metrics.get_iou()})
+
+        self._teacher_student_iou_gap = self.train_teacher_iou_metrics.get_iou()-self.train_iou_metrics.get_iou()
 
         if self.lr_scheduler is not None:
             self.lr_scheduler.step()

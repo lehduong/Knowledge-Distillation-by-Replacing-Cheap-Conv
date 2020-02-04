@@ -1,5 +1,5 @@
 {
-    "name": "Cityscapes_Iterative_Knowledge_Distillation_Filter_Pruning",
+    "name": "Iterative_Knowledge_distillation_Filter_pruning",
     "n_gpu": 1,
 
     "teacher": {
@@ -30,7 +30,7 @@
             "split": "train",
             "mode": "fine",
             "target_type": "semantic",
-            "num_samples": 200
+            "num_samples": 500
         }
     },
     "val_data_loader": {
@@ -50,24 +50,27 @@
     "optimizer": {
         "type": "Adam",
         "args":{
-            "lr": 0.0002,
-            "weight_decay": 0,
+            "lr": 0.0001,
+            "weight_decay": 0.0001,
             "amsgrad": true
         }
     },
     "supervised_loss": {
-        "type": "CrossEntropyLoss2d",
+        "type": "FocalLoss",
         "args": {
+            "gamma": 2,
+            "reduction":  "mean",
             "ignore_index": 255
         }
     },
-    "div_loss": {
-        "type": "KLDivergenceLoss",
+    "kd_loss": {
+        "type": "MSELoss",
         "args": {
-            "temperature": 1.1
+            "reduction": "mean",
+            "num_classes": 19
         }
     },
-    "kd_loss": {
+    "hint_loss": {
         "type": "MSELoss",
         "args": {
             "reduction": "mean",
@@ -79,8 +82,8 @@
     "lr_scheduler": {
         "type": "StepLR",
         "args": {
-            "step_size": 50,
-            "gamma": 0.1
+            "step_size": 1,
+            "gamma": 0.9
         }
     },
     "trainer": {
@@ -97,29 +100,105 @@
 
         "tensorboard": true
     },
-    "KD": {
-        "use": true
-    },
     "pruning": {
         "pruner": {
             "dilation": 2,
             "padding": 2,
             "kernel_size": 3
         },
-        "compress_rate": 0.5,
+        "compress_rate": 0.2,
         "pruning_interval": 2,
         "pruning_plan": [
-            ["mod4.block6.convs.conv1"],
-            ["mod4.block6.convs.conv2"],
-            ["mod5.block1.convs.conv1"],
-            ["mod5.block1.convs.conv2"],
-            ["mod5.block2.convs.conv1"],
-            ["mod5.block2.convs.conv2"],
-            ["mod5.block3.convs.conv1"],
-            ["mod5.block3.convs.conv2"],
-            ["mod6.block1.convs.conv2"],
-            ["mod7.block1.convs.conv1"],
-            ["mod7.block1.convs.conv2"]
+            {
+                "name": "mod4.block6.convs.conv1",
+                "lr": 0.0001,
+                "compress_rate": 0.5,
+                "epoch": 36
+            },
+            {
+                "name": "mod4.block6.convs.conv2",
+                "lr": 0.0001,
+                "compress_rate": 0.5,
+                "epoch": 32
+            },
+            {
+                "name": "mod4.block6.convs.conv2",
+                "lr": 0.0001,
+                "compress_rate": 0.5,
+                "epoch": 28
+            },
+            {
+                "name": "mod5.block1.convs.conv1",
+                "lr": 0.0001,
+                "compress_rate": 0.25,
+                "epoch": 24
+            },
+            {
+                "name": "mod5.block1.convs.conv2",
+                "lr": 0.0001,
+                "compress_rate": 0.25,
+                "epoch": 21
+            },
+            {
+                "name": "mod5.block2.convs.conv1",
+                "lr": 0.0001,
+                "compress_rate": 0.2,
+                "epoch": 18
+            },
+            {
+                "name": "mod5.block2.convs.conv2",
+                "lr": 0.0001,
+                "compress_rate": 0.2,
+                "epoch": 16
+            },
+            {
+                "name": "mod5.block3.convs.conv1",
+                "lr": 0.0001,
+                "compress_rate": 0.2,
+                "epoch": 14
+            },
+            {
+                "name": "mod5.block3.convs.conv2",
+                "lr": 0.0001,
+                "compress_rate": 0.2,
+                "epoch": 11
+            },
+            {
+                "name": "mod6.block1.convs.conv2",
+                "lr": 0.0001,
+                "compress_rate": 0.2,
+                "epoch": 9
+            },
+            {
+                "name": "mod7.block1.convs.conv1",
+                "lr": 0.0001,
+                "compress_rate": 0.2,
+                "epoch": 7
+            },
+            {
+                "name": "mod7.block1.convs.conv2",
+                "lr": 0.0001,
+                "compress_rate": 0.2,
+                "epoch": 5
+            },
+            {
+                "name": "aspp.features.1.0",
+                "lr": 0.0001,
+                "compress_rate": 0.2,
+                "epoch": 2
+            },
+            {
+                "name": "aspp.features.2.0",
+                "lr": 0.0001,
+                "compress_rate": 0.2,
+                "epoch": 1
+            },
+            {
+                "name": "aspp.features.3.0",
+                "lr": 0.0001,
+                "compress_rate": 0.2,
+                "epoch": 0
+            }
         ]
     },
     "weight_scheduler": {
@@ -134,7 +213,7 @@
             "max": 0.5
         },
         "gamma": {
-            "value": 1.2,
+            "value": 1.15,
             "anneal_rate": 1
         }
     }

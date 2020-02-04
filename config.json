@@ -201,6 +201,10 @@
             }
         ]
     },
+    "teaching_assistant": {
+        "interval": 10,
+        "tol": 0.2
+    },
     "weight_scheduler": {
         "alpha": {
             "value": 0.1,

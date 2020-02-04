@@ -1,7 +1,8 @@
 import copy
+import torch
+import gc
 from collections import namedtuple
 from functools import reduce
-import torch
 from torch import nn
 from base import BaseModel
 from beautifultable import BeautifulTable
@@ -156,6 +157,11 @@ class BaseStudent(BaseModel):
             param.requires_grad = False
         self.teacher_blocks = []
         self.student_blocks = []
+        self.distillation_args = []
+
+        # remove cache
+        gc.collect()
+        torch.cuda.empty_cache()
 
         if is_teaching:
             self._assign_blocks(student_mode=False)
