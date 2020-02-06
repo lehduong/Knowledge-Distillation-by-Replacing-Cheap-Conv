@@ -36,9 +36,9 @@ class TAKDPTrainer(KDPTrainer):
             self.pruning_plan[idx]['epoch'] = epoch
 
             # dump the new teacher:
-            print('Promoted Student to Teaching Assistant')
+            self.logger.debug('Promoted Student to Teaching Assistant')
             number_of_param = sum(p.numel() for p in self.model.parameters())
-            print('Number of parameters: ' + str(number_of_param))
+            self.logger.debug('Number of parameters: ' + str(number_of_param))
 
         return super()._train_epoch(epoch)
 
