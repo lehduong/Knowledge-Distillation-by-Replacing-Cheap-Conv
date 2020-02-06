@@ -1,6 +1,7 @@
 import copy
 import torch
 import gc
+import numpy as np
 from collections import namedtuple
 from functools import reduce
 from torch import nn
@@ -264,6 +265,11 @@ class BaseStudent(BaseModel):
         for param in mod.named_parameters():
             ret += str(param[0]) + "\n"
         return ret
+
+    def dump_trainable_params(self):
+        model_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        params = sum([np.prod(p.size()) for p in model_parameters])
+        return '\nTrainable parameters: {}'.format(params)
 
     def dump_student_teacher_blocks_info(self):
         table = BeautifulTable()

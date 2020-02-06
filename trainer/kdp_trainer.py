@@ -54,6 +54,7 @@ class KDPTrainer(KnowledgeDistillationTrainer):
                                             **optimizer_arg})
         # add new blocks to student model
         self.model.update_pruned_layers(args)
+        print(self.model.dump_trainable_params())
         print(self.model.dump_student_teacher_blocks_info())
 
     def load_weight(self, checkpoint, pruner=None, pruning_plan=None):

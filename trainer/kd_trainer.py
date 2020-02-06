@@ -109,10 +109,10 @@ class KnowledgeDistillationTrainer(BaseTrainer):
 
             if batch_idx % self.log_step == 0:
                 self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
-                st_masks = visualize.viz_pred_cityscapes(output_st)
-                tc_masks = visualize.viz_pred_cityscapes(output_tc)
-                self.writer.add_image('st_pred', make_grid(st_masks, nrow=8, normalize=False))
-                self.writer.add_image('tc_pred', make_grid(tc_masks, nrow=8, normalize=False))
+                # st_masks = visualize.viz_pred_cityscapes(output_st)
+                # tc_masks = visualize.viz_pred_cityscapes(output_tc)
+                # self.writer.add_image('st_pred', make_grid(st_masks, nrow=8, normalize=False))
+                # self.writer.add_image('tc_pred', make_grid(tc_masks, nrow=8, normalize=False))
                 self.logger.debug(
                     'Train Epoch: {} [{}]/[{}] Loss: {:.6f} Supervised Loss: {:.6f} Knowledge Distillation loss: '
                     '{:.6f} Hint Loss: {:.6f} mIoU: {:.6f} Teacher Loss: {:.6f} Techer mIoU: {:.6f}'.format(
