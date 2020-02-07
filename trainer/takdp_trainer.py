@@ -29,6 +29,7 @@ class TAKDPTrainer(KDPTrainer):
             for i in range(len(prune_epoch_to_now)):
                 if min > prune_epoch_to_now[i] >= 0:
                     idx = i
+                    min = prune_epoch_to_now[i]
             if idx < 0:
                 print('Early stop as student mIoU is close enough to teacher')
                 return {}
