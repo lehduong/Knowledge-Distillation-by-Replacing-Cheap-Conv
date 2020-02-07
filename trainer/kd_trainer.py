@@ -113,12 +113,12 @@ class KnowledgeDistillationTrainer(BaseTrainer):
                 # tc_masks = visualize.viz_pred_cityscapes(output_tc)
                 # self.writer.add_image('st_pred', make_grid(st_masks, nrow=8, normalize=False))
                 # self.writer.add_image('tc_pred', make_grid(tc_masks, nrow=8, normalize=False))
-                self.logger.debug(
+                self.logger.info(
                     'Train Epoch: {} [{}]/[{}] Loss: {:.6f} Supervised Loss: {:.6f} Knowledge Distillation loss: '
                     '{:.6f} Hint Loss: {:.6f} mIoU: {:.6f} Teacher Loss: {:.6f} Techer mIoU: {:.6f}'.format(
                         epoch,
                         batch_idx,
-                        len(self.train_data_loader),
+                        self.len_epoch,
                         self.train_metrics.avg('loss'),
                         self.train_metrics.avg('supervised_loss'),
                         self.train_metrics.avg('kd_loss'),
