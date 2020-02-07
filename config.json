@@ -164,31 +164,31 @@
             },
             {
                 "name": "mod7.block1.convs.conv1",
-                "lr": 0.008,
+                "lr": 0.0005,
                 "compress_rate": 0.2,
                 "epoch": 10
             },
             {
                 "name": "mod7.block1.convs.conv2",
-                "lr": 0.008,
+                "lr": 0.0005,
                 "compress_rate": 0.2,
                 "epoch": 8
             },
             {
                 "name": "aspp.features.1.0",
-                "lr": 0.008,
+                "lr": 0.001,
                 "compress_rate": 0.2,
                 "epoch": 4
             },
             {
                 "name": "aspp.features.2.0",
-                "lr": 0.009,
+                "lr": 0.01,
                 "compress_rate": 0.15,
                 "epoch": 2
             },
             {
                 "name": "aspp.features.3.0",
-                "lr": 0.009,
+                "lr": 0.01,
                 "compress_rate": 0.15,
                 "epoch": 1
             }
