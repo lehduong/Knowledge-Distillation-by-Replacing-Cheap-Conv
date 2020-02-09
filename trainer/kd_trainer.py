@@ -118,7 +118,7 @@ class KnowledgeDistillationTrainer(BaseTrainer):
                     '{:.6f} Hint Loss: {:.6f} mIoU: {:.6f} Teacher Loss: {:.6f} Techer mIoU: {:.6f}'.format(
                         epoch,
                         batch_idx,
-                        len(self.train_data_loader),
+                        self.len_epoch,
                         self.train_metrics.avg('loss'),
                         self.train_metrics.avg('supervised_loss'),
                         self.train_metrics.avg('kd_loss'),
