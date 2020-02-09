@@ -82,8 +82,8 @@
     "lr_scheduler": {
         "type": "StepLR",
         "args": {
-            "step_size": 100,
-            "gamma": 1
+            "step_size": 1,
+            "gamma": 0.75
         }
     },
     "trainer": {
@@ -95,7 +95,6 @@
         "monitor": "min val_loss",
         "early_stop": 10,
         "accumulation_steps": 2,
-
         "log_step": 5,
         "tensorboard": true
     },
@@ -109,105 +108,51 @@
         "pruning_interval": 2,
         "pruning_plan": [
             {
-                "name": "mod4.block6.convs.conv1",
-                "lr": 0.001,
-                "compress_rate": 0.2,
-                "epoch": 35
-            },
-            {
-                "name": "mod4.block6.convs.conv2",
-                "lr": 0.001,
-                "compress_rate": 0.2,
-                "epoch": 29
-            },
-            {
-                "name": "mod5.block1.convs.conv1",
-                "lr": 0.001,
-                "compress_rate": 0.2,
-                "epoch": 25
-            },
-            {
-                "name": "mod5.block1.convs.conv2",
-                "lr": 0.001,
-                "compress_rate": 0.2,
-                "epoch": 22
-            },
-            {
-                "name": "mod5.block2.convs.conv1",
-                "lr": 0.001,
-                "compress_rate": 0.2,
-                "epoch": 20
-            },
-            {
-                "name": "mod5.block2.convs.conv2",
-                "lr": 0.008,
-                "compress_rate": 0.2,
-                "epoch": 18
-            },
-            {
-                "name": "mod5.block3.convs.conv1",
-                "lr": 0.005,
-                "compress_rate": 0.2,
-                "epoch": 16
-            },
-            {
-                "name": "mod5.block3.convs.conv2",
-                "lr": 0.005,
-                "compress_rate": 0.2,
-                "epoch": 14
-            },
-            {
-                "name": "mod6.block1.convs.conv2",
-                "lr": 0.005,
-                "compress_rate": 0.2,
-                "epoch": 12
-            },
-            {
                 "name": "mod7.block1.convs.conv1",
-                "lr": 0.0005,
-                "compress_rate": 0.2,
-                "epoch": 10
+                "compress_rate": 0.15,
+                "epoch": 1
             },
             {
                 "name": "mod7.block1.convs.conv2",
-                "lr": 0.0005,
-                "compress_rate": 0.2,
-                "epoch": 8
+                "compress_rate": 0.15,
+                "epoch": 80
+            },
+            {
+                "name": "mod7.block1.convs.conv3",
+                "compress_rate": 0.15,
+                "epoch": 90
             },
             {
                 "name": "aspp.features.1.0",
-                "lr": 0.001,
-                "compress_rate": 0.2,
-                "epoch": 4
+                "compress_rate": 0.15,
+                "epoch": 100
             },
             {
                 "name": "aspp.features.2.0",
-                "lr": 0.01,
                 "compress_rate": 0.15,
-                "epoch": 2
+                "epoch": 102
             },
             {
                 "name": "aspp.features.3.0",
-                "lr": 0.01,
                 "compress_rate": 0.15,
-                "epoch": 1
+                "epoch": 1000
             }
         ]
     },
     "teaching_assistant": {
         "interval": 10,
-        "tol": 0.0075
+        "tol": 0.02
     },
     "weight_scheduler": {
         "alpha": {
             "value": 0.1,
-            "anneal_rate": 1.05,
-            "max": 0.4
+            "anneal_rate": 1.5,
+            "max": 0.75
         },
         "beta": {
-            "value": 0.5,
-            "anneal_rate": 0.95,
-            "max": 0.2
+            "value": 0.4,
+            "anneal_rate": 0.7,
+            "min": 0.1
         },
         "gamma": {
             "value": 1.15,

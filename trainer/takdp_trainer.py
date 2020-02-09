@@ -41,6 +41,9 @@ class TAKDPTrainer(KDPTrainer):
             self.logger.debug('Promoted Student to Teaching Assistant')
             number_of_param = sum(p.numel() for p in self.model.parameters())
             self.logger.debug('Number of parameters: ' + str(number_of_param))
+
             self.__ta_count = 0
+            self.weight_scheduler.reset()
+
         self.__ta_count += 1
         return super()._train_epoch(epoch)
