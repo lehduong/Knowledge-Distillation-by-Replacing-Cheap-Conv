@@ -16,9 +16,10 @@ class TAKDPTrainer(KDPTrainer):
                          valid_data_loader, lr_scheduler, weight_scheduler, len_epoch)
         self.ta_interval = self.config['teaching_assistant']['interval']
         self.ta_tol = self.config['teaching_assistant']['tol']
+        self.__ta_count = 0
 
     def _train_epoch(self, epoch):
-        if self._teacher_student_iou_gap < self.ta_tol:
+        if (self._teacher_student_iou_gap < self.ta_tol) or ((self.__ta_count % self.ta_interval) == 0):
             # transfer student to teaching assistant
             self.model.to_teacher()
 
@@ -29,6 +30,7 @@ class TAKDPTrainer(KDPTrainer):
             for i in range(len(prune_epoch_to_now)):
                 if min > prune_epoch_to_now[i] >= 0:
                     idx = i
+                    min = prune_epoch_to_now[i]
             if idx < 0:
                 print('Early stop as student mIoU is close enough to teacher')
                 return {}
@@ -39,6 +41,6 @@ class TAKDPTrainer(KDPTrainer):
             self.logger.debug('Promoted Student to Teaching Assistant')
             number_of_param = sum(p.numel() for p in self.model.parameters())
             self.logger.debug('Number of parameters: ' + str(number_of_param))
-
+            self.__ta_count = 0
+        self.__ta_count += 1
         return super()._train_epoch(epoch)
-

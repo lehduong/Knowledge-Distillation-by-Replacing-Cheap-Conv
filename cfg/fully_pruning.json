@@ -1,0 +1,217 @@
+{
+    "name": "KnowledgeDistillation",
+    "n_gpu": 1,
+    "teacher": {
+        "type": "DeepWV3Plus",
+        "args": {
+            "num_classes": 19
+        },
+        "snapshot": "checkpoints/cityscapes_best.pth"
+    },
+    "transforms": {
+        "joint_transforms": {
+            "crop_size": 720,
+            "scale_min": 0.5,
+            "scale_max": 2,
+            "ignore_label": 255
+        },
+        "extended_transforms": {
+            "color_aug": 0.1,
+            "blur": "gaussian"
+        }
+    },
+    "train_data_loader": {
+        "type": "CityscapesDataloader",
+        "args": {
+            "data_dir": "data/",
+            "batch_size": 2,
+            "shuffle": true,
+            "validation_split": 0.0,
+            "num_workers": 0,
+            "split": "train",
+            "mode": "fine",
+            "target_type": "semantic",
+            "num_samples": 512
+        }
+    },
+    "val_data_loader": {
+        "type": "CityscapesDataloader",
+        "args": {
+            "data_dir": "data/",
+            "batch_size": 2,
+            "shuffle": false,
+            "validation_split": 0,
+            "num_workers": 0,
+            "split": "val",
+            "mode": "fine",
+            "target_type": "semantic",
+            "num_samples": 50
+        }
+    },
+    "optimizer": {
+        "type": "Adam",
+        "args": {
+            "lr": 0.001,
+            "weight_decay": 0.0001,
+            "amsgrad": true
+        }
+    },
+    "supervised_loss": {
+        "type": "FocalLoss",
+        "args": {
+            "gamma": 2,
+            "reduction": "mean",
+            "ignore_index": 255
+        }
+    },
+    "kd_loss": {
+        "type": "MSELoss",
+        "args": {
+            "reduction": "mean",
+            "num_classes": 19
+        }
+    },
+    "hint_loss": {
+        "type": "MSELoss",
+        "args": {
+            "reduction": "sum",
+            "num_classes": 1
+        }
+    },
+    "metrics": [],
+    "lr_scheduler": {
+        "type": "StepLR",
+        "args": {
+            "step_size": 100,
+            "gamma": 1
+        }
+    },
+    "trainer": {
+        "name": "TAKDPTrainer",
+        "epochs": 100,
+        "save_dir": "saved/",
+        "save_period": 1,
+        "verbosity": 2,
+        "monitor": "min val_loss",
+        "early_stop": 10,
+        "accumulation_steps": 2,
+
+        "log_step": 5,
+        "tensorboard": true
+    },
+    "pruning": {
+        "pruner": {
+            "dilation": 2,
+            "padding": 2,
+            "kernel_size": 3
+        },
+        "compress_rate": 0.2,
+        "pruning_interval": 2,
+        "pruning_plan": [
+            {
+                "name": "mod4.block6.convs.conv1",
+                "lr": 0.001,
+                "compress_rate": 0.2,
+                "epoch": 35
+            },
+            {
+                "name": "mod4.block6.convs.conv2",
+                "lr": 0.001,
+                "compress_rate": 0.2,
+                "epoch": 29
+            },
+            {
+                "name": "mod5.block1.convs.conv1",
+                "lr": 0.001,
+                "compress_rate": 0.2,
+                "epoch": 25
+            },
+            {
+                "name": "mod5.block1.convs.conv2",
+                "lr": 0.001,
+                "compress_rate": 0.2,
+                "epoch": 22
+            },
+            {
+                "name": "mod5.block2.convs.conv1",
+                "lr": 0.001,
+                "compress_rate": 0.2,
+                "epoch": 20
+            },
+            {
+                "name": "mod5.block2.convs.conv2",
+                "lr": 0.008,
+                "compress_rate": 0.2,
+                "epoch": 18
+            },
+            {
+                "name": "mod5.block3.convs.conv1",
+                "lr": 0.005,
+                "compress_rate": 0.2,
+                "epoch": 16
+            },
+            {
+                "name": "mod5.block3.convs.conv2",
+                "lr": 0.005,
+                "compress_rate": 0.2,
+                "epoch": 14
+            },
+            {
+                "name": "mod6.block1.convs.conv2",
+                "lr": 0.005,
+                "compress_rate": 0.2,
+                "epoch": 12
+            },
+            {
+                "name": "mod7.block1.convs.conv1",
+                "lr": 0.0005,
+                "compress_rate": 0.2,
+                "epoch": 10
+            },
+            {
+                "name": "mod7.block1.convs.conv2",
+                "lr": 0.0005,
+                "compress_rate": 0.2,
+                "epoch": 8
+            },
+            {
+                "name": "aspp.features.1.0",
+                "lr": 0.001,
+                "compress_rate": 0.2,
+                "epoch": 4
+            },
+            {
+                "name": "aspp.features.2.0",
+                "lr": 0.01,
+                "compress_rate": 0.15,
+                "epoch": 2
+            },
+            {
+                "name": "aspp.features.3.0",
+                "lr": 0.01,
+                "compress_rate": 0.15,
+                "epoch": 1
+            }
+        ]
+    },
+    "teaching_assistant": {
+        "interval": 10,
+        "tol": 0.0075
+    },
+    "weight_scheduler": {
+        "alpha": {
+            "value": 0.1,
+            "anneal_rate": 1.05,
+            "max": 0.4
+        },
+        "beta": {
+            "value": 0.5,
+            "anneal_rate": 0.95,
+            "max": 0.2
+        },
+        "gamma": {
+            "value": 1.15,
+            "anneal_rate": 1
+        }
+    }
+}

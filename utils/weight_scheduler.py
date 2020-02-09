@@ -1,3 +1,6 @@
+import copy
+
+
 class WeightScheduler:
     def __init__(self, weight_groups):
         """
@@ -13,6 +16,14 @@ class WeightScheduler:
             anneal_rate: float - ratio which the weight will be multiplied at each step
         """
         self.weights = weight_groups
+        self.default_weight = copy.deepcopy(weight_groups)
+
+    def reset(self):
+        """
+        reset all weights to default value
+        :return:
+        """
+        self.weights = copy.deepcopy(self.default_weight)
 
     def step(self):
         for k in self.weights.keys():

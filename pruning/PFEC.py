@@ -90,7 +90,7 @@ class PFEC(BasePruner):
         new_layer = self.norm_based_pruning(layer, num_kept_filter)
         # keep weight of pre-trained layer
         for param in new_layer.parameters():
-            param.requires_grad = False
+            param.requires_grad = True
         transform_block = self.transform_block(num_kept_filter, layer)
 
         return nn.Sequential(new_layer, transform_block)
