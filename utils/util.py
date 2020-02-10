@@ -94,11 +94,11 @@ class CityscapesMetricTracker:
         class_iou = list(map(lambda x: "class_iou_"+x, self.class_names))
         self._data = pd.DataFrame(index=class_iou, columns=['total', 'counts', 'average'])
         self.ignore_index = ignore_index
-        self.conf = np.zeros((self.num_classes+1, self.num_classes+1)) # 19class + 1 ignore class
+        self.conf = np.zeros((self.num_classes, self.num_classes))  # 19class + 1 ignore class
         self.reset()
 
     def reset(self):
-        self.conf = np.zeros((self.num_classes+1, self.num_classes+1))
+        self.conf = np.zeros((self.num_classes, self.num_classes))
 
     def update(self, outputs, labels):
         labels[labels == self.ignore_index] = self.num_classes
@@ -106,16 +106,16 @@ class CityscapesMetricTracker:
         conf = self.confusion_for_batch(outputs.view(-1), labels.view(-1))
         self.conf = self.conf + conf
 
-    def get_iou(self, smooth=1e-6):
+    def get_iou(self):
         tp = np.diag(self.conf)
-        iou_pc = (tp + smooth) / (smooth + np.sum(self.conf, 0) + np.sum(self.conf, 1) - tp)
-        return np.nanmean(iou_pc[:self.num_classes], 0)
+        iou_pc = tp / (np.sum(self.conf, 0) + np.sum(self.conf, 1) - tp)
+        return np.nanmean(iou_pc)
 
     def confusion_for_batch(self, output, target):
-        num_classes = self.num_classes + 1  # ignore label +1
-        np_op = output.detach().cpu().numpy()
-        np_tg = target.detach().cpu().numpy()
-        x = np_op + num_classes * np_tg
-        bincount_2d = np.bincount(x.astype(np.int32), minlength=num_classes ** 2)
-        conf = np.reshape(bincount_2d, (num_classes, num_classes))
-        return conf
+        pred = output.flatten().detach().cpu().numpy()
+        target = target.flatten().detach().cpu().numpy()
+        mask = (target >= 0) & (target < self.num_classes)
+        hist = np.bincount(
+            self.num_classes * target[mask].astype(int) +
+            pred[mask], minlength=self.num_classes ** 2).reshape(self.num_classes, self.num_classes)
+        return hist
