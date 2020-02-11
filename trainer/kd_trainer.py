@@ -5,7 +5,7 @@ from functools import reduce
 from base import BaseTrainer
 from utils import inf_loop, MetricTracker, visualize, CityscapesMetricTracker
 import gc
-import utils.optim.lr_scheduler.MyOneCycleLR as MyOneCycleLR
+from  utils.optim.lr_scheduler import MyOneCycleLR
 
 
 class KnowledgeDistillationTrainer(BaseTrainer):

@@ -31,7 +31,7 @@
             "split": "train",
             "mode": "fine",
             "target_type": "semantic",
-            "num_samples": 320
+            "num_samples": 220
         }
     },
     "val_data_loader": {
@@ -55,8 +55,10 @@
         }
     },
     "supervised_loss": {
-        "type": "CrossEntropyLoss2d",
+        "type": "FocalLoss",
         "args": {
+            "gamma": 2,
+            "reduction": "mean",
             "ignore_index": 255
         }
     },
@@ -76,7 +78,7 @@
     },
     "metrics": [],
     "lr_scheduler": {
-        "type": "OneCycleLR",
+        "type": "MyOneCycleLR",
         "args": {
             "num_steps": 30000
         }
@@ -100,42 +102,82 @@
             "kernel_size": 3
         },
         "compress_rate": 0.2,
-        "pruning_interval": 5,
+        "pruning_interval": 2,
         "pruning_plan": [
             {
-                "name": "mod7.block1.convs.conv3",
+                "name": "mod5.block1.convs.conv1",
+                "compress_rate": 0.2,
+                "epoch": 1
+            },
+            {
+                "name": "mod5.block2.convs.conv1",
+                "compress_rate": 0.5,
+                "epoch": 49
+            },
+            {
+                "name": "mod5.block2.convs.conv2",
+                "compress_rate": 0.5,
+                "epoch": 56
+            },
+            {
+                "name": "mod5.block3.convs.conv1",
+                "compress_rate": 0.3,
+                "epoch": 64
+            },
+            {
+                "name": "mod5.block3.convs.conv2",
+                "compress_rate": 0.3,
+                "epoch": 71
+            },
+            {
+                "name": "mod6.block1.convs.conv2",
+                "compress_rate": 0.25,
+                "epoch": 90
+            },
+            {
+                "name": "mod7.block1.convs.conv1",
+                "compress_rate": 0.1,
+                "epoch": 95
+            },
+            {
+                "name": "mod7.block1.convs.conv2",
                 "compress_rate": 0.15,
-                "epoch": 10
+                "epoch": 100
+            },
+            {
+                "name": "mod7.block1.convs.conv3",
+                "compress_rate": 0.1,
+                "epoch": 101
             },
             {
                 "name": "aspp.features.1.0",
                 "compress_rate": 0.15,
-                "epoch": 20
+                "epoch": 102
             },
             {
                 "name": "aspp.features.2.0",
                 "compress_rate": 0.15,
-                "epoch": 30
+                "epoch": 109
             },
             {
                 "name": "aspp.features.3.0",
                 "compress_rate": 0.15,
-                "epoch": 52
+                "epoch": 1000
             }
         ]
     },
     "teaching_assistant": {
-        "interval": 6,
+        "interval": 15,
         "tol": 0.03
     },
     "weight_scheduler": {
         "alpha": {
-            "value": 0.00001,
+            "value": 1e-05,
             "anneal_rate": 2,
             "max": 0.0001
         },
         "beta": {
-            "value": 0.00001,
+            "value": 1e-05,
             "anneal_rate": 0.7,
             "min": 0.0001
         },
