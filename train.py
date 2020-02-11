@@ -6,6 +6,7 @@ import data_loader as module_data
 import losses as module_loss
 import models.metric as module_metric
 import models as module_arch
+import utils.optim as module_optim
 from models.student import BaseStudent
 from data_loader import _create_transform
 from parse_config import ConfigParser
@@ -48,8 +49,8 @@ def main(config):
     metrics = [getattr(module_metric, met) for met in config['metrics']]
 
     # build optimizer, learning rate scheduler. delete every lines containing lr_scheduler for disabling scheduler
-    optimizer = config.init_obj('optimizer', torch.optim, student.parameters())
-    lr_scheduler = config.init_obj('lr_scheduler', torch.optim.lr_scheduler, optimizer)
+    optimizer = config.init_obj('optimizer', module_optim, student.parameters())
+    lr_scheduler = config.init_obj('lr_scheduler', module_optim.lr_scheduler, optimizer)
     # create weight scheduler to anneal the weights between losses
     weight_scheduler = WeightScheduler(config['weight_scheduler'])
 
