@@ -31,7 +31,7 @@
             "split": "train",
             "mode": "fine",
             "target_type": "semantic",
-            "num_samples": 512
+            "num_samples": 320
         }
     },
     "val_data_loader": {
@@ -49,18 +49,14 @@
         }
     },
     "optimizer": {
-        "type": "Adam",
+        "type": "RAdam",
         "args": {
-            "lr": 0.001,
-            "weight_decay": 0.0001,
-            "amsgrad": true
+            "lr": 0.001
         }
     },
     "supervised_loss": {
-        "type": "FocalLoss",
+        "type": "CrossEntropyLoss2d",
         "args": {
-            "gamma": 2,
-            "reduction": "mean",
             "ignore_index": 255
         }
     },
@@ -74,16 +70,15 @@
     "hint_loss": {
         "type": "MSELoss",
         "args": {
-            "reduction": "sum",
-            "num_classes": 1
+            "reduction": "mean",
+            "num_classes": 10000
         }
     },
     "metrics": [],
     "lr_scheduler": {
-        "type": "StepLR",
+        "type": "OneCycleLR",
         "args": {
-            "step_size": 1,
-            "gamma": 0.75
+            "num_steps": 30000
         }
     },
     "trainer": {
@@ -105,54 +100,44 @@
             "kernel_size": 3
         },
         "compress_rate": 0.2,
-        "pruning_interval": 2,
+        "pruning_interval": 5,
         "pruning_plan": [
-            {
-                "name": "mod7.block1.convs.conv1",
-                "compress_rate": 0.15,
-                "epoch": 1
-            },
-            {
-                "name": "mod7.block1.convs.conv2",
-                "compress_rate": 0.15,
-                "epoch": 80
-            },
             {
                 "name": "mod7.block1.convs.conv3",
                 "compress_rate": 0.15,
-                "epoch": 90
+                "epoch": 10
             },
             {
                 "name": "aspp.features.1.0",
                 "compress_rate": 0.15,
-                "epoch": 100
+                "epoch": 20
             },
             {
                 "name": "aspp.features.2.0",
                 "compress_rate": 0.15,
-                "epoch": 102
+                "epoch": 30
             },
             {
                 "name": "aspp.features.3.0",
                 "compress_rate": 0.15,
-                "epoch": 1000
+                "epoch": 52
             }
         ]
     },
     "teaching_assistant": {
-        "interval": 10,
-        "tol": 0.02
+        "interval": 6,
+        "tol": 0.03
     },
     "weight_scheduler": {
         "alpha": {
-            "value": 0.1,
-            "anneal_rate": 1.5,
-            "max": 0.75
+            "value": 0.00001,
+            "anneal_rate": 2,
+            "max": 0.0001
         },
         "beta": {
-            "value": 0.4,
+            "value": 0.00001,
             "anneal_rate": 0.7,
-            "min": 0.1
+            "min": 0.0001
         },
         "gamma": {
             "value": 1.15,

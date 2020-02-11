@@ -5,6 +5,7 @@ from functools import reduce
 from base import BaseTrainer
 from utils import inf_loop, MetricTracker, visualize, CityscapesMetricTracker
 import gc
+import utils.optim.lr_scheduler.MyOneCycleLR as MyOneCycleLR
 
 
 class KnowledgeDistillationTrainer(BaseTrainer):
@@ -91,6 +92,8 @@ class KnowledgeDistillationTrainer(BaseTrainer):
 
             if (batch_idx+1) % self.accumulation_steps == 0:
                 self.optimizer.step()
+                if isinstance(self.lr_scheduler, MyOneCycleLR):
+                    self.lr_scheduler.step()
                 self.optimizer.zero_grad()
 
             self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
@@ -131,9 +134,6 @@ class KnowledgeDistillationTrainer(BaseTrainer):
             if batch_idx == self.len_epoch:
                 break
 
-            if isinstance(self.lr_scheduler, torch.optim.lr_scheduler.OneCycleLR):
-                self.lr_scheduler.step()
-
         log = self.train_metrics.result()
         log.update({'train_teacher_mIoU': self.train_teacher_iou_metrics.get_iou()})
         log.update({'train_student_mIoU': self.train_iou_metrics.get_iou()})
@@ -147,7 +147,7 @@ class KnowledgeDistillationTrainer(BaseTrainer):
 
         self._teacher_student_iou_gap = self.train_teacher_iou_metrics.get_iou()-self.train_iou_metrics.get_iou()
 
-        if self.lr_scheduler is not None and not isinstance(self.lr_scheduler, torch.optim.lr_scheduler.OneCycleLR):
+        if self.lr_scheduler is not None and not isinstance(self.lr_scheduler, MyOneCycleLR):
             self.lr_scheduler.step()
 
         self.weight_scheduler.step()

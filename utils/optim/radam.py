@@ -1,7 +1,6 @@
 import math
 import torch
 from torch.optim.optimizer import Optimizer, required
-from torch.optim import *
 
 
 class RAdam(Optimizer):
