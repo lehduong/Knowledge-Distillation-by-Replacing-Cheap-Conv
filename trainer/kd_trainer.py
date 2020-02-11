@@ -131,6 +131,9 @@ class KnowledgeDistillationTrainer(BaseTrainer):
             if batch_idx == self.len_epoch:
                 break
 
+            if isinstance(self.lr_scheduler, torch.optim.lr_scheduler.OneCycleLR):
+                self.lr_scheduler.step()
+
         log = self.train_metrics.result()
         log.update({'train_teacher_mIoU': self.train_teacher_iou_metrics.get_iou()})
         log.update({'train_student_mIoU': self.train_iou_metrics.get_iou()})
@@ -144,7 +147,7 @@ class KnowledgeDistillationTrainer(BaseTrainer):
 
         self._teacher_student_iou_gap = self.train_teacher_iou_metrics.get_iou()-self.train_iou_metrics.get_iou()
 
-        if self.lr_scheduler is not None:
+        if self.lr_scheduler is not None and not isinstance(self.lr_scheduler, torch.optim.lr_scheduler.OneCycleLR):
             self.lr_scheduler.step()
 
         self.weight_scheduler.step()
