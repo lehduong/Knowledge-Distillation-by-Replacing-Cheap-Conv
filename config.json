@@ -10,7 +10,7 @@
     },
     "transforms": {
         "joint_transforms": {
-            "crop_size": 720,
+            "crop_size": 512,
             "scale_min": 0.5,
             "scale_max": 2,
             "ignore_label": 255
@@ -24,7 +24,7 @@
         "type": "CityscapesDataloader",
         "args": {
             "data_dir": "data/",
-            "batch_size": 2,
+            "batch_size": 4,
             "shuffle": true,
             "validation_split": 0.0,
             "num_workers": 0,
@@ -78,13 +78,13 @@
     },
     "metrics": [],
     "lr_scheduler": {
-        "type": "ReduceLROnPlateau",
+        "type": "MyReduceLROnPlateau",
         "args": {
-            "mode": "max",
+            "mode": "min",
             "threshold": 0.05,
             "factor": 0.5,
             "patience": 1,
-            "min_lr": 0.0001
+            "min_lr": 0.00005
         }
     },
     "trainer": {
