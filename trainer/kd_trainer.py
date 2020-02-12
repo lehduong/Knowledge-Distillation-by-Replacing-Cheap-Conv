@@ -5,7 +5,7 @@ from functools import reduce
 from base import BaseTrainer
 from utils import inf_loop, MetricTracker, visualize, CityscapesMetricTracker
 import gc
-from  utils.optim.lr_scheduler import MyOneCycleLR
+from  utils.optim.lr_scheduler import MyOneCycleLR, MyReduceLROnPlateau
 
 
 class KnowledgeDistillationTrainer(BaseTrainer):
@@ -150,7 +150,7 @@ class KnowledgeDistillationTrainer(BaseTrainer):
         self._teacher_student_iou_gap = self.train_teacher_iou_metrics.get_iou()-self.train_iou_metrics.get_iou()
 
         if (self.lr_scheduler is not None) and (not isinstance(self.lr_scheduler, MyOneCycleLR)):
-            if isinstance(self.lr_scheduler, torch.optim.lr_scheduler.MyReduceLROnPlateau):
+            if isinstance(self.lr_scheduler, MyReduceLROnPlateau):
                 self.lr_scheduler.step(self.train_iou_metrics.get_iou())
             else:
                 self.lr_scheduler.step()
