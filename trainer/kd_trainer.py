@@ -150,7 +150,7 @@ class KnowledgeDistillationTrainer(BaseTrainer):
         self._teacher_student_iou_gap = self.train_teacher_iou_metrics.get_iou()-self.train_iou_metrics.get_iou()
 
         if (self.lr_scheduler is not None) and (not isinstance(self.lr_scheduler, MyOneCycleLR)):
-            if isinstance(self.lr_scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
+            if isinstance(self.lr_scheduler, torch.optim.lr_scheduler.MyReduceLROnPlateau):
                 self.lr_scheduler.step(self.train_iou_metrics.get_iou())
             else:
                 self.lr_scheduler.step()
