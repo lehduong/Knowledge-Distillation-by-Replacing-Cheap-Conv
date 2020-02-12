@@ -62,6 +62,7 @@ class KnowledgeDistillationTrainer(BaseTrainer):
         self.model.train()
         self.train_metrics.reset()
         self.train_iou_metrics.reset()
+        self.train_teacher_iou_metrics.reset()
         self._clean_cache()
 
         for batch_idx, (data, target) in enumerate(self.train_data_loader):
