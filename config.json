@@ -83,7 +83,7 @@
             "mode": "min",
             "threshold": 0.05,
             "factor": 0.5,
-            "patience": 1,
+            "patience": 0,
             "min_lr": 0.00005
         }
     },
@@ -178,7 +178,7 @@
         ]
     },
     "teaching_assistant": {
-        "interval": 20,
+        "interval": 15,
         "tol": 0.03
     },
     "weight_scheduler": {
