@@ -11,9 +11,9 @@ class TAKDPTrainer(KDPTrainer):
     """
 
     def __init__(self, model, pruner, criterions, metric_ftns, optimizer, config, train_data_loader,
-                 valid_data_loader=None, lr_scheduler=None, weight_scheduler=None, len_epoch=None):
+                 valid_data_loader=None, lr_scheduler=None, weight_scheduler=None):
         super().__init__(model, pruner, criterions, metric_ftns, optimizer, config, train_data_loader,
-                         valid_data_loader, lr_scheduler, weight_scheduler, len_epoch)
+                         valid_data_loader, lr_scheduler, weight_scheduler)
         self.ta_interval = self.config['teaching_assistant']['interval']
         self.ta_tol = self.config['teaching_assistant']['tol']
         self.__ta_count = 0
