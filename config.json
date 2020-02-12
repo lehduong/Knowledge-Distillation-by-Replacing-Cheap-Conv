@@ -31,7 +31,7 @@
             "split": "train",
             "mode": "fine",
             "target_type": "semantic",
-            "num_samples": 220
+            "num_samples": 120
         }
     },
     "val_data_loader": {
@@ -51,7 +51,7 @@
     "optimizer": {
         "type": "RAdam",
         "args": {
-            "lr": 0.001
+            "lr": 0.01
         }
     },
     "supervised_loss": {
@@ -66,7 +66,7 @@
         "type": "MSELoss",
         "args": {
             "reduction": "mean",
-            "num_classes": 19
+            "num_classes": 1
         }
     },
     "hint_loss": {
@@ -81,7 +81,7 @@
         "type": "ReduceLROnPlateau",
         "args": {
             "mode": "max",
-            "threshold": 0.01,
+            "threshold": 0.05,
             "factor": 0.5,
             "patience": 1,
             "min_lr": 0.0001
@@ -98,7 +98,7 @@
         "accumulation_steps": 2,
         "log_step": 5,
         "do_validation_interval": 5,
-        "len_epoch": 50,
+        "len_epoch": 30,
         "tensorboard": true
     },
     "pruning": {
@@ -178,7 +178,7 @@
         ]
     },
     "teaching_assistant": {
-        "interval": 10,
+        "interval": 20,
         "tol": 0.03
     },
     "weight_scheduler": {
@@ -188,9 +188,9 @@
             "max": 0.0001
         },
         "beta": {
-            "value": 1e-05,
-            "anneal_rate": 0.7,
-            "min": 0.0001
+            "value": 0.1,
+            "anneal_rate": 1.1,
+            "max": 0.6
         },
         "gamma": {
             "value": 1.15,

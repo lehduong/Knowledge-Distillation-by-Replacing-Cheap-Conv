@@ -151,7 +151,7 @@ class KnowledgeDistillationTrainer(BaseTrainer):
 
         if (self.lr_scheduler is not None) and (not isinstance(self.lr_scheduler, MyOneCycleLR)):
             if isinstance(self.lr_scheduler, MyReduceLROnPlateau):
-                self.lr_scheduler.step(self.train_iou_metrics.get_iou())
+                self.lr_scheduler.step(self.train_metrics.avg('loss'))
             else:
                 self.lr_scheduler.step()
 

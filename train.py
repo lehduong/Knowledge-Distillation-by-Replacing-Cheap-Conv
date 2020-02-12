@@ -7,7 +7,7 @@ import losses as module_loss
 import models.metric as module_metric
 import models as module_arch
 import utils.optim as module_optim
-from models.student import BaseStudent
+from models.students import BaseStudent
 from data_loader import _create_transform
 from parse_config import ConfigParser
 from trainer import KDPTrainer, TAKDPTrainer

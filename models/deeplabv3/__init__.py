@@ -3,7 +3,7 @@ from torch import nn
 
 from .deeplabv3 import DeepWV3Plus
 from ..common.initialization import initialize_weights
-from ..student import DistillationArgs
+from models.students.base_student import DistillationArgs
 
 
 def get_distil_model(teacher):

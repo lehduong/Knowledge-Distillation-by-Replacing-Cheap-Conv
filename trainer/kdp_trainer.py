@@ -2,8 +2,7 @@
 Knowledge distillation via Pruning i.e. KDP
 """
 from .kd_trainer import KnowledgeDistillationTrainer
-from models.student import DistillationArgs, BLOCKS_LEVEL_SPLIT_CHAR
-from functools import reduce
+from models.students.base_student import DistillationArgs
 import copy
 
 
