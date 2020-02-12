@@ -73,7 +73,7 @@
         "type": "MSELoss",
         "args": {
             "reduction": "mean",
-            "num_classes": 10000
+            "num_classes": 1
         }
     },
     "metrics": [],
@@ -81,14 +81,15 @@
         "type": "MyReduceLROnPlateau",
         "args": {
             "mode": "min",
-            "threshold": 0.05,
+            "threshold": 0.0002,
             "factor": 0.5,
             "patience": 0,
+            "verbose": true,
             "min_lr": 0.00005
         }
     },
     "trainer": {
-        "name": "TAKDPTrainer",
+        "name": "ATAKDPTrainer",
         "epochs": 100,
         "save_dir": "saved/",
         "save_period": 3,

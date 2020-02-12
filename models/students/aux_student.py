@@ -1,6 +1,7 @@
 from models.students.base_student import BaseStudent
 import gc
 import torch
+import copy
 
 
 class AuxStudent(BaseStudent):
@@ -9,11 +10,11 @@ class AuxStudent(BaseStudent):
         :param model: nn.Module object - pretrained model that need to be distilled
         :param distillation_args: LIST of DistillationArgs object - contains the distillation information
         """
-        super().__init__(model, distillation_args, logger)
         self.aux_layer_names = aux_args
         self.student_aux_outputs = []
         self.teacher_aux_outputs = []
         self._aux_hook_handlers = []
+        super().__init__(model, distillation_args, logger)
 
     def _register_aux_hooks(self, aux_layer_names):
         def save_forward_output(out):
@@ -30,6 +31,11 @@ class AuxStudent(BaseStudent):
 
         self.aux_layer_names = self.aux_layer_names + aux_layer_names
 
+    def _remove_aux_hooks(self):
+        while self._aux_hook_handlers:
+            handler = self._aux_hook_handlers.pop()
+            handler.remove()
+
     def flush_aux_layers(self):
         self.aux_layer_names = []
         self.student_aux_outputs = []
@@ -45,3 +51,50 @@ class AuxStudent(BaseStudent):
         self.flush_aux_layers()
         self.aux_layer_names = aux_args
         self._register_aux_hooks(aux_args)
+
+    def forward(self, x):
+        self.student_aux_outputs = []
+        self.teacher_aux_outputs = []
+
+        return super().forward(x)
+
+    def inference(self, x):
+        self.student_aux_outputs = []
+        self.teacher_aux_outputs = []
+        return super().inference(x)
+    
+    def eval(self):
+        if not self.training:
+            return self
+
+        self.training = False
+
+        for block in self.student_blocks:
+            block.eval()
+        self._remove_hooks()
+        self._remove_aux_hooks()
+
+        return self
+
+    def train(self):
+        """
+        The parameters of teacher's network will always be set to EVAL
+        :return: self
+        """
+        if self.training:
+            return self
+
+        self.training = True
+
+        for block in self.student_blocks:
+            block.train()
+
+        if self._teaching:
+            self._assign_blocks(student_mode=True)
+        self._register_hooks()
+
+        aux_layer_names = copy.deepcopy(self.aux_layer_names)
+        self.aux_layer_names = []
+        self._register_aux_hooks(aux_layer_names)
+
+        return self

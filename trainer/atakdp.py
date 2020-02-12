@@ -2,6 +2,7 @@ from torchvision.utils import make_grid
 from functools import reduce
 from utils import inf_loop, MetricTracker, visualize, CityscapesMetricTracker
 from .takdp_trainer import TAKDPTrainer
+from  utils.optim.lr_scheduler import MyOneCycleLR, MyReduceLROnPlateau
 import numpy as np
 
 
@@ -20,7 +21,7 @@ class ATAKDPTrainer(TAKDPTrainer):
 
     def _train_epoch(self, epoch):
         # Teaching assistant
-        if (self._teacher_student_iou_gap < self.ta_tol) or ((self.__ta_count % self.ta_interval) == 0):
+        if (self._teacher_student_iou_gap < self.ta_tol) or ((self._ta_count % self.ta_interval) == 0):
             # transfer student to teaching assistant
             self.model.to_teacher()
 
@@ -43,8 +44,11 @@ class ATAKDPTrainer(TAKDPTrainer):
             number_of_param = sum(p.numel() for p in self.model.parameters())
             self.logger.debug('Number of parameters: ' + str(number_of_param))
 
-            self.__ta_count = 0
+            self._ta_count = 0
             self.weight_scheduler.reset()
+
+            # remove old auxiliary hooks
+            self.model.flush_aux_layers()
 
             # update auxiliary loss
             sorted_pruning_plan = sorted(self.pruning_plan, key=lambda x: x['epoch'])
@@ -55,10 +59,10 @@ class ATAKDPTrainer(TAKDPTrainer):
             if pruned_layer_name_idx > (len(sorted_layer_names) - num):
                 aux_layer_names = sorted_layer_names[pruned_layer_name_idx+1:]
             else:
-                aux_layer_names = sorted_layer_names[pruned_layer_name+1: pruned_layer_name_idx+num+1]
+                aux_layer_names = sorted_layer_names[pruned_layer_name_idx+1: pruned_layer_name_idx+num+1]
             self.model.update_aux_layers(aux_layer_names)
 
-        self.__ta_count += 1
+        self._ta_count += 1
 
         # pruning
         self.prune(epoch)
@@ -103,11 +107,13 @@ class ATAKDPTrainer(TAKDPTrainer):
 
             alpha = self.weight_scheduler.alpha
             beta = self.weight_scheduler.beta
-            loss = alpha * supervised_loss + beta * kd_loss + (1 - alpha - beta) * (hint_loss+aux_loss)
+            loss = hint_loss+aux_loss
             loss.backward()
 
             if (batch_idx + 1) % self.accumulation_steps == 0:
                 self.optimizer.step()
+                if isinstance(self.lr_scheduler, MyOneCycleLR):
+                    self.lr_scheduler.step()
                 self.optimizer.zero_grad()
 
             self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
@@ -132,18 +138,19 @@ class ATAKDPTrainer(TAKDPTrainer):
                 # self.writer.add_image('st_pred', make_grid(st_masks, nrow=8, normalize=False))
                 # self.writer.add_image('tc_pred', make_grid(tc_masks, nrow=8, normalize=False))
                 self.logger.info(
-                    'Train Epoch: {} [{}]/[{}] Loss: {:.6f} Supervised Loss: {:.6f} Knowledge Distillation loss: '
-                    '{:.6f} Hint Loss: {:.6f} mIoU: {:.6f} Teacher Loss: {:.6f} Techer mIoU: {:.6f}'.format(
+                    'Train Epoch: {} [{}]/[{}] Loss: {:.6f} mIoU: {:.6f} Teacher mIoU: {:.6f} Supervised Loss: {:.6f} Knowledge Distillation loss: '
+                    '{:.6f} Hint Loss: {:.6f} Aux Loss: {:.6f} Teacher Loss: {:.6f}'.format(
                         epoch,
                         batch_idx,
                         self.len_epoch,
                         self.train_metrics.avg('loss'),
+                        self.train_iou_metrics.get_iou(),
+                        self.train_teacher_iou_metrics.get_iou(),
                         self.train_metrics.avg('supervised_loss'),
                         self.train_metrics.avg('kd_loss'),
                         self.train_metrics.avg('hint_loss'),
-                        self.train_iou_metrics.get_iou(),
+                        self.train_metrics.avg('aux_loss'),
                         self.train_metrics.avg('teacher_loss'),
-                        self.train_teacher_iou_metrics.get_iou()
                     ))
 
             if batch_idx == self.len_epoch:
@@ -153,18 +160,27 @@ class ATAKDPTrainer(TAKDPTrainer):
         log.update({'train_teacher_mIoU': self.train_teacher_iou_metrics.get_iou()})
         log.update({'train_student_mIoU': self.train_iou_metrics.get_iou()})
 
-        if self.do_validation:
-            # clean cache to prevent out-of-memory with 1 gpu
-            self._clean_cache()
-            val_log = self._valid_epoch(epoch)
-            log.update(**{'val_' + k: v for k, v in val_log.items()})
-            log.update(**{'val_mIoU': self.valid_iou_metrics.get_iou()})
+        # TODO: Fix out of memory when runing validation
+        # if self.do_validation:
+        #     # clean cache to prevent out-of-memory with 1 gpu
+        #     self._clean_cache()
+        #     val_log = self._valid_epoch(epoch)
+        #     log.update(**{'val_' + k: v for k, v in val_log.items()})
+        #     log.update(**{'val_mIoU': self.valid_iou_metrics.get_iou()})
 
         self._teacher_student_iou_gap = self.train_teacher_iou_metrics.get_iou() - self.train_iou_metrics.get_iou()
 
-        if self.lr_scheduler is not None:
-            self.lr_scheduler.step()
+        if (self.lr_scheduler is not None) and (not isinstance(self.lr_scheduler, MyOneCycleLR)):
+            if isinstance(self.lr_scheduler, MyReduceLROnPlateau):
+                self.lr_scheduler.step(self.train_metrics.avg('loss'))
+            else:
+                self.lr_scheduler.step()
 
         self.weight_scheduler.step()
 
         return log
+
+    def _clean_cache(self):
+        self.model.student_aux_outputs, self.model.teacher_aux_outputs = None, None
+        super()._clean_cache()
+

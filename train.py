@@ -7,7 +7,7 @@ import losses as module_loss
 import models.metric as module_metric
 import models as module_arch
 import utils.optim as module_optim
-from models.students import BaseStudent
+from models.students import BaseStudent, AuxStudent
 from data_loader import _create_transform
 from parse_config import ConfigParser
 from trainer import KDPTrainer, TAKDPTrainer, ATAKDPTrainer
@@ -38,7 +38,11 @@ def main(config):
 
     # build models architecture, then print to console
     args = []
-    student = BaseStudent(teacher, args)
+    if config['trainer']['name'] != 'ATAKDPTrainer':
+        student = BaseStudent(teacher, args)
+    else:
+        aux_args = []
+        student = AuxStudent(teacher, args, aux_args)
     logger.info(student)
 
     # get function handles of loss and metrics
