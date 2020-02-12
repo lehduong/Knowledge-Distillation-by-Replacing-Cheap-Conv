@@ -108,7 +108,7 @@
             "kernel_size": 3
         },
         "compress_rate": 0.2,
-        "pruning_interval": 2,
+        "auxiliary_num_layers": 3,
         "pruning_plan": [
             {
                 "name": "mod5.block1.convs.conv1",

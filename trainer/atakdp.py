@@ -1,63 +1,69 @@
-import torch
-import torch.nn as nn
 from torchvision.utils import make_grid
 from functools import reduce
-from base import BaseTrainer
 from utils import inf_loop, MetricTracker, visualize, CityscapesMetricTracker
 from .takdp_trainer import TAKDPTrainer
-import gc
+import numpy as np
 
 
-class AuxKnowledgeDistillationTrainer(KnowledgeDistillationTrainer):
+class ATAKDPTrainer(TAKDPTrainer):
     """
-    Base trainer class for knowledge distillation with unified teacher-student network
+    Auxiliary loss teaching assistant knowledge distillation pruning
     """
 
-    def __init__(self, model, criterions, metric_ftns, optimizer, config, train_data_loader,
-                 valid_data_loader=None, lr_scheduler=None, weight_scheduler=None, len_epoch=None):
-        super().__init__(model, None, metric_ftns, optimizer, config)
-        self.config = config
-        self.train_data_loader = train_data_loader
-        self.valid_data_loader = valid_data_loader
-        self.do_validation = self.valid_data_loader is not None
-        self.lr_scheduler = lr_scheduler
-        self.weight_scheduler = weight_scheduler
-        self.log_step = config['trainer']['log_step']
-        if len_epoch is None:
-            # epoch-based training
-            self.len_epoch = len(self.train_data_loader)
-        else:
-            # iteration-based training
-            self.train_data_loader = inf_loop(train_data_loader)
-            self.len_epoch = len_epoch
+    def __init__(self, model, pruner, criterions, metric_ftns, optimizer, config, train_data_loader,
+                 valid_data_loader=None, lr_scheduler=None, weight_scheduler=None):
+        super().__init__(model, pruner, criterions, metric_ftns, optimizer, config, train_data_loader,
+                         valid_data_loader, lr_scheduler, weight_scheduler)
 
-        # also log teacher loss for comparision
-        self.train_metrics = MetricTracker('loss', 'supervised_loss', 'kd_loss', 'hint_loss', 'teacher_loss',
+        self.train_metrics = MetricTracker('loss', 'supervised_loss', 'kd_loss', 'hint_loss', 'teacher_loss','aux_loss',
                                            *[m.__name__ for m in self.metric_ftns], writer=self.writer)
-        self.train_iou_metrics = CityscapesMetricTracker(writer=self.writer)
-        self.train_teacher_iou_metrics = CityscapesMetricTracker(writer=self.writer)
-
-        self.valid_metrics = MetricTracker('loss', 'supervised_loss', 'kd_loss', 'hint_loss', 'teacher_loss',
-                                           *[m.__name__ for m in self.metric_ftns], writer=self.writer)
-        self.valid_iou_metrics = CityscapesMetricTracker(writer=self.writer)
-        self.valid_teacher_iou_metrics = CityscapesMetricTracker(writer=self.writer)
-
-        # Only used list of criterions and remove the unused property
-        self.criterions = criterions
-        self.criterions = nn.ModuleList(self.criterions).to(self.device)
-        if isinstance(self.model, nn.DataParallel):
-            self.criterions = nn.DataParallel(self.criterions)
-        del self.criterion
-
-        # early stop or prune
-        self._teacher_student_iou_gap = 1
-
-    def _clean_cache(self):
-        self.model.student_hidden_outputs, self.model.teacher_hidden_outputs = None, None
-        gc.collect()
-        torch.cuda.empty_cache()
 
     def _train_epoch(self, epoch):
+        # Teaching assistant
+        if (self._teacher_student_iou_gap < self.ta_tol) or ((self.__ta_count % self.ta_interval) == 0):
+            # transfer student to teaching assistant
+            self.model.to_teacher()
+
+            # find the soonest layer that will be pruned and prune it now
+            prune_epoch_to_now = np.array(list(map(lambda x: x['epoch'], self.pruning_plan)))-epoch
+            idx = -1
+            min = np.inf
+            for i in range(len(prune_epoch_to_now)):
+                if min > prune_epoch_to_now[i] >= 0:
+                    idx = i
+                    min = prune_epoch_to_now[i]
+            if idx < 0:
+                print('Early stop as there is not any layer to be pruned...')
+                return {}
+
+            self.pruning_plan[idx]['epoch'] = epoch
+
+            # dump the new teacher:
+            self.logger.debug('Promoted Student to Teaching Assistant')
+            number_of_param = sum(p.numel() for p in self.model.parameters())
+            self.logger.debug('Number of parameters: ' + str(number_of_param))
+
+            self.__ta_count = 0
+            self.weight_scheduler.reset()
+
+            # update auxiliary loss
+            sorted_pruning_plan = sorted(self.pruning_plan, key=lambda x: x['epoch'])
+            sorted_layer_names = list(map(lambda x: x['name'], sorted_pruning_plan))
+            pruned_layer_name = self.pruning_plan[idx]['name']
+            pruned_layer_name_idx = sorted_layer_names.index(pruned_layer_name)
+            num = self.config['pruning']['auxiliary_num_layers']
+            if pruned_layer_name_idx > (len(sorted_layer_names) - num):
+                aux_layer_names = sorted_layer_names[pruned_layer_name_idx+1:]
+            else:
+                aux_layer_names = sorted_layer_names[pruned_layer_name+1: pruned_layer_name_idx+num+1]
+            self.model.update_aux_layers(aux_layer_names)
+
+        self.__ta_count += 1
+
+        # pruning
+        self.prune(epoch)
+
+        # trivial trainer
         self.model.train()
         self.train_metrics.reset()
         self.train_iou_metrics.reset()
@@ -83,12 +89,21 @@ class AuxKnowledgeDistillationTrainer(KnowledgeDistillationTrainer):
                                    exponent_magnitude),
                                0) / self.accumulation_steps / normalized_term
 
+            # auxiliary loss:
+            # when computing the loss between output of teacher net and student net, we penalty the shallow layer
+            # more than deep layer
+            # the following loss will gradually increase the weight for former layer by exponential of gamma
+            # i.e. (loss_layer5*gamma^3 + loss_layer8*gamma^2 + loss_layer12*gamma^1)/(gamma^3+gamma^2+gamma^1)
+            aux_loss = reduce(lambda acc, elem: acc + self.criterions[2](elem[0], elem[1]),
+                               zip(self.model.student_aux_outputs, self.model.teacher_aux_outputs),
+                               0) / self.accumulation_steps
+
             # TODO: Early stop with teacher loss
             teacher_loss = self.criterions[0](output_tc, target)  # for comparision
 
             alpha = self.weight_scheduler.alpha
             beta = self.weight_scheduler.beta
-            loss = alpha * supervised_loss + beta * kd_loss + (1 - alpha - beta) * hint_loss
+            loss = alpha * supervised_loss + beta * kd_loss + (1 - alpha - beta) * (hint_loss+aux_loss)
             loss.backward()
 
             if (batch_idx + 1) % self.accumulation_steps == 0:
@@ -103,6 +118,7 @@ class AuxKnowledgeDistillationTrainer(KnowledgeDistillationTrainer):
             self.train_metrics.update('kd_loss', kd_loss.item() * self.accumulation_steps)
             self.train_metrics.update('hint_loss', hint_loss.item() * self.accumulation_steps)
             self.train_metrics.update('teacher_loss', teacher_loss.item())
+            self.train_metrics.update('aux_loss', aux_loss.item())
             self.train_iou_metrics.update(output_st.detach().cpu(), target.cpu())
             self.train_teacher_iou_metrics.update(output_tc.cpu(), target.cpu())
 
@@ -152,55 +168,3 @@ class AuxKnowledgeDistillationTrainer(KnowledgeDistillationTrainer):
         self.weight_scheduler.step()
 
         return log
-
-    def _valid_epoch(self, epoch):
-        """
-        Validate after training an epoch
-
-        :param epoch: Integer, current training epoch.
-        :return: A log that contains information about validation
-        """
-        self.model.eval()
-        self.valid_metrics.reset()
-        self.valid_iou_metrics.reset()
-        with torch.no_grad():
-            for batch_idx, (data, target) in enumerate(self.valid_data_loader):
-                data, target = data.to(self.device), target.to(self.device)
-                output = self.model.inference(data)
-                supervised_loss = self.criterions[0](output, target)
-
-                self.writer.set_step((epoch - 1) * len(self.valid_data_loader) + batch_idx, 'valid')
-                self.valid_metrics.update('supervised_loss', supervised_loss.item())
-                self.valid_iou_metrics.update(output.detach().cpu(), target)
-
-                for met in self.metric_ftns:
-                    self.valid_metrics.update(met.__name__, met(output, target))
-                self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
-
-        # add histogram of models parameters to the tensorboard
-        # for name, p in self.model.named_parameters():
-        #     self.writer.add_histogram(name, p, bins='auto')
-        return self.valid_metrics.result()
-
-    def _progress(self, batch_idx):
-        base = '[{}/{} ({:.0f}%)]'
-        if hasattr(self.train_data_loader, 'n_samples'):
-            current = batch_idx * self.train_data_loader.batch_size
-            total = self.train_data_loader.n_samples
-        else:
-            current = batch_idx
-            total = self.len_epoch
-        return base.format(current, total, 100.0 * current / total)
-
-    def _logging(self, batch_idx, epoch, data, output, target, loss):
-        self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
-        self.train_metrics.update('loss', loss.item())
-        for met in self.metric_ftns:
-            self.train_metrics.update(met.__name__, met(output, target))
-
-        if batch_idx % self.log_step == 0:
-            self.logger.debug('Train Epoch: {} {} Loss: {:.6f}'.format(
-                epoch,
-                self._progress(batch_idx),
-                loss.item()))
-            self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))

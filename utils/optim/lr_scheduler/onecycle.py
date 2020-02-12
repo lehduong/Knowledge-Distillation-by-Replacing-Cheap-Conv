@@ -39,7 +39,7 @@ class OneCycleLR:
     def __init__(self,
                  optimizer: Optimizer,
                  num_steps: int,
-                 min_lr: 0.005,
+                 min_lr: 0.001,
                  max_lr: 0.01,
                  momentum_range: tuple = (0.85, 0.95),
                  annihilation_frac: float = 0.1,
@@ -54,7 +54,7 @@ class OneCycleLR:
 
         self.min_lr = min_lr
         self.max_lr = max_lr
-        assert self.min_lr < self.max_lrlr, \
+        assert self.min_lr < self.max_lr, \
             "Argument lr_range must be (min_lr, max_lr), where min_lr < max_lr"
 
         self.min_momentum, self.max_momentum = momentum_range[0], momentum_range[1]

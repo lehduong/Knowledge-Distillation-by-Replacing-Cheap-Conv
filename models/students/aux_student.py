@@ -11,16 +11,16 @@ class AuxStudent(BaseStudent):
         """
         super().__init__(model, distillation_args, logger)
         self.aux_layer_names = aux_args
-        self.student_aux_output = []
-        self.teacher_aux_output = []
+        self.student_aux_outputs = []
+        self.teacher_aux_outputs = []
         self._aux_hook_handlers = []
 
     def _register_aux_hooks(self, aux_layer_names):
         def save_forward_output(out):
             if self._teaching:
-                self.teacher_aux_output.append(out)
+                self.teacher_aux_outputs.append(out)
             else:
-                self.student_aux_output.append(out)
+                self.student_aux_outputs.append(out)
 
         # register hook for saving hidden outputs
         for layer_name in aux_layer_names:
@@ -32,8 +32,8 @@ class AuxStudent(BaseStudent):
 
     def flush_aux_layers(self):
         self.aux_layer_names = []
-        self.student_aux_output = []
-        self.teacher_aux_output = []
+        self.student_aux_outputs = []
+        self.teacher_aux_outputs = []
         while self._aux_hook_handlers:
             handler = self._aux_hook_handlers.pop()
             handler.remove()
