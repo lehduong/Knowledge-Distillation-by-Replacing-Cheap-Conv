@@ -78,21 +78,27 @@
     },
     "metrics": [],
     "lr_scheduler": {
-        "type": "MyOneCycleLR",
+        "type": "ReduceLROnPlateau",
         "args": {
-            "num_steps": 30000
+            "mode": "max",
+            "threshold": 0.01,
+            "factor": 0.5,
+            "patience": 1,
+            "min_lr": 0.0001
         }
     },
     "trainer": {
         "name": "TAKDPTrainer",
         "epochs": 100,
         "save_dir": "saved/",
-        "save_period": 1,
+        "save_period": 3,
         "verbosity": 2,
         "monitor": "min val_loss",
         "early_stop": 10,
         "accumulation_steps": 2,
         "log_step": 5,
+        "do_validation_interval": 5,
+        "len_epoch": 50,
         "tensorboard": true
     },
     "pruning": {
@@ -107,21 +113,25 @@
             {
                 "name": "mod5.block1.convs.conv1",
                 "compress_rate": 0.2,
-                "epoch": 1
-            },
-            {
-                "name": "mod5.block2.convs.conv1",
-                "compress_rate": 0.5,
+                "lr": 0.01,
                 "epoch": 49
             },
             {
+                "name": "mod5.block2.convs.conv1",
+                "compress_rate": 0.2,
+                "lr": 0.01,
+                "epoch": 50
+            },
+            {
                 "name": "mod5.block2.convs.conv2",
-                "compress_rate": 0.5,
+                "compress_rate": 0.2,
+                "lr": 0.01,
                 "epoch": 56
             },
             {
                 "name": "mod5.block3.convs.conv1",
                 "compress_rate": 0.3,
+                "lr": 0.005,
                 "epoch": 64
             },
             {
@@ -132,6 +142,7 @@
             {
                 "name": "mod6.block1.convs.conv2",
                 "compress_rate": 0.25,
+                "lr": 0.05,
                 "epoch": 90
             },
             {
@@ -167,7 +178,7 @@
         ]
     },
     "teaching_assistant": {
-        "interval": 15,
+        "interval": 10,
         "tol": 0.03
     },
     "weight_scheduler": {

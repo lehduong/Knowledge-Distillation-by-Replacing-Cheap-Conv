@@ -13,22 +13,24 @@ class KnowledgeDistillationTrainer(BaseTrainer):
     Base trainer class for knowledge distillation with unified teacher-student network
     """
     def __init__(self, model, criterions, metric_ftns, optimizer, config, train_data_loader,
-                 valid_data_loader=None, lr_scheduler=None, weight_scheduler=None, len_epoch=None):
+                 valid_data_loader=None, lr_scheduler=None, weight_scheduler=None):
         super().__init__(model, None, metric_ftns, optimizer, config)
         self.config = config
         self.train_data_loader = train_data_loader
         self.valid_data_loader = valid_data_loader
         self.do_validation = self.valid_data_loader is not None
+        self.do_validation_interval = self.config['trainer']['do_validation_interval']
         self.lr_scheduler = lr_scheduler
         self.weight_scheduler = weight_scheduler
         self.log_step = config['trainer']['log_step']
-        if len_epoch is None:
-            # epoch-based training
-            self.len_epoch = len(self.train_data_loader)
-        else:
+        if "len_epoch" in self.config['trainer']:
             # iteration-based training
             self.train_data_loader = inf_loop(train_data_loader)
-            self.len_epoch = len_epoch
+            self.len_epoch = self.config['trainer']['len_epoch']
+        else:
+            # epoch-based training
+            self.len_epoch = len(self.train_data_loader)
+
 
         # also log teacher loss for comparision
         self.train_metrics = MetricTracker('loss', 'supervised_loss', 'kd_loss', 'hint_loss', 'teacher_loss',
@@ -138,7 +140,7 @@ class KnowledgeDistillationTrainer(BaseTrainer):
         log.update({'train_teacher_mIoU': self.train_teacher_iou_metrics.get_iou()})
         log.update({'train_student_mIoU': self.train_iou_metrics.get_iou()})
 
-        if self.do_validation:
+        if self.do_validation and ((epoch % self.do_validation_interval) == 0):
             # clean cache to prevent out-of-memory with 1 gpu
             self._clean_cache()
             val_log = self._valid_epoch(epoch)
@@ -147,8 +149,11 @@ class KnowledgeDistillationTrainer(BaseTrainer):
 
         self._teacher_student_iou_gap = self.train_teacher_iou_metrics.get_iou()-self.train_iou_metrics.get_iou()
 
-        if self.lr_scheduler is not None and not isinstance(self.lr_scheduler, MyOneCycleLR):
-            self.lr_scheduler.step()
+        if (self.lr_scheduler is not None) and (not isinstance(self.lr_scheduler, MyOneCycleLR)):
+            if isinstance(self.lr_scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
+                self.lr_scheduler.step(self.train_iou_metrics.get_iou())
+            else:
+                self.lr_scheduler.step()
 
         self.weight_scheduler.step()
 
