@@ -62,6 +62,9 @@ class ATAKDPTrainer(TAKDPTrainer):
                 aux_layer_names = sorted_layer_names[pruned_layer_name_idx+1: pruned_layer_name_idx+num+1]
             self.model.update_aux_layers(aux_layer_names)
 
+            if isinstance(self.lr_scheduler, MyReduceLROnPlateau):
+                self.lr_scheduler.reset()
+
         self._ta_count += 1
 
         # pruning
@@ -161,12 +164,12 @@ class ATAKDPTrainer(TAKDPTrainer):
         log.update({'train_student_mIoU': self.train_iou_metrics.get_iou()})
 
         # TODO: Fix out of memory when runing validation
-        # if self.do_validation:
-        #     # clean cache to prevent out-of-memory with 1 gpu
-        #     self._clean_cache()
-        #     val_log = self._valid_epoch(epoch)
-        #     log.update(**{'val_' + k: v for k, v in val_log.items()})
-        #     log.update(**{'val_mIoU': self.valid_iou_metrics.get_iou()})
+        if self.do_validation and ((epoch % self.config["trainer"]["do_validation_interval"])==0):
+            # clean cache to prevent out-of-memory with 1 gpu
+            self._clean_cache()
+            val_log = self._valid_epoch(epoch)
+            log.update(**{'val_' + k: v for k, v in val_log.items()})
+            log.update(**{'val_mIoU': self.valid_iou_metrics.get_iou()})
 
         self._teacher_student_iou_gap = self.train_teacher_iou_metrics.get_iou() - self.train_iou_metrics.get_iou()
 

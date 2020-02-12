@@ -10,13 +10,13 @@
     },
     "transforms": {
         "joint_transforms": {
-            "crop_size": 512,
+            "crop_size": 720,
             "scale_min": 0.5,
             "scale_max": 2,
             "ignore_label": 255
         },
         "extended_transforms": {
-            "color_aug": 0.1,
+            "color_aug": 0.2,
             "blur": "gaussian"
         }
     },
@@ -24,7 +24,7 @@
         "type": "CityscapesDataloader",
         "args": {
             "data_dir": "data/",
-            "batch_size": 4,
+            "batch_size": 2,
             "shuffle": true,
             "validation_split": 0.0,
             "num_workers": 0,
@@ -38,7 +38,7 @@
         "type": "CityscapesDataloader",
         "args": {
             "data_dir": "data/",
-            "batch_size": 2,
+            "batch_size": 1,
             "shuffle": false,
             "validation_split": 0,
             "num_workers": 0,
@@ -51,7 +51,7 @@
     "optimizer": {
         "type": "RAdam",
         "args": {
-            "lr": 0.01
+            "lr": 0.05
         }
     },
     "supervised_loss": {
@@ -81,11 +81,12 @@
         "type": "MyReduceLROnPlateau",
         "args": {
             "mode": "min",
-            "threshold": 0.0002,
-            "factor": 0.5,
+            "threshold": 0.0001,
+            "factor": 0.2,
             "patience": 0,
             "verbose": true,
-            "min_lr": 0.00005
+            "min_lr": 0.0001,
+            "threshold_mode": "abs"
         }
     },
     "trainer": {
@@ -114,25 +115,21 @@
             {
                 "name": "mod5.block1.convs.conv1",
                 "compress_rate": 0.2,
-                "lr": 0.01,
                 "epoch": 49
             },
             {
                 "name": "mod5.block2.convs.conv1",
                 "compress_rate": 0.2,
-                "lr": 0.01,
                 "epoch": 50
             },
             {
                 "name": "mod5.block2.convs.conv2",
                 "compress_rate": 0.2,
-                "lr": 0.01,
                 "epoch": 56
             },
             {
                 "name": "mod5.block3.convs.conv1",
                 "compress_rate": 0.3,
-                "lr": 0.005,
                 "epoch": 64
             },
             {
@@ -143,7 +140,6 @@
             {
                 "name": "mod6.block1.convs.conv2",
                 "compress_rate": 0.25,
-                "lr": 0.05,
                 "epoch": 90
             },
             {
@@ -179,8 +175,8 @@
         ]
     },
     "teaching_assistant": {
-        "interval": 15,
-        "tol": 0.03
+        "interval": 10,
+        "tol": 0.02
     },
     "weight_scheduler": {
         "alpha": {

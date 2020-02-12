@@ -89,9 +89,9 @@ class MyReduceLROnPlateau(object):
         self.last_epoch = 0
         self._init_is_better(mode=mode, threshold=threshold,
                              threshold_mode=threshold_mode)
-        self._reset()
+        self.reset()
 
-    def _reset(self):
+    def reset(self):
         """Resets num_bad_epochs counter and cooldown counter."""
         self.best = self.mode_worse
         self.cooldown_counter = 0
