@@ -1,4 +1,5 @@
 {
+    "_comment": "prune all layer of network from mod4 block. The model after pruning process should have around 28M parameters",
     "name": "KnowledgeDistillation",
     "n_gpu": 1,
     "teacher": {
@@ -31,7 +32,7 @@
             "split": "train",
             "mode": "fine",
             "target_type": "semantic",
-            "num_samples": 512
+            "num_samples": 720
         }
     },
     "val_data_loader": {
@@ -109,88 +110,34 @@
         "pruning_interval": 2,
         "pruning_plan": [
             {
-                "name": "mod4.block6.convs.conv1",
-                "lr": 0.001,
-                "compress_rate": 0.2,
-                "epoch": 35
-            },
-            {
-                "name": "mod4.block6.convs.conv2",
-                "lr": 0.001,
-                "compress_rate": 0.2,
-                "epoch": 29
-            },
-            {
-                "name": "mod5.block1.convs.conv1",
-                "lr": 0.001,
-                "compress_rate": 0.2,
-                "epoch": 25
-            },
-            {
-                "name": "mod5.block1.convs.conv2",
-                "lr": 0.001,
-                "compress_rate": 0.2,
-                "epoch": 22
-            },
-            {
-                "name": "mod5.block2.convs.conv1",
-                "lr": 0.001,
-                "compress_rate": 0.2,
-                "epoch": 20
-            },
-            {
-                "name": "mod5.block2.convs.conv2",
-                "lr": 0.008,
-                "compress_rate": 0.2,
-                "epoch": 18
-            },
-            {
-                "name": "mod5.block3.convs.conv1",
-                "lr": 0.005,
-                "compress_rate": 0.2,
-                "epoch": 16
-            },
-            {
-                "name": "mod5.block3.convs.conv2",
-                "lr": 0.005,
-                "compress_rate": 0.2,
-                "epoch": 14
-            },
-            {
-                "name": "mod6.block1.convs.conv2",
-                "lr": 0.005,
-                "compress_rate": 0.2,
-                "epoch": 12
-            },
-            {
                 "name": "mod7.block1.convs.conv1",
-                "lr": 0.0005,
-                "compress_rate": 0.2,
-                "epoch": 10
+                "compress_rate": 0.15,
+                "epoch": 1
             },
             {
                 "name": "mod7.block1.convs.conv2",
-                "lr": 0.0005,
-                "compress_rate": 0.2,
-                "epoch": 8
-            },
-            {
-                "name": "aspp.features.1.0",
-                "lr": 0.001,
-                "compress_rate": 0.2,
-                "epoch": 4
-            },
-            {
-                "name": "aspp.features.2.0",
-                "lr": 0.01,
-                "compress_rate": 0.15,
+                "compress_rate": 0.05,
                 "epoch": 2
             },
             {
-                "name": "aspp.features.3.0",
-                "lr": 0.01,
+                "name": "mod7.block1.convs.conv3",
+                "compress_rate": 0.05,
+                "epoch": 4
+            },
+            {
+                "name": "aspp.features.1.0",
                 "compress_rate": 0.15,
-                "epoch": 1
+                "epoch": 7
+            },
+            {
+                "name": "aspp.features.2.0",
+                "compress_rate": 0.15,
+                "epoch": 8
+            },
+            {
+                "name": "aspp.features.3.0",
+                "compress_rate": 0.15,
+                "epoch": 10
             }
         ]
     },
