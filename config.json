@@ -175,8 +175,8 @@
         ]
     },
     "teaching_assistant": {
-        "interval": 15,
-        "tol": 0.0075
+        "interval": 5,
+        "tol": 0.01
     },
     "weight_scheduler": {
         "alpha": {
