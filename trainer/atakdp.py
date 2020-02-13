@@ -62,8 +62,13 @@ class ATAKDPTrainer(TAKDPTrainer):
                 aux_layer_names = sorted_layer_names[pruned_layer_name_idx+1: pruned_layer_name_idx+num+1]
             self.model.update_aux_layers(aux_layer_names)
 
+            # reset lr scheduler o.w. the lr of new layer would be constantly reduced
             if isinstance(self.lr_scheduler, MyReduceLROnPlateau):
                 self.lr_scheduler.reset()
+
+            # reset the iou metric immediately
+            self.train_teacher_iou_metrics.reset()
+            self.train_iou_metrics.reset()
 
         self._ta_count += 1
 
@@ -73,8 +78,9 @@ class ATAKDPTrainer(TAKDPTrainer):
         # trivial trainer
         self.model.train()
         self.train_metrics.reset()
-        self.train_iou_metrics.reset()
-        self.train_teacher_iou_metrics.reset()
+        if epoch % self.config['trainer']['reset_interval']:
+            self.train_iou_metrics.reset()
+            self.train_teacher_iou_metrics.reset()
         self._clean_cache()
 
         for batch_idx, (data, target) in enumerate(self.train_data_loader):
@@ -164,7 +170,6 @@ class ATAKDPTrainer(TAKDPTrainer):
         log.update({'train_teacher_mIoU': self.train_teacher_iou_metrics.get_iou()})
         log.update({'train_student_mIoU': self.train_iou_metrics.get_iou()})
 
-        # TODO: Fix out of memory when runing validation
         if self.do_validation and ((epoch % self.config["trainer"]["do_validation_interval"])==0):
             # clean cache to prevent out-of-memory with 1 gpu
             self._clean_cache()
@@ -172,14 +177,20 @@ class ATAKDPTrainer(TAKDPTrainer):
             log.update(**{'val_' + k: v for k, v in val_log.items()})
             log.update(**{'val_mIoU': self.valid_iou_metrics.get_iou()})
 
-        self._teacher_student_iou_gap = self.train_teacher_iou_metrics.get_iou() - self.train_iou_metrics.get_iou()
+        # transfer to teaching assistant based on last results before resetting metrics
+        if ((epoch+1) % self.config['trainer']['reset_interval']) == 0:
+            self._teacher_student_iou_gap = self.train_teacher_iou_metrics.get_iou() - self.train_iou_metrics.get_iou()
+        else:
+            self._teacher_student_iou_gap = 100
 
+        # step lr scheduler
         if (self.lr_scheduler is not None) and (not isinstance(self.lr_scheduler, MyOneCycleLR)):
             if isinstance(self.lr_scheduler, MyReduceLROnPlateau):
                 self.lr_scheduler.step(self.train_metrics.avg('loss'))
             else:
                 self.lr_scheduler.step()
 
+        # step weight between losses
         self.weight_scheduler.step()
 
         return log

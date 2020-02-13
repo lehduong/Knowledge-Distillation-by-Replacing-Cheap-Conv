@@ -81,25 +81,26 @@
         "type": "MyReduceLROnPlateau",
         "args": {
             "mode": "min",
-            "threshold": 0.0001,
-            "factor": 0.2,
+            "threshold": 0.05,
+            "factor": 0.5,
             "patience": 0,
             "verbose": true,
             "min_lr": 0.0001,
-            "threshold_mode": "abs"
+            "threshold_mode": "rel"
         }
     },
     "trainer": {
         "name": "ATAKDPTrainer",
-        "epochs": 100,
+        "epochs": 1000,
         "save_dir": "saved/",
-        "save_period": 3,
+        "save_period": 5,
         "verbosity": 2,
         "monitor": "min val_loss",
         "early_stop": 10,
         "accumulation_steps": 2,
         "log_step": 5,
-        "do_validation_interval": 5,
+        "do_validation_interval": 15,
+        "reset_interval": 4,
         "len_epoch": 30,
         "tensorboard": true
     },
@@ -114,12 +115,12 @@
         "pruning_plan": [
             {
                 "name": "mod5.block1.convs.conv1",
-                "compress_rate": 0.2,
+                "compress_rate": 0.4,
                 "epoch": 49
             },
             {
                 "name": "mod5.block2.convs.conv1",
-                "compress_rate": 0.2,
+                "compress_rate": 0.4,
                 "epoch": 50
             },
             {
@@ -139,12 +140,12 @@
             },
             {
                 "name": "mod6.block1.convs.conv2",
-                "compress_rate": 0.25,
+                "compress_rate": 0.3,
                 "epoch": 90
             },
             {
                 "name": "mod7.block1.convs.conv1",
-                "compress_rate": 0.1,
+                "compress_rate": 0.4,
                 "epoch": 95
             },
             {
@@ -159,7 +160,7 @@
             },
             {
                 "name": "aspp.features.1.0",
-                "compress_rate": 0.15,
+                "compress_rate": 0.3,
                 "epoch": 102
             },
             {
@@ -175,8 +176,8 @@
         ]
     },
     "teaching_assistant": {
-        "interval": 10,
-        "tol": 0.02
+        "interval": 15,
+        "tol": 0.0075
     },
     "weight_scheduler": {
         "alpha": {
