@@ -120,18 +120,18 @@ class KnowledgeDistillationTrainer(BaseTrainer):
                 # self.writer.add_image('st_pred', make_grid(st_masks, nrow=8, normalize=False))
                 # self.writer.add_image('tc_pred', make_grid(tc_masks, nrow=8, normalize=False))
                 self.logger.info(
-                    'Train Epoch: {} [{}]/[{}] Loss: {:.6f} Supervised Loss: {:.6f} Knowledge Distillation loss: '
-                    '{:.6f} Hint Loss: {:.6f} mIoU: {:.6f} Teacher Loss: {:.6f} Techer mIoU: {:.6f}'.format(
+                    'Train Epoch: {} [{}]/[{}] Loss: {:.6f} mIoU: {:.6f} Teacher mIoU: {:.6f} Supervised Loss: {:.6f} Knowledge Distillation loss: '
+                    '{:.6f} Hint Loss: {:.6f} Teacher Loss: {:.6f}'.format(
                         epoch,
                         batch_idx,
                         self.len_epoch,
                         self.train_metrics.avg('loss'),
+                        self.train_iou_metrics.get_iou(),
+                        self.train_teacher_iou_metrics.get_iou(),
                         self.train_metrics.avg('supervised_loss'),
                         self.train_metrics.avg('kd_loss'),
                         self.train_metrics.avg('hint_loss'),
-                        self.train_iou_metrics.get_iou(),
                         self.train_metrics.avg('teacher_loss'),
-                        self.train_teacher_iou_metrics.get_iou()
                     ))
 
             if batch_idx == self.len_epoch:

@@ -2,7 +2,7 @@ from torchvision.utils import make_grid
 from functools import reduce
 from utils import inf_loop, MetricTracker, visualize, CityscapesMetricTracker
 from .takdp_trainer import TAKDPTrainer
-from  utils.optim.lr_scheduler import MyOneCycleLR, MyReduceLROnPlateau
+from utils.optim.lr_scheduler import MyOneCycleLR, MyReduceLROnPlateau
 import numpy as np
 
 
@@ -16,7 +16,8 @@ class ATAKDPTrainer(TAKDPTrainer):
         super().__init__(model, pruner, criterions, metric_ftns, optimizer, config, train_data_loader,
                          valid_data_loader, lr_scheduler, weight_scheduler)
 
-        self.train_metrics = MetricTracker('loss', 'supervised_loss', 'kd_loss', 'hint_loss', 'teacher_loss','aux_loss',
+        self.train_metrics = MetricTracker('loss', 'supervised_loss', 'kd_loss', 'hint_loss', 'teacher_loss',
+                                           'aux_loss',
                                            *[m.__name__ for m in self.metric_ftns], writer=self.writer)
 
     def _train_epoch(self, epoch):
@@ -26,7 +27,7 @@ class ATAKDPTrainer(TAKDPTrainer):
             self.model.to_teacher()
 
             # find the soonest layer that will be pruned and prune it now
-            prune_epoch_to_now = np.array(list(map(lambda x: x['epoch'], self.pruning_plan)))-epoch
+            prune_epoch_to_now = np.array(list(map(lambda x: x['epoch'], self.pruning_plan))) - epoch
             idx = -1
             min = np.inf
             for i in range(len(prune_epoch_to_now)):
@@ -57,18 +58,14 @@ class ATAKDPTrainer(TAKDPTrainer):
             pruned_layer_name_idx = sorted_layer_names.index(pruned_layer_name)
             num = self.config['pruning']['auxiliary_num_layers']
             if pruned_layer_name_idx > (len(sorted_layer_names) - num):
-                aux_layer_names = sorted_layer_names[pruned_layer_name_idx+1:]
+                aux_layer_names = sorted_layer_names[pruned_layer_name_idx + 1:]
             else:
-                aux_layer_names = sorted_layer_names[pruned_layer_name_idx+1: pruned_layer_name_idx+num+1]
+                aux_layer_names = sorted_layer_names[pruned_layer_name_idx + 1: pruned_layer_name_idx + num + 1]
             self.model.update_aux_layers(aux_layer_names)
 
             # reset lr scheduler o.w. the lr of new layer would be constantly reduced
             if isinstance(self.lr_scheduler, MyReduceLROnPlateau):
                 self.lr_scheduler.reset()
-
-            # reset the iou metric immediately
-            self.train_teacher_iou_metrics.reset()
-            self.train_iou_metrics.reset()
 
         self._ta_count += 1
 
@@ -78,9 +75,8 @@ class ATAKDPTrainer(TAKDPTrainer):
         # trivial trainer
         self.model.train()
         self.train_metrics.reset()
-        if epoch % self.config['trainer']['reset_interval']:
-            self.train_iou_metrics.reset()
-            self.train_teacher_iou_metrics.reset()
+        self.train_iou_metrics.reset()
+        self.train_teacher_iou_metrics.reset()
         self._clean_cache()
 
         for batch_idx, (data, target) in enumerate(self.train_data_loader):
@@ -109,18 +105,18 @@ class ATAKDPTrainer(TAKDPTrainer):
             # the following loss will gradually increase the weight for former layer by exponential of gamma
             # i.e. (loss_layer5*gamma^3 + loss_layer8*gamma^2 + loss_layer12*gamma^1)/(gamma^3+gamma^2+gamma^1)
             aux_loss = reduce(lambda acc, elem: acc + self.criterions[2](elem[0], elem[1]),
-                               zip(self.model.student_aux_outputs, self.model.teacher_aux_outputs),
-                               0) / self.accumulation_steps
+                              zip(self.model.student_aux_outputs, self.model.teacher_aux_outputs),
+                              0) / self.accumulation_steps
 
             # TODO: Early stop with teacher loss
             teacher_loss = self.criterions[0](output_tc, target)  # for comparision
 
             alpha = self.weight_scheduler.alpha
             beta = self.weight_scheduler.beta
-            loss = hint_loss+aux_loss
+            loss = beta * hint_loss + (1 - beta) * aux_loss
             loss.backward()
 
-            if (batch_idx + 1) % self.accumulation_steps == 0:
+            if batch_idx % self.accumulation_steps == 0:
                 self.optimizer.step()
                 if isinstance(self.lr_scheduler, MyOneCycleLR):
                     self.lr_scheduler.step()
@@ -141,6 +137,11 @@ class ATAKDPTrainer(TAKDPTrainer):
             for met in self.metric_ftns:
                 self.train_metrics.update(met.__name__, met(output_st, target))
 
+            if isinstance(self.lr_scheduler, MyReduceLROnPlateau) and \
+                    batch_idx % self.config['trainer']['lr_scheduler_step_interval']:
+                # only concern about loss of next layer
+                self.lr_scheduler.step(self.train_metrics.avg('aux_loss'))
+
             if batch_idx % self.log_step == 0:
                 self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
                 # st_masks = visualize.viz_pred_cityscapes(output_st)
@@ -148,7 +149,8 @@ class ATAKDPTrainer(TAKDPTrainer):
                 # self.writer.add_image('st_pred', make_grid(st_masks, nrow=8, normalize=False))
                 # self.writer.add_image('tc_pred', make_grid(tc_masks, nrow=8, normalize=False))
                 self.logger.info(
-                    'Train Epoch: {} [{}]/[{}] Loss: {:.6f} mIoU: {:.6f} Teacher mIoU: {:.6f} Supervised Loss: {:.6f} Knowledge Distillation loss: '
+                    'Train Epoch: {} [{}]/[{}] Loss: {:.6f} mIoU: {:.6f} Teacher mIoU: {:.6f} Supervised Loss: {:.6f} '
+                    'Knowledge Distillation loss: '
                     '{:.6f} Hint Loss: {:.6f} Aux Loss: {:.6f} Teacher Loss: {:.6f}'.format(
                         epoch,
                         batch_idx,
@@ -170,23 +172,19 @@ class ATAKDPTrainer(TAKDPTrainer):
         log.update({'train_teacher_mIoU': self.train_teacher_iou_metrics.get_iou()})
         log.update({'train_student_mIoU': self.train_iou_metrics.get_iou()})
 
-        if self.do_validation and ((epoch % self.config["trainer"]["do_validation_interval"])==0):
+        if self.do_validation and ((epoch % self.config["trainer"]["do_validation_interval"]) == 0):
             # clean cache to prevent out-of-memory with 1 gpu
             self._clean_cache()
             val_log = self._valid_epoch(epoch)
             log.update(**{'val_' + k: v for k, v in val_log.items()})
             log.update(**{'val_mIoU': self.valid_iou_metrics.get_iou()})
 
-        # transfer to teaching assistant based on last results before resetting metrics
-        if ((epoch+1) % self.config['trainer']['reset_interval']) == 0:
-            self._teacher_student_iou_gap = self.train_teacher_iou_metrics.get_iou() - self.train_iou_metrics.get_iou()
-        else:
-            self._teacher_student_iou_gap = 100
+        self._teacher_student_iou_gap = self.train_teacher_iou_metrics.get_iou() - self.train_iou_metrics.get_iou()
 
         # step lr scheduler
         if (self.lr_scheduler is not None) and (not isinstance(self.lr_scheduler, MyOneCycleLR)):
             if isinstance(self.lr_scheduler, MyReduceLROnPlateau):
-                self.lr_scheduler.step(self.train_metrics.avg('loss'))
+                pass
             else:
                 self.lr_scheduler.step()
 
@@ -198,4 +196,3 @@ class ATAKDPTrainer(TAKDPTrainer):
     def _clean_cache(self):
         self.model.student_aux_outputs, self.model.teacher_aux_outputs = None, None
         super()._clean_cache()
-
