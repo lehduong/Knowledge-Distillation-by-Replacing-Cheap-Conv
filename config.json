@@ -100,7 +100,7 @@
         "accumulation_steps": 2,
         "log_step": 5,
         "do_validation_interval": 5,
-        "lr_scheduler_step_interval": 30,
+        "lr_scheduler_step_interval": 15,
         "tensorboard": true
     },
     "pruning": {
@@ -191,7 +191,7 @@
         },
         "beta": {
             "value": 0.2,
-            "anneal_rate": 0.5,
+            "anneal_rate": 1,
             "max": 0.2
         },
         "gamma": {
