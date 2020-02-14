@@ -41,7 +41,7 @@ class PFEC(BasePruner):
         weight_norm = torch.norm(weight.view(weight.shape[0], -1), 2, 1)
 
         # index of the top k norm filters
-        idx_kept_filter = torch.topk(weight_norm, num_kept_filter)[1].cpu().numpy().astype(np.int32)
+        idx_kept_filter = torch.topk(weight_norm, num_kept_filter, sorted=False)[1].cpu().numpy().astype(np.int32)
 
         # copy the weight
         new_layer.weight.data = weight[idx_kept_filter]
@@ -64,8 +64,8 @@ class PFEC(BasePruner):
                       dilation=self.dilation, groups=inp_channels),
             nn.Conv2d(inp_channels, out_channels, kernel_size=1)
         )
-        self._initializing(layer, ret[0])
-        self._initializing(layer, ret[1])
+        # self._initializing(layer, ret[0])
+        # self._initializing(layer, ret[1])
 
         if self.use_cuda:
             ret = ret.cuda()
@@ -91,6 +91,56 @@ class PFEC(BasePruner):
         # keep weight of pre-trained layer
         for param in new_layer.parameters():
             param.requires_grad = True
-        transform_block = self.transform_block(num_kept_filter, layer)
+        #transform_block = self.transform_block(num_kept_filter, layer)
+        transform_block = TransformBlock(num_kept_filter, layer, new_layer, self.kernel_size, self.padding,
+                                         self.dilation, self.use_cuda)
 
-        return nn.Sequential(new_layer, transform_block)
+        #return nn.Sequential(new_layer, transform_block)
+        return transform_block
+
+
+class TransformBlock(nn.Module):
+    def __init__(self, num_kept_filter, layer, new_layer, kernel_size, padding, dilation, use_cuda=True):
+        super().__init__()
+        self.num_kept_filter = num_kept_filter
+        self.pruned_layer = new_layer
+        self.kernel_size = kernel_size
+        self.padding = padding
+        self.dilation = dilation
+        self.use_cuda = use_cuda
+        self.residual_block = self.create_transform_block(self.pruned_layer.in_channels, self.pruned_layer)
+        self.transform_block = self.create_transform_block(self.num_kept_filter, layer)
+        self.relu = nn.LeakyReLU(0.5)
+
+    def create_transform_block(self, inp_channels, layer):
+        """
+        create a block that transform a pruned layer to the same number of filter
+        :param inp_channels: int - number of channels of input
+        :param layer: nn.Module - the unpruned layer
+        :return:
+        """
+        out_channels = layer.out_channels
+        ret = nn.Sequential(
+            nn.Conv2d(inp_channels, inp_channels, kernel_size=self.kernel_size, padding=self.padding,
+                      dilation=self.dilation, groups=inp_channels),
+            nn.Conv2d(inp_channels, out_channels, kernel_size=1)
+        )
+        # self._initializing(layer, ret[0])
+        # self._initializing(layer, ret[1])
+
+        if self.use_cuda:
+            ret = ret.cuda()
+        return ret
+
+    def _initializing(self, reference_layer, new_layer):
+        mean = reference_layer.weight.data.mean().item()
+        std = reference_layer.weight.data.std().item()
+        new_layer.weight.data.normal_(mean, std)
+
+    def forward(self, x):
+        out1 = self.pruned_layer(x)
+        out2 = self.residual_block(x)
+        out = out1+out2
+        # out = self.relu(out)
+        out = self.transform_block(out)
+        return out

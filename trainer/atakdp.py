@@ -138,9 +138,10 @@ class ATAKDPTrainer(TAKDPTrainer):
                 self.train_metrics.update(met.__name__, met(output_st, target))
 
             if isinstance(self.lr_scheduler, MyReduceLROnPlateau) and \
-                    ((batch_idx % self.config['trainer']['lr_scheduler_step_interval']) == 0):
-                # only concern about loss of next layer
-                self.lr_scheduler.step(self.train_metrics.avg('aux_loss'))
+                    (((batch_idx+1) % self.config['trainer']['lr_scheduler_step_interval']) == 0):
+                # batch + 1 as the result of batch 0 always much smaller than other
+                # don't know why ( ͡° ͜ʖ ͡°)
+                self.lr_scheduler.step(self.train_metrics.avg('loss'))
 
             if batch_idx % self.log_step == 0:
                 self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))

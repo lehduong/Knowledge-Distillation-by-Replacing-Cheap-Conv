@@ -5,7 +5,7 @@ from functools import reduce
 from base import BaseTrainer
 from utils import inf_loop, MetricTracker, visualize, CityscapesMetricTracker
 import gc
-from  utils.optim.lr_scheduler import MyOneCycleLR, MyReduceLROnPlateau
+from utils.optim.lr_scheduler import MyOneCycleLR, MyReduceLROnPlateau
 
 
 class KnowledgeDistillationTrainer(BaseTrainer):
@@ -99,6 +99,12 @@ class KnowledgeDistillationTrainer(BaseTrainer):
                     self.lr_scheduler.step()
                 self.optimizer.zero_grad()
 
+            if isinstance(self.lr_scheduler, MyReduceLROnPlateau) and \
+                    (((batch_idx+1) % self.config['trainer']['lr_scheduler_step_interval']) == 0):
+                # batch + 1 as the result of batch 0 always much smaller than other
+                # don't know why ( ͡° ͜ʖ ͡°)
+                self.lr_scheduler.step(self.train_metrics.avg('loss'))
+
             self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
 
             # update metrics
@@ -152,7 +158,7 @@ class KnowledgeDistillationTrainer(BaseTrainer):
 
         if (self.lr_scheduler is not None) and (not isinstance(self.lr_scheduler, MyOneCycleLR)):
             if isinstance(self.lr_scheduler, MyReduceLROnPlateau):
-                self.lr_scheduler.step(self.train_metrics.avg('loss'))
+                pass
             else:
                 self.lr_scheduler.step()
 
