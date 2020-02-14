@@ -51,7 +51,7 @@
     "optimizer": {
         "type": "RAdam",
         "args": {
-            "lr": 0.05
+            "lr": 0.01
         }
     },
     "supervised_loss": {
@@ -82,8 +82,8 @@
         "args": {
             "mode": "min",
             "threshold": 0.05,
-            "factor": 0.5,
-            "patience": 1,
+            "factor": 0.1,
+            "patience": 0,
             "verbose": true,
             "min_lr": 0.00001,
             "threshold_mode": "rel"
@@ -101,6 +101,7 @@
         "log_step": 5,
         "do_validation_interval": 5,
         "lr_scheduler_step_interval": 15,
+        "len_epoch": 200,
         "tensorboard": true
     },
     "pruning": {
@@ -180,8 +181,8 @@
         ]
     },
     "teaching_assistant": {
-        "interval": 5,
-        "tol": 0.0075
+        "interval": 6,
+        "tol": 0.005
     },
     "weight_scheduler": {
         "alpha": {
