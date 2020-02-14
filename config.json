@@ -121,22 +121,22 @@
             {
                 "name": "mod5.block2.convs.conv1",
                 "compress_rate": 0.3,
-                "epoch": 6
+                "epoch": 10
             },
             {
                 "name": "mod5.block2.convs.conv2",
                 "compress_rate": 0.2,
-                "epoch": 12
+                "epoch": 20
             },
             {
                 "name": "mod5.block3.convs.conv1",
                 "compress_rate": 0.3,
-                "epoch": 20
+                "epoch": 30
             },
             {
                 "name": "mod5.block3.convs.conv2",
                 "compress_rate": 0.3,
-                "epoch": 27
+                "epoch": 40
             },
             {
                 "name": "mod6.block1.convs.conv2",
