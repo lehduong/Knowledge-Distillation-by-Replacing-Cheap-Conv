@@ -119,3 +119,57 @@ class CityscapesMetricTracker:
             self.num_classes * target[mask].astype(int) +
             pred[mask], minlength=self.num_classes ** 2).reshape(self.num_classes, self.num_classes)
         return hist
+
+
+class EarlyStopTracker:
+    def __init__(self, mode='last', criterion='min', threshold=0.0001, threshold_mode='rel'):
+        """
+        :param mode: str - either 'last' or 'best'
+        """
+        self.mode = mode
+        if self.mode != 'last' and self.mode != 'best':
+            raise ValueError('Unsupported type of mode. Expect either "last" or "best" but got: ' + str(self.mode))
+        self.criterion = criterion
+        if self.criterion != 'min' and self.criterion != 'max':
+            raise ValueError('Unsupported type of mode. Expect either "min" or "max" but got: ' + str(self.criterion))
+        self.threshold = threshold
+        self.threshold_mode = threshold_mode
+        self.last = None
+        self.best = None
+
+    def is_better(self, old_value, new_value):
+        if old_value is None:
+            return True
+        elif self.criterion == 'min':
+            if self.threshold_mode == 'rel':
+                threshold_old_value = old_value*(1-self.threshold)
+            else:
+                threshold_old_value = old_value - self.threshold
+            if new_value < threshold_old_value:
+                return True
+            return False
+        else:  # max
+            if self.threshold_mode == 'rel':
+                threshold_old_value = old_value*(1+self.threshold)
+            else:
+                threshold_old_value = old_value + self.threshold
+            if new_value > threshold_old_value:
+                return True
+            return False
+
+    def update(self, new_value):
+        if self.mode == 'best':
+            old_value = self.best
+        else:
+            old_value = self.last
+
+        if self.is_better(old_value, new_value):
+            if self.mode == 'best':
+                self.best = new_value
+            self.last = new_value
+            return True
+        else:
+            self.last = new_value
+            return False
+
+
