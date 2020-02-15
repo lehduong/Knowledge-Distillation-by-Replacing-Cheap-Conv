@@ -17,16 +17,19 @@ class ATAKDPTrainer(TAKDPTrainer):
                          valid_data_loader, lr_scheduler, weight_scheduler)
 
         self.train_metrics = MetricTracker('loss', 'supervised_loss', 'kd_loss', 'hint_loss', 'teacher_loss',
-                                           'aux_loss',
-                                           *[m.__name__ for m in self.metric_ftns], writer=self.writer)
+                                           'aux_loss',*[m.__name__ for m in self.metric_ftns], writer=self.writer)
 
     def _train_epoch(self, epoch):
         # Teaching assistant
         if (self._teacher_student_iou_gap < self.ta_tol) or ((self._ta_count % self.ta_interval) == 0):
             # transfer student to teaching assistant
             self.model.to_teacher()
+            # dump the new teacher:
+            self.logger.info('Promoted Student to Teaching Assistant')
+            number_of_param = sum(p.numel() for p in self.model.parameters())
+            self.logger.info('Number of parameters: ' + str(number_of_param))
 
-            # find the soonest layer that will be pruned and prune it now
+            # find the first layer that will be pruned afterward and set its pruned epoch to current epoch
             prune_epoch_to_now = np.array(list(map(lambda x: x['epoch'], self.pruning_plan))) - epoch
             idx = -1
             min = np.inf
@@ -37,21 +40,9 @@ class ATAKDPTrainer(TAKDPTrainer):
             if idx < 0:
                 print('Early stop as there is not any layer to be pruned...')
                 return {}
-
             self.pruning_plan[idx]['epoch'] = epoch
 
-            # dump the new teacher:
-            self.logger.debug('Promoted Student to Teaching Assistant')
-            number_of_param = sum(p.numel() for p in self.model.parameters())
-            self.logger.debug('Number of parameters: ' + str(number_of_param))
-
-            self._ta_count = 0
-            self.weight_scheduler.reset()
-
-            # remove old auxiliary hooks
-            self.model.flush_aux_layers()
-
-            # update auxiliary loss
+            # update layers of auxiliary loss
             sorted_pruning_plan = sorted(self.pruning_plan, key=lambda x: x['epoch'])
             sorted_layer_names = list(map(lambda x: x['name'], sorted_pruning_plan))
             pruned_layer_name = self.pruning_plan[idx]['name']
@@ -62,10 +53,13 @@ class ATAKDPTrainer(TAKDPTrainer):
             else:
                 aux_layer_names = sorted_layer_names[pruned_layer_name_idx + 1: pruned_layer_name_idx + num + 1]
             self.model.update_aux_layers(aux_layer_names)
+            self.logger.debug('Auxiliary layers including: ' + str(self.model.aux_layer_names))
 
             # reset lr scheduler o.w. the lr of new layer would be constantly reduced
             if isinstance(self.lr_scheduler, MyReduceLROnPlateau):
                 self.lr_scheduler.reset()
+            self._ta_count = 0
+            self.weight_scheduler.reset()
 
         self._ta_count += 1
 

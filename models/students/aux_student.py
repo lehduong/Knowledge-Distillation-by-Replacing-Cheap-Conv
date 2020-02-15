@@ -17,6 +17,12 @@ class AuxStudent(BaseStudent):
         super().__init__(model, distillation_args, logger)
 
     def _register_aux_hooks(self, aux_layer_names):
+        """
+            Register new list of auxiliary layer with the given names
+                i.e. use when pruning new layer
+        :param aux_layer_names: list of str
+        :return:
+        """
         def save_forward_output(out):
             if self._teaching:
                 self.teacher_aux_outputs.append(out)
@@ -32,24 +38,36 @@ class AuxStudent(BaseStudent):
         self.aux_layer_names = self.aux_layer_names + aux_layer_names
 
     def _remove_aux_hooks(self):
-        while self._aux_hook_handlers:
-            handler = self._aux_hook_handlers.pop()
-            handler.remove()
-
-    def flush_aux_layers(self):
-        self.aux_layer_names = []
-        self.student_aux_outputs = []
+        """
+        Remove the hooks of auxiliary layer
+            i.e. used when changing to inference mode to save memory
+        :return:
+        """
+        self.student_aux_outputs =[]
         self.teacher_aux_outputs = []
         while self._aux_hook_handlers:
             handler = self._aux_hook_handlers.pop()
             handler.remove()
-
         gc.collect()
         torch.cuda.empty_cache()
 
+    def flush_aux_layers(self):
+        """
+        Completely remove all auxiliary layer
+            i.e. used when pruning new layer
+        :return:
+        """
+        self.aux_layer_names = []
+        self._remove_aux_hooks()
+
     def update_aux_layers(self, aux_args):
+        """
+        Remove auxiliary layers and add new auxiliary layer
+            i.e. user explicitly call this function when pruning new layer
+        :param aux_args:
+        :return:
+        """
         self.flush_aux_layers()
-        self.aux_layer_names = aux_args
         self._register_aux_hooks(aux_args)
 
     def forward(self, x):
@@ -93,6 +111,7 @@ class AuxStudent(BaseStudent):
             self._assign_blocks(student_mode=True)
         self._register_hooks()
 
+        # create a copy as _register_aux_hooks will append the param to self.aux_layer_name
         aux_layer_names = copy.deepcopy(self.aux_layer_names)
         self.aux_layer_names = []
         self._register_aux_hooks(aux_layer_names)

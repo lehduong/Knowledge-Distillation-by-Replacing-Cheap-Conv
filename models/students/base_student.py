@@ -154,7 +154,7 @@ class BaseStudent(BaseModel):
             self._assign_blocks(student_mode=True)
 
         self._remove_hooks()
-        for param in self.model.parameters():
+        for param in self.parameters():
             param.requires_grad = False
         self.teacher_blocks = nn.ModuleList()
         self.student_blocks = nn.ModuleList()
