@@ -4,7 +4,8 @@ Knowledge distillation via Pruning i.e. KDP
 from .kd_trainer import KnowledgeDistillationTrainer
 from models.students.base_student import DistillationArgs
 import copy
-
+import collections
+import torch
 
 class KDPTrainer(KnowledgeDistillationTrainer):
     """
@@ -26,8 +27,11 @@ class KDPTrainer(KnowledgeDistillationTrainer):
         # there isn't any layer would be pruned at this epoch
         if not to_be_pruned_layers:
             return
+        else:
+            # logging the layers being pruned
+            self.logger.info('Pruning layer(s): ' + str(list(lambda x: x['name'], to_be_pruned_layers)))
 
-        # get all layers in to_be_pruned_layers list by their names
+        # get all layers (nn.Module object) in to_be_pruned_layers list by their names
         layers = [self.model.get_block(layer['name']) for layer in to_be_pruned_layers]
 
         # prune above layers and get the new blocks
@@ -44,16 +48,19 @@ class KDPTrainer(KnowledgeDistillationTrainer):
         for i, new_layer in enumerate(new_layers):
             layer_name = to_be_pruned_layers[i]['name']
             args.append(DistillationArgs(layer_name, new_layer, layer_name))
+            # reset optimizer state otherwise the momentum of adam will update teacher blocks even though
+            # the gradient is 0
+            # TODO: generalize this line to prune mulitple blocks at a time
+            self.optimizer = self.config.init_object('optimizer', torch.optim, new_layer.parameters())
 
             # if lr is specified for each layer then use that lr otherwise use default lr of optimizer
-            optimizer_arg = copy.deepcopy(self.config['optimizer']['args'])
             if 'lr' in to_be_pruned_layers[i]:
-                optimizer_arg['lr'] = to_be_pruned_layers[i]['lr']
-            self.optimizer.add_param_group({'params': new_layer.parameters(),
-                                            **optimizer_arg})
+                for param_group in self.optimizer.param_groups:
+                    param_group['lr'] = to_be_pruned_layers[i]['lr']
+
         # add new blocks to student model
         self.model.update_pruned_layers(args)
-        self.logger.info(self.model.dump_trainable_params())
+        self.logger.info('Number of trainable parameters after pruning: ' + str(self.model.dump_trainable_params()))
         self.logger.info(self.model.dump_student_teacher_blocks_info())
 
     def load_weight(self, checkpoint, pruner=None, pruning_plan=None, epoch=None):
