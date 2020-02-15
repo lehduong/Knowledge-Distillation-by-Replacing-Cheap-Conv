@@ -34,7 +34,7 @@ def main(config):
 
     # Load pretrained teacher model
     teacher = config.restore_snapshot('teacher', module_arch)
-    teacher = teacher.cpu() # saved some memory as student network will use a (deep) copy of teacher model
+    teacher = teacher.cpu()  # saved some memory as student network will use a (deep) copy of teacher model
 
     # build models architecture, then print to console
     args = []
@@ -65,10 +65,10 @@ def main(config):
                                valid_data_loader, lr_scheduler, weight_scheduler)
     elif config['trainer']['name'] == 'KDPTrainer':
         trainer = KDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
-                            valid_data_loader, lr_scheduler, weight_scheduler)
+                             valid_data_loader, lr_scheduler, weight_scheduler)
     elif config['trainer']['name'] == 'ATAKDPTrainer':
         trainer = ATAKDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
-                               valid_data_loader, lr_scheduler, weight_scheduler)
+                                valid_data_loader, lr_scheduler, weight_scheduler)
     else:
         raise Exception("Unsupported trainer")
 

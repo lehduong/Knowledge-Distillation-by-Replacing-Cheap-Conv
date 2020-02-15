@@ -30,30 +30,8 @@ class ATAKDPTrainer(TAKDPTrainer):
             self.logger.info('Number of parameters: ' + str(number_of_param))
 
             # find the first layer that will be pruned afterward and set its pruned epoch to current epoch
-            prune_epoch_to_now = np.array(list(map(lambda x: x['epoch'], self.pruning_plan))) - epoch
-            idx = -1
-            min = np.inf
-            for i in range(len(prune_epoch_to_now)):
-                if min > prune_epoch_to_now[i] >= 0:
-                    idx = i
-                    min = prune_epoch_to_now[i]
-            if idx < 0:
-                print('Early stop as there is not any layer to be pruned...')
-                return {}
+            idx = self.get_index_of_pruned_layer(epoch)
             self.pruning_plan[idx]['epoch'] = epoch
-
-            # update layers of auxiliary loss
-            sorted_pruning_plan = sorted(self.pruning_plan, key=lambda x: x['epoch'])
-            sorted_layer_names = list(map(lambda x: x['name'], sorted_pruning_plan))
-            pruned_layer_name = self.pruning_plan[idx]['name']
-            pruned_layer_name_idx = sorted_layer_names.index(pruned_layer_name)
-            num = self.config['pruning']['auxiliary_num_layers']
-            if pruned_layer_name_idx > (len(sorted_layer_names) - num):
-                aux_layer_names = sorted_layer_names[pruned_layer_name_idx + 1:]
-            else:
-                aux_layer_names = sorted_layer_names[pruned_layer_name_idx + 1: pruned_layer_name_idx + num + 1]
-            self.model.update_aux_layers(aux_layer_names)
-            self.logger.debug('Auxiliary layers including: ' + str(self.model.aux_layer_names))
 
             # reset lr scheduler o.w. the lr of new layer would be constantly reduced
             if isinstance(self.lr_scheduler, MyReduceLROnPlateau):
@@ -65,6 +43,11 @@ class ATAKDPTrainer(TAKDPTrainer):
 
         # pruning
         self.prune(epoch)
+        # update layers of auxiliary loss
+        aux_layer_names = self.get_aux_layer_names(epoch)
+        if len(aux_layer_names) > 0:
+            self.model.update_aux_layers(aux_layer_names)
+            self.logger.debug('Auxiliary layers including: ' + str(self.model.aux_layer_names))
 
         # trivial trainer
         self.model.train()
@@ -191,3 +174,38 @@ class ATAKDPTrainer(TAKDPTrainer):
     def _clean_cache(self):
         self.model.student_aux_outputs, self.model.teacher_aux_outputs = None, None
         super()._clean_cache()
+
+    def get_aux_layer_names(self, epoch):
+        # sort pruning plan according to epoch (smallest to largest)
+        sorted_pruning_plan = sorted(self.pruning_plan, key=lambda x: x['epoch'])
+
+        # names of layer in (sorted pruning plan)
+        sorted_layer_names = list(map(lambda x: x['name'], sorted_pruning_plan))
+
+        # names of layers that will be pruned in this epoch
+        pruned_layer_names = list(map(lambda x: x['name'], filter(lambda x: x['epoch'] == epoch, self.pruning_plan)))
+
+        # indexes of layers that will be pruned in this epoch in pruning_plan list
+        pruned_layer_name_idxes = [sorted_layer_names.index(pruned_layer_name) for pruned_layer_name in pruned_layer_names]
+        # largest index in previous list
+        pruned_layer_name_idx = max(pruned_layer_name_idxes)
+
+        num = self.config['pruning']['auxiliary_num_layers']
+        if pruned_layer_name_idx > (len(sorted_layer_names) - num):
+            aux_layer_names = sorted_layer_names[pruned_layer_name_idx + 1:]
+        else:
+            aux_layer_names = sorted_layer_names[pruned_layer_name_idx + 1: pruned_layer_name_idx + num + 1]
+
+        return aux_layer_names
+
+    def get_index_of_pruned_layer(self, epoch):
+        prune_epoch_to_now = np.array(list(map(lambda x: x['epoch'], self.pruning_plan))) - epoch
+        idx = -1
+        min_value = np.inf
+        for i in range(len(prune_epoch_to_now)):
+            if min_value > prune_epoch_to_now[i] >= 0:
+                idx = i
+                min_value = prune_epoch_to_now[i]
+        if idx < 0:
+            raise Exception('Early stop as there is not any layer to be pruned...')
+        return idx
