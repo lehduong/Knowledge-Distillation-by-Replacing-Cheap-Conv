@@ -5,7 +5,7 @@ from .kd_trainer import KnowledgeDistillationTrainer
 from models.students.base_student import DistillationArgs
 import copy
 import collections
-import utils.optim as module_optim
+
 
 class KDPTrainer(KnowledgeDistillationTrainer):
     """
@@ -48,16 +48,18 @@ class KDPTrainer(KnowledgeDistillationTrainer):
         for i, new_layer in enumerate(new_layers):
             layer_name = to_be_pruned_layers[i]['name']
             args.append(DistillationArgs(layer_name, new_layer, layer_name))
-            # reset optimizer state otherwise the momentum of adam will update teacher blocks even though
-            # the gradient is 0
-            # TODO: generalize this line to prune mulitple blocks at a time
-            self.optimizer = self.config.init_obj('optimizer', module_optim, new_layer.parameters())
 
             # if lr is specified for each layer then use that lr otherwise use default lr of optimizer
+            optimizer_arg = copy.deepcopy(self.config['optimizer']['args'])
             if 'lr' in to_be_pruned_layers[i]:
-                for param_group in self.optimizer.param_groups:
-                    param_group['lr'] = to_be_pruned_layers[i]['lr']
+                optimizer_arg['lr'] = to_be_pruned_layers[i]['lr']
+            # reset optimizer state otherwise the momentum of adam will update teacher blocks even though
+            # the gradient is 0
+            self.optimizer.state = collections.defaultdict(dict)
 
+            # add new parameters to optimizer
+            self.optimizer.add_param_group({'params': new_layer.parameters(),
+                                            **optimizer_arg})
         # add new blocks to student model
         self.model.update_pruned_layers(args)
         self.logger.info('Number of trainable parameters after pruning: ' + str(self.model.dump_trainable_params()))
