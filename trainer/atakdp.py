@@ -188,6 +188,8 @@ class ATAKDPTrainer(TAKDPTrainer):
         # indexes of layers that will be pruned in this epoch in pruning_plan list
         pruned_layer_name_idxes = [sorted_layer_names.index(pruned_layer_name) for pruned_layer_name in pruned_layer_names]
         # largest index in previous list
+        if len(pruned_layer_name_idxes) == 0:
+            return []
         pruned_layer_name_idx = max(pruned_layer_name_idxes)
 
         num = self.config['pruning']['auxiliary_num_layers']
