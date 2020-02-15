@@ -5,7 +5,7 @@ from .kd_trainer import KnowledgeDistillationTrainer
 from models.students.base_student import DistillationArgs
 import copy
 import collections
-import torch
+import utils.optim as module_optim
 
 class KDPTrainer(KnowledgeDistillationTrainer):
     """
@@ -51,7 +51,7 @@ class KDPTrainer(KnowledgeDistillationTrainer):
             # reset optimizer state otherwise the momentum of adam will update teacher blocks even though
             # the gradient is 0
             # TODO: generalize this line to prune mulitple blocks at a time
-            self.optimizer = self.config.init_obj('optimizer', torch.optim, new_layer.parameters())
+            self.optimizer = self.config.init_obj('optimizer', module_optim, new_layer.parameters())
 
             # if lr is specified for each layer then use that lr otherwise use default lr of optimizer
             if 'lr' in to_be_pruned_layers[i]:
