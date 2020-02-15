@@ -30,8 +30,9 @@ class ATAKDPTrainer(TAKDPTrainer):
             self.logger.info('Number of parameters: ' + str(number_of_param))
 
             # find the first layer that will be pruned afterward and set its pruned epoch to current epoch
-            idx = self.get_index_of_pruned_layer(epoch)
-            self.pruning_plan[idx]['epoch'] = epoch
+            idxes = self.get_index_of_pruned_layer(epoch)
+            for idx in idxes:
+                self.pruning_plan[idx]['epoch'] = epoch
 
             # reset lr scheduler o.w. the lr of new layer would be constantly reduced
             if isinstance(self.lr_scheduler, MyReduceLROnPlateau):
@@ -201,13 +202,28 @@ class ATAKDPTrainer(TAKDPTrainer):
         return aux_layer_names
 
     def get_index_of_pruned_layer(self, epoch):
-        prune_epoch_to_now = np.array(list(map(lambda x: x['epoch'], self.pruning_plan))) - epoch
-        idx = -1
-        min_value = np.inf
-        for i in range(len(prune_epoch_to_now)):
-            if min_value > prune_epoch_to_now[i] >= 0:
-                idx = i
-                min_value = prune_epoch_to_now[i]
-        if idx < 0:
-            raise Exception('Early stop as there is not any layer to be pruned...')
-        return idx
+        # prune_epoch_to_now = np.array(list(map(lambda x: x['epoch'], self.pruning_plan))) - epoch
+        # idx = -1
+        # min_value = np.inf
+        # for i in range(len(prune_epoch_to_now)):
+        #     if min_value > prune_epoch_to_now[i] >= 0:
+        #         idx = i
+        #         min_value = prune_epoch_to_now[i]
+        # if idx < 0:
+        #     raise Exception('Early stop as there is not any layer to be pruned...')
+        # return idx
+
+        unpruned_layers = list(filter(lambda x: x['epoch'] >= epoch, self.pruning_plan))
+        unpruned_layers_epoch = np.array(list(map(lambda x: x['epoch'], unpruned_layers)))
+        prune_epoch_to_now = unpruned_layers_epoch-epoch
+        soonest_layer_idxes = np.where(prune_epoch_to_now == prune_epoch_to_now.min())[0]
+        soonest_layer_names = list()
+        for i in soonest_layer_idxes:
+            soonest_layer_names.append(unpruned_layers[i]['name'])
+
+        pruning_plan_names = list(map(lambda x: x['name'], self.pruning_plan))
+        idxes = []
+        for soonest_layer_name in soonest_layer_names:
+            idxes.append(pruning_plan_names.index(soonest_layer_name))
+
+        return idxes
