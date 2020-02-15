@@ -29,7 +29,7 @@ class KDPTrainer(KnowledgeDistillationTrainer):
             return
         else:
             # logging the layers being pruned
-            self.logger.info('Pruning layer(s): ' + str(list(lambda x: x['name'], to_be_pruned_layers)))
+            self.logger.info('Pruning layer(s): ' + str(list(map(lambda x: x['name'], to_be_pruned_layers))))
 
         # get all layers (nn.Module object) in to_be_pruned_layers list by their names
         layers = [self.model.get_block(layer['name']) for layer in to_be_pruned_layers]
