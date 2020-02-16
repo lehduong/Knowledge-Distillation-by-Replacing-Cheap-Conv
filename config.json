@@ -199,5 +199,9 @@
             "value": 1.15,
             "anneal_rate": 1
         }
+    },
+    "load_weight":{
+        "epoch": 11,
+        "checkpoint": "checkpoint-epoch10.pth"
     }
 }
