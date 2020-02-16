@@ -1,10 +1,12 @@
 {
-    "name": "Iterative_Knowledge_distillation_Filter_pruning",
+    "_comment": "prune all layer of network from mod4 block. The model after pruning process should have around 28M parameters",
+    "name": "KnowledgeDistillation",
     "n_gpu": 1,
-
     "teacher": {
         "type": "DeepWV3Plus",
-        "args": {"num_classes": 19},
+        "args": {
+            "num_classes": 19
+        },
         "snapshot": "checkpoints/cityscapes_best.pth"
     },
     "transforms": {
@@ -21,7 +23,7 @@
     },
     "train_data_loader": {
         "type": "CityscapesDataloader",
-        "args":{
+        "args": {
             "data_dir": "data/",
             "batch_size": 2,
             "shuffle": true,
@@ -30,12 +32,12 @@
             "split": "train",
             "mode": "fine",
             "target_type": "semantic",
-            "num_samples": 500
+            "num_samples": 720
         }
     },
     "val_data_loader": {
         "type": "CityscapesDataloader",
-        "args":{
+        "args": {
             "data_dir": "data/",
             "batch_size": 2,
             "shuffle": false,
@@ -49,8 +51,8 @@
     },
     "optimizer": {
         "type": "Adam",
-        "args":{
-            "lr": 0.0001,
+        "args": {
+            "lr": 0.001,
             "weight_decay": 0.0001,
             "amsgrad": true
         }
@@ -59,7 +61,7 @@
         "type": "FocalLoss",
         "args": {
             "gamma": 2,
-            "reduction":  "mean",
+            "reduction": "mean",
             "ignore_index": 255
         }
     },
@@ -73,31 +75,29 @@
     "hint_loss": {
         "type": "MSELoss",
         "args": {
-            "reduction": "mean",
-            "num_classes": 19
+            "reduction": "sum",
+            "num_classes": 1
         }
     },
-    "metrics": [
-    ],
+    "metrics": [],
     "lr_scheduler": {
         "type": "StepLR",
         "args": {
-            "step_size": 1,
-            "gamma": 0.9
+            "step_size": 100,
+            "gamma": 1
         }
     },
     "trainer": {
+        "name": "TAKDPTrainer",
         "epochs": 100,
-
         "save_dir": "saved/",
         "save_period": 1,
         "verbosity": 2,
-
         "monitor": "min val_loss",
         "early_stop": 10,
         "accumulation_steps": 2,
-        "log_step": 24,
 
+        "log_step": 5,
         "tensorboard": true
     },
     "pruning": {
@@ -110,96 +110,40 @@
         "pruning_interval": 2,
         "pruning_plan": [
             {
-                "name": "mod4.block6.convs.conv1",
-                "lr": 0.0001,
-                "compress_rate": 0.5,
-                "epoch": 36
-            },
-            {
-                "name": "mod4.block6.convs.conv2",
-                "lr": 0.0001,
-                "compress_rate": 0.5,
-                "epoch": 32
-            },
-            {
-                "name": "mod4.block6.convs.conv2",
-                "lr": 0.0001,
-                "compress_rate": 0.5,
-                "epoch": 28
-            },
-            {
-                "name": "mod5.block1.convs.conv1",
-                "lr": 0.0001,
-                "compress_rate": 0.25,
-                "epoch": 24
-            },
-            {
-                "name": "mod5.block1.convs.conv2",
-                "lr": 0.0001,
-                "compress_rate": 0.25,
-                "epoch": 21
-            },
-            {
-                "name": "mod5.block2.convs.conv1",
-                "lr": 0.0001,
-                "compress_rate": 0.2,
-                "epoch": 18
-            },
-            {
-                "name": "mod5.block2.convs.conv2",
-                "lr": 0.0001,
-                "compress_rate": 0.2,
-                "epoch": 16
-            },
-            {
-                "name": "mod5.block3.convs.conv1",
-                "lr": 0.0001,
-                "compress_rate": 0.2,
-                "epoch": 14
-            },
-            {
-                "name": "mod5.block3.convs.conv2",
-                "lr": 0.0001,
-                "compress_rate": 0.2,
-                "epoch": 11
-            },
-            {
-                "name": "mod6.block1.convs.conv2",
-                "lr": 0.0001,
-                "compress_rate": 0.2,
-                "epoch": 9
-            },
-            {
                 "name": "mod7.block1.convs.conv1",
-                "lr": 0.0001,
-                "compress_rate": 0.2,
-                "epoch": 7
-            },
-            {
-                "name": "mod7.block1.convs.conv2",
-                "lr": 0.0001,
-                "compress_rate": 0.2,
-                "epoch": 5
-            },
-            {
-                "name": "aspp.features.1.0",
-                "lr": 0.0001,
-                "compress_rate": 0.2,
-                "epoch": 2
-            },
-            {
-                "name": "aspp.features.2.0",
-                "lr": 0.0001,
-                "compress_rate": 0.2,
+                "compress_rate": 0.15,
                 "epoch": 1
             },
             {
+                "name": "mod7.block1.convs.conv2",
+                "compress_rate": 0.05,
+                "epoch": 2
+            },
+            {
+                "name": "mod7.block1.convs.conv3",
+                "compress_rate": 0.05,
+                "epoch": 4
+            },
+            {
+                "name": "aspp.features.1.0",
+                "compress_rate": 0.15,
+                "epoch": 7
+            },
+            {
+                "name": "aspp.features.2.0",
+                "compress_rate": 0.15,
+                "epoch": 8
+            },
+            {
                 "name": "aspp.features.3.0",
-                "lr": 0.0001,
-                "compress_rate": 0.2,
-                "epoch": 0
+                "compress_rate": 0.15,
+                "epoch": 10
             }
         ]
+    },
+    "teaching_assistant": {
+        "interval": 10,
+        "tol": 0.0075
     },
     "weight_scheduler": {
         "alpha": {
@@ -208,9 +152,9 @@
             "max": 0.4
         },
         "beta": {
-            "value": 0.15,
-            "anneal_rate": 1.05,
-            "max": 0.5
+            "value": 0.5,
+            "anneal_rate": 0.95,
+            "max": 0.2
         },
         "gamma": {
             "value": 1.15,

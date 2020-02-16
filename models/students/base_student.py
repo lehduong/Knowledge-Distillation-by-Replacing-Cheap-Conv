@@ -1,7 +1,9 @@
 import copy
+import torch
+import gc
+import numpy as np
 from collections import namedtuple
 from functools import reduce
-import torch
 from torch import nn
 from base import BaseModel
 from beautifultable import BeautifulTable
@@ -152,10 +154,15 @@ class BaseStudent(BaseModel):
             self._assign_blocks(student_mode=True)
 
         self._remove_hooks()
-        for param in self.model.parameters():
+        for param in self.parameters():
             param.requires_grad = False
-        self.teacher_blocks = []
-        self.student_blocks = []
+        self.teacher_blocks = nn.ModuleList()
+        self.student_blocks = nn.ModuleList()
+        self.distillation_args = []
+
+        # remove cache
+        gc.collect()
+        torch.cuda.empty_cache()
 
         if is_teaching:
             self._assign_blocks(student_mode=False)
@@ -259,10 +266,12 @@ class BaseStudent(BaseModel):
             ret += str(param[0]) + "\n"
         return ret
 
-    def __str__(self):
-        """
-        Model prints with number of trainable parameters
-        """
+    def dump_trainable_params(self):
+        model_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        params = sum([np.prod(p.size()) for p in model_parameters])
+        return '\nTrainable parameters: {}'.format(params)
+
+    def dump_student_teacher_blocks_info(self):
         table = BeautifulTable()
         table.column_headers = ["Block name", "old block",
                                 "number params old blk", "new block",
@@ -285,5 +294,11 @@ class BaseStudent(BaseModel):
                               str(self.__get_number_param(self.teacher_blocks[i])),
                               self.__dump_module_name(self.student_blocks[i]),
                               str(self.__get_number_param(self.student_blocks[i]))])
+        return str(table)
 
-        return super().__str__() + '\n' + str(table)
+    def __str__(self):
+        """
+        Model prints with number of trainable parameters
+        """
+        table = self.dump_student_teacher_blocks_info()
+        return super().__str__() + '\n' + table

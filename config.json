@@ -1,43 +1,44 @@
 {
     "name": "KnowledgeDistillation",
     "n_gpu": 1,
-
     "teacher": {
         "type": "DeepWV3Plus",
-        "args": {"num_classes": 19},
+        "args": {
+            "num_classes": 19
+        },
         "snapshot": "checkpoints/cityscapes_best.pth"
     },
     "transforms": {
         "joint_transforms": {
-            "crop_size": 720,
+            "crop_size": 512,
             "scale_min": 0.5,
             "scale_max": 2,
             "ignore_label": 255
         },
         "extended_transforms": {
-            "color_aug": 0.1,
+            "color_aug": 0.2,
             "blur": "gaussian"
         }
     },
     "train_data_loader": {
         "type": "CityscapesDataloader",
-        "args":{
+        "args": {
             "data_dir": "data/",
-            "batch_size": 2,
+            "batch_size": 4,
             "shuffle": true,
             "validation_split": 0.0,
             "num_workers": 0,
             "split": "train",
             "mode": "fine",
             "target_type": "semantic",
-            "num_samples": 500
+            "num_samples": 512
         }
     },
     "val_data_loader": {
         "type": "CityscapesDataloader",
-        "args":{
+        "args": {
             "data_dir": "data/",
-            "batch_size": 2,
+            "batch_size": 1,
             "shuffle": false,
             "validation_split": 0,
             "num_workers": 0,
@@ -48,18 +49,16 @@
         }
     },
     "optimizer": {
-        "type": "Adam",
-        "args":{
-            "lr": 0.0001,
-            "weight_decay": 0.0001,
-            "amsgrad": true
+        "type": "RAdam",
+        "args": {
+            "lr": 0.01
         }
     },
     "supervised_loss": {
         "type": "FocalLoss",
         "args": {
             "gamma": 2,
-            "reduction":  "mean",
+            "reduction": "mean",
             "ignore_index": 255
         }
     },
@@ -67,41 +66,43 @@
         "type": "MSELoss",
         "args": {
             "reduction": "mean",
-            "num_classes": 19
+            "num_classes": 1
         }
     },
     "hint_loss": {
         "type": "MSELoss",
         "args": {
             "reduction": "mean",
-            "num_classes": 19
+            "num_classes": 1
         }
     },
-    "metrics": [
-    ],
+    "metrics": [],
     "lr_scheduler": {
-        "type": "StepLR",
+        "type": "MyReduceLROnPlateau",
         "args": {
-            "step_size": 1,
-            "gamma": 0.99
+            "mode": "min",
+            "threshold": 0.05,
+            "factor": 0.1,
+            "patience": 0,
+            "verbose": true,
+            "min_lr": 0.00001,
+            "threshold_mode": "rel"
         }
     },
     "trainer": {
-        "epochs": 100,
-
+        "name": "ATAKDPTrainer",
+        "epochs": 1000,
         "save_dir": "saved/",
-        "save_period": 10,
+        "save_period": 5,
         "verbosity": 2,
-        
-        "monitor": "min val_loss",
-        "early_stop": 10,
+        "monitor": "min val_mIoU",
+        "early_stop": 1000,
         "accumulation_steps": 2,
-        "log_step": 24,
-
+        "log_step": 5,
+        "do_validation_interval": 5,
+        "lr_scheduler_step_interval": 15,
+        "len_epoch": 200,
         "tensorboard": true
-    }, 
-    "KD": {
-        "use": true
     },
     "pruning": {
         "pruner": {
@@ -110,31 +111,89 @@
             "kernel_size": 3
         },
         "compress_rate": 0.2,
-        "pruning_interval": 2,
+        "auxiliary_num_layers": 6,
         "pruning_plan": [
-            ["mod4.block6.convs.conv1"],
-            ["mod4.block6.convs.conv2"],
-            ["mod5.block1.convs.conv1"],
-            ["mod5.block1.convs.conv2"],
-            ["mod5.block2.convs.conv1"],
-            ["mod5.block2.convs.conv2"],
-            ["mod5.block3.convs.conv1"],
-            ["mod5.block3.convs.conv2"],
-            ["mod6.block1.convs.conv2"],
-            ["mod7.block1.convs.conv1"],
-            ["mod7.block1.convs.conv2"]
+            {
+                "name": "mod5.block1.convs.conv1",
+                "compress_rate": 0.3,
+                "epoch": 1
+            },
+            {
+                "name": "mod5.block2.convs.conv1",
+                "compress_rate": 0.3,
+                "epoch": 10
+            },
+            {
+                "name": "mod5.block2.convs.conv2",
+                "compress_rate": 0.2,
+                "epoch": 20
+            },
+            {
+                "name": "mod5.block3.convs.conv1",
+                "compress_rate": 0.3,
+                "epoch": 30
+            },
+            {
+                "name": "mod5.block3.convs.conv2",
+                "compress_rate": 0.3,
+                "epoch": 40
+            },
+            {
+                "name": "mod6.block1.convs.conv2",
+                "compress_rate": 0.3,
+                "epoch": 50
+            },
+            {
+                "name": "mod7.block1.convs.conv1",
+                "compress_rate": 0.2,
+                "epoch": 101
+            },
+            {
+                "name": "mod7.block1.convs.conv2",
+                "compress_rate": 0.15,
+                "epoch": 104,
+                "lr": 0.005
+            },
+            {
+                "name": "mod7.block1.convs.conv3",
+                "compress_rate": 0.1,
+                "epoch": 106,
+                "lr": 0.005
+            },
+            {
+                "name": "aspp.features.1.0",
+                "compress_rate": 0.3,
+                "epoch": 113,
+                "lr": 0.005
+            },
+            {
+                "name": "aspp.features.2.0",
+                "compress_rate": 0.3,
+                "epoch": 120,
+                "lr": 0.005
+            },
+            {
+                "name": "aspp.features.3.0",
+                "compress_rate": 0.3,
+                "epoch": 130,
+                "lr": 0.005
+            }
         ]
+    },
+    "teaching_assistant": {
+        "interval": 6,
+        "tol": 0.005
     },
     "weight_scheduler": {
         "alpha": {
-            "value": 0.1,
-            "anneal_rate": 1.05,
-            "max": 0.4
+            "value": 0.0001,
+            "anneal_rate": 2,
+            "max": 0
         },
         "beta": {
-            "value": 0.15,
-            "anneal_rate": 1.05,
-            "max": 0.5
+            "value": 0.2,
+            "anneal_rate": 1,
+            "max": 0.2
         },
         "gamma": {
             "value": 1.15,

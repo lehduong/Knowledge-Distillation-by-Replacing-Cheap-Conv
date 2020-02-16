@@ -7,10 +7,10 @@ import losses as module_loss
 import models.metric as module_metric
 import models as module_arch
 import utils.optim as module_optim
-from models.students import BaseStudent, AuxStudent
+from models.students.base_student import BaseStudent
 from data_loader import _create_transform
 from parse_config import ConfigParser
-from trainer import KDPTrainer, TAKDPTrainer, ATAKDPTrainer
+from trainer import TAKDPTrainer
 from pruning import PFEC
 from utils import WeightScheduler
 
@@ -38,11 +38,7 @@ def main(config):
 
     # build models architecture, then print to console
     args = []
-    if config['trainer']['name'] != 'ATAKDPTrainer':
-        student = BaseStudent(teacher, args)
-    else:
-        aux_args = []
-        student = AuxStudent(teacher, args, aux_args)
+    student = BaseStudent(teacher, args)
     logger.info(student)
 
     # get function handles of loss and metrics
@@ -60,17 +56,8 @@ def main(config):
 
     # Knowledge Distillation only
     pruner = PFEC(student, config, config['pruning']['compress_rate'])
-    if config['trainer']['name'] == "TAKDPTrainer":
-        trainer = TAKDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
-                               valid_data_loader, lr_scheduler, weight_scheduler)
-    elif config['trainer']['name'] == 'KDPTrainer':
-        trainer = KDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
-                            valid_data_loader, lr_scheduler, weight_scheduler)
-    elif config['trainer']['name'] == 'ATAKDPTrainer':
-        trainer = ATAKDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
-                               valid_data_loader, lr_scheduler, weight_scheduler)
-    else:
-        raise Exception("Unsupported trainer")
+    trainer = TAKDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
+                           valid_data_loader, lr_scheduler, weight_scheduler)
 
     trainer.train()
 
