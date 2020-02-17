@@ -59,7 +59,7 @@ def main(config):
     weight_scheduler = WeightScheduler(config['weight_scheduler'])
 
     # Knowledge Distillation only
-    pruner = PFEC(student, config, config['pruning']['compress_rate'])
+    pruner = PFEC(student, config)
     if config['trainer']['name'] == "TAKDPTrainer":
         trainer = TAKDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
                                valid_data_loader, lr_scheduler, weight_scheduler)

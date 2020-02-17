@@ -10,11 +10,11 @@ from base import BasePruner
 
 
 class PFEC(BasePruner):
-    def __init__(self, model, config, compress_rate):
+    def __init__(self, model, config):
         super().__init__(model, config)
         self.config = config
         # pruning rate per layer using norm criterion
-        self.compress_rate = compress_rate
+        self.compress_rate = self.config['pruning']['compress_rate']
         # transform block params
         self.dilation = self.config['pruning']['pruner']['dilation']
         self.kernel_size = self.config['pruning']['pruner']['kernel_size']
