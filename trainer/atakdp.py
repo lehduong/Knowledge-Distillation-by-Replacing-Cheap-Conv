@@ -78,20 +78,22 @@ class ATAKDPTrainer(TAKDPTrainer):
                                0) / self.accumulation_steps / normalized_term
 
             # auxiliary loss:
-            # when computing the loss between output of teacher net and student net, we penalty the shallow layer
-            # more than deep layer
-            # the following loss will gradually increase the weight for former layer by exponential of gamma
-            # i.e. (loss_layer5*gamma^3 + loss_layer8*gamma^2 + loss_layer12*gamma^1)/(gamma^3+gamma^2+gamma^1)
-            aux_loss = reduce(lambda acc, elem: acc + self.criterions[2](elem[0], elem[1]),
-                              zip(self.model.student_aux_outputs, self.model.teacher_aux_outputs),
-                              0) / self.accumulation_steps
+            if len(self.model.student_aux_outputs) > 0:
+                aux_loss = reduce(lambda acc, elem: acc + self.criterions[2](elem[0], elem[1]),
+                                  zip(self.model.student_aux_outputs, self.model.teacher_aux_outputs),
+                                  0) / self.accumulation_steps / len(self.model.student_aux_outputs)
+            else:
+                aux_loss = 0
 
             # TODO: Early stop with teacher loss
             teacher_loss = self.criterions[0](output_tc, target)  # for comparision
 
             alpha = self.weight_scheduler.alpha
             beta = self.weight_scheduler.beta
-            loss = beta * hint_loss + (1 - beta) * aux_loss
+            if len(self.model.student_aux_outputs) > 0:
+                loss = beta * hint_loss + (1 - beta) * aux_loss
+            else:
+                loss = hint_loss
             loss.backward()
 
             if batch_idx % self.accumulation_steps == 0:
@@ -108,7 +110,8 @@ class ATAKDPTrainer(TAKDPTrainer):
             self.train_metrics.update('kd_loss', kd_loss.item() * self.accumulation_steps)
             self.train_metrics.update('hint_loss', hint_loss.item() * self.accumulation_steps)
             self.train_metrics.update('teacher_loss', teacher_loss.item())
-            self.train_metrics.update('aux_loss', aux_loss.item())
+            if len(self.model.student_aux_outputs) > 0:
+                self.train_metrics.update('aux_loss', aux_loss.item())
             self.train_iou_metrics.update(output_st.detach().cpu(), target.cpu())
             self.train_teacher_iou_metrics.update(output_tc.cpu(), target.cpu())
 
