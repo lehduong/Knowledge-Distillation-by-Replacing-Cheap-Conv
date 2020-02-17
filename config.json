@@ -31,7 +31,7 @@
             "split": "train",
             "mode": "fine",
             "target_type": "semantic",
-            "num_samples": 512
+            "num_samples": 528
         }
     },
     "val_data_loader": {
@@ -51,7 +51,7 @@
     "optimizer": {
         "type": "RAdam",
         "args": {
-            "lr": 0.01
+            "lr": 0.005
         }
     },
     "supervised_loss": {
@@ -81,8 +81,8 @@
         "type": "MyReduceLROnPlateau",
         "args": {
             "mode": "min",
-            "threshold": 0.05,
-            "factor": 0.1,
+            "threshold": 0.1,
+            "factor": 0.5,
             "patience": 0,
             "verbose": true,
             "min_lr": 0.00001,
@@ -97,7 +97,7 @@
         "verbosity": 2,
         "monitor": "min val_mIoU",
         "early_stop": 1000,
-        "accumulation_steps": 2,
+        "accumulation_steps": 1,
         "log_step": 5,
         "do_validation_interval": 5,
         "lr_scheduler_step_interval": 15,
@@ -116,73 +116,67 @@
             {
                 "name": "mod5.block1.convs.conv1",
                 "compress_rate": 0.3,
-                "epoch": 1
+                "epoch": 40
             },
             {
                 "name": "mod5.block2.convs.conv1",
-                "compress_rate": 0.3,
-                "epoch": 10
+                "compress_rate": 0.2,
+                "epoch": 40
             },
             {
                 "name": "mod5.block2.convs.conv2",
                 "compress_rate": 0.2,
-                "epoch": 20
-            },
-            {
-                "name": "mod5.block3.convs.conv1",
-                "compress_rate": 0.3,
-                "epoch": 30
-            },
-            {
-                "name": "mod5.block3.convs.conv2",
-                "compress_rate": 0.3,
                 "epoch": 40
             },
             {
+                "name": "mod5.block3.convs.conv1",
+                "compress_rate": 0.2,
+                "epoch": 40
+            },
+            {
+                "name": "mod5.block3.convs.conv2",
+                "compress_rate": 0.2,
+                "epoch": 70
+            },
+            {
                 "name": "mod6.block1.convs.conv2",
-                "compress_rate": 0.3,
-                "epoch": 50,
-                "lr": 0.05
+                "compress_rate": 0.2,
+                "epoch": 70
             },
             {
                 "name": "mod7.block1.convs.conv1",
                 "compress_rate": 0.2,
-                "epoch": 101
+                "epoch": 70
             },
             {
                 "name": "mod7.block1.convs.conv2",
                 "compress_rate": 0.15,
-                "epoch": 104,
-                "lr": 0.005
+                "epoch": 20
             },
             {
                 "name": "mod7.block1.convs.conv3",
                 "compress_rate": 0.1,
-                "epoch": 106,
-                "lr": 0.005
+                "epoch": 20
             },
             {
                 "name": "aspp.features.1.0",
-                "compress_rate": 0.3,
-                "epoch": 113,
-                "lr": 0.005
+                "compress_rate": 0.2,
+                "epoch": 1
             },
             {
                 "name": "aspp.features.2.0",
-                "compress_rate": 0.3,
-                "epoch": 120,
-                "lr": 0.005
+                "compress_rate": 0.2,
+                "epoch": 1
             },
             {
                 "name": "aspp.features.3.0",
-                "compress_rate": 0.3,
-                "epoch": 130,
-                "lr": 0.005
+                "compress_rate": 0.2,
+                "epoch": 1
             }
         ]
     },
     "teaching_assistant": {
-        "interval": 6,
+        "interval": 15,
         "tol": 0.005
     },
     "weight_scheduler": {
@@ -192,12 +186,12 @@
             "max": 0
         },
         "beta": {
-            "value": 0.2,
-            "anneal_rate": 1,
-            "max": 0.2
+            "value": 0.999,
+            "anneal_rate": 0.9,
+            "min": 0.999
         },
         "gamma": {
-            "value": 1.15,
+            "value": 1,
             "anneal_rate": 1
         }
     },

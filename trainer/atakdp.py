@@ -30,30 +30,9 @@ class ATAKDPTrainer(TAKDPTrainer):
             self.logger.info('Number of parameters: ' + str(number_of_param))
 
             # find the first layer that will be pruned afterward and set its pruned epoch to current epoch
-            prune_epoch_to_now = np.array(list(map(lambda x: x['epoch'], self.pruning_plan))) - epoch
-            idx = -1
-            min = np.inf
-            for i in range(len(prune_epoch_to_now)):
-                if min > prune_epoch_to_now[i] >= 0:
-                    idx = i
-                    min = prune_epoch_to_now[i]
-            if idx < 0:
-                print('Early stop as there is not any layer to be pruned...')
-                return {}
-            self.pruning_plan[idx]['epoch'] = epoch
-
-            # update layers of auxiliary loss
-            sorted_pruning_plan = sorted(self.pruning_plan, key=lambda x: x['epoch'])
-            sorted_layer_names = list(map(lambda x: x['name'], sorted_pruning_plan))
-            pruned_layer_name = self.pruning_plan[idx]['name']
-            pruned_layer_name_idx = sorted_layer_names.index(pruned_layer_name)
-            num = self.config['pruning']['auxiliary_num_layers']
-            if pruned_layer_name_idx > (len(sorted_layer_names) - num):
-                aux_layer_names = sorted_layer_names[pruned_layer_name_idx + 1:]
-            else:
-                aux_layer_names = sorted_layer_names[pruned_layer_name_idx + 1: pruned_layer_name_idx + num + 1]
-            self.model.update_aux_layers(aux_layer_names)
-            self.logger.debug('Auxiliary layers including: ' + str(self.model.aux_layer_names))
+            idxes = self.get_index_of_pruned_layer(epoch)
+            for idx in idxes:
+                self.pruning_plan[idx]['epoch'] = epoch
 
             # reset lr scheduler o.w. the lr of new layer would be constantly reduced
             if isinstance(self.lr_scheduler, MyReduceLROnPlateau):
@@ -65,6 +44,11 @@ class ATAKDPTrainer(TAKDPTrainer):
 
         # pruning
         self.prune(epoch)
+        # update layers of auxiliary loss
+        aux_layer_names = self.get_aux_layer_names(epoch)
+        if len(aux_layer_names) > 0:
+            self.model.update_aux_layers(aux_layer_names)
+            self.logger.debug('Auxiliary layers including: ' + str(self.model.aux_layer_names))
 
         # trivial trainer
         self.model.train()
@@ -94,20 +78,22 @@ class ATAKDPTrainer(TAKDPTrainer):
                                0) / self.accumulation_steps / normalized_term
 
             # auxiliary loss:
-            # when computing the loss between output of teacher net and student net, we penalty the shallow layer
-            # more than deep layer
-            # the following loss will gradually increase the weight for former layer by exponential of gamma
-            # i.e. (loss_layer5*gamma^3 + loss_layer8*gamma^2 + loss_layer12*gamma^1)/(gamma^3+gamma^2+gamma^1)
-            aux_loss = reduce(lambda acc, elem: acc + self.criterions[2](elem[0], elem[1]),
-                              zip(self.model.student_aux_outputs, self.model.teacher_aux_outputs),
-                              0) / self.accumulation_steps
+            if len(self.model.student_aux_outputs) > 0:
+                aux_loss = reduce(lambda acc, elem: acc + self.criterions[2](elem[0], elem[1]),
+                                  zip(self.model.student_aux_outputs, self.model.teacher_aux_outputs),
+                                  0) / self.accumulation_steps / len(self.model.student_aux_outputs)
+            else:
+                aux_loss = 0
 
             # TODO: Early stop with teacher loss
             teacher_loss = self.criterions[0](output_tc, target)  # for comparision
 
             alpha = self.weight_scheduler.alpha
             beta = self.weight_scheduler.beta
-            loss = beta * hint_loss + (1 - beta) * aux_loss
+            if len(self.model.student_aux_outputs) > 0:
+                loss = beta * hint_loss + (1 - beta) * aux_loss
+            else:
+                loss = hint_loss
             loss.backward()
 
             if batch_idx % self.accumulation_steps == 0:
@@ -124,7 +110,8 @@ class ATAKDPTrainer(TAKDPTrainer):
             self.train_metrics.update('kd_loss', kd_loss.item() * self.accumulation_steps)
             self.train_metrics.update('hint_loss', hint_loss.item() * self.accumulation_steps)
             self.train_metrics.update('teacher_loss', teacher_loss.item())
-            self.train_metrics.update('aux_loss', aux_loss.item())
+            if len(self.model.student_aux_outputs) > 0:
+                self.train_metrics.update('aux_loss', aux_loss.item())
             self.train_iou_metrics.update(output_st.detach().cpu(), target.cpu())
             self.train_teacher_iou_metrics.update(output_tc.cpu(), target.cpu())
 
@@ -191,3 +178,55 @@ class ATAKDPTrainer(TAKDPTrainer):
     def _clean_cache(self):
         self.model.student_aux_outputs, self.model.teacher_aux_outputs = None, None
         super()._clean_cache()
+
+    def get_aux_layer_names(self, epoch):
+        # sort pruning plan according to epoch (smallest to largest)
+        sorted_pruning_plan = sorted(self.pruning_plan, key=lambda x: x['epoch'])
+
+        # names of layer in (sorted pruning plan)
+        sorted_layer_names = list(map(lambda x: x['name'], sorted_pruning_plan))
+
+        # names of layers that will be pruned in this epoch
+        pruned_layer_names = list(map(lambda x: x['name'], filter(lambda x: x['epoch'] == epoch, self.pruning_plan)))
+
+        # indexes of layers that will be pruned in this epoch in pruning_plan list
+        pruned_layer_name_idxes = [sorted_layer_names.index(pruned_layer_name) for pruned_layer_name in pruned_layer_names]
+        # largest index in previous list
+        if len(pruned_layer_name_idxes) == 0:
+            return []
+        pruned_layer_name_idx = max(pruned_layer_name_idxes)
+
+        num = self.config['pruning']['auxiliary_num_layers']
+        if pruned_layer_name_idx > (len(sorted_layer_names) - num):
+            aux_layer_names = sorted_layer_names[pruned_layer_name_idx + 1:]
+        else:
+            aux_layer_names = sorted_layer_names[pruned_layer_name_idx + 1: pruned_layer_name_idx + num + 1]
+
+        return aux_layer_names
+
+    def get_index_of_pruned_layer(self, epoch):
+        # prune_epoch_to_now = np.array(list(map(lambda x: x['epoch'], self.pruning_plan))) - epoch
+        # idx = -1
+        # min_value = np.inf
+        # for i in range(len(prune_epoch_to_now)):
+        #     if min_value > prune_epoch_to_now[i] >= 0:
+        #         idx = i
+        #         min_value = prune_epoch_to_now[i]
+        # if idx < 0:
+        #     raise Exception('Early stop as there is not any layer to be pruned...')
+        # return idx
+
+        unpruned_layers = list(filter(lambda x: x['epoch'] >= epoch, self.pruning_plan))
+        unpruned_layers_epoch = np.array(list(map(lambda x: x['epoch'], unpruned_layers)))
+        prune_epoch_to_now = unpruned_layers_epoch-epoch
+        soonest_layer_idxes = np.where(prune_epoch_to_now == prune_epoch_to_now.min())[0]
+        soonest_layer_names = list()
+        for i in soonest_layer_idxes:
+            soonest_layer_names.append(unpruned_layers[i]['name'])
+
+        pruning_plan_names = list(map(lambda x: x['name'], self.pruning_plan))
+        idxes = []
+        for soonest_layer_name in soonest_layer_names:
+            idxes.append(pruning_plan_names.index(soonest_layer_name))
+
+        return idxes

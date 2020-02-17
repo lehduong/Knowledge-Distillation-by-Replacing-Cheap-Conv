@@ -87,15 +87,18 @@ class PFEC(BasePruner):
             compress_rate = self.compress_rate
 
         num_kept_filter = int(compress_rate * layer.weight.shape[0])
-        new_layer = self.norm_based_pruning(layer, num_kept_filter)
-        # keep weight of pre-trained layer
-        for param in new_layer.parameters():
-            param.requires_grad = True
-        #transform_block = self.transform_block(num_kept_filter, layer)
-        transform_block = TransformBlock(num_kept_filter, layer, new_layer, self.kernel_size, self.padding,
-                                         self.dilation, self.use_cuda)
-
-        #return nn.Sequential(new_layer, transform_block)
+        if num_kept_filter > 0:
+            new_layer = self.norm_based_pruning(layer, num_kept_filter)
+            # keep weight of pre-trained layer
+            for param in new_layer.parameters():
+                param.requires_grad = True
+            transform_block = TransformBlock(num_kept_filter, layer, new_layer, self.kernel_size, self.padding,
+                                             self.dilation, self.use_cuda)
+            #transform_block = self.transform_block(num_kept_filter, layer)
+            #return nn.Sequential(new_layer, transform_block)
+        else:
+            transform_block = DepthwiseSeparableBlock(layer.in_channels, layer.out_channels, self.kernel_size,
+                                                      self.padding, self.dilation, layer.in_channels, False)
         return transform_block
 
 
@@ -144,3 +147,19 @@ class TransformBlock(nn.Module):
         # out = self.relu(out)
         out = self.transform_block(out)
         return out
+
+
+class DepthwiseSeparableBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, padding, dilation, groups, bias, use_cuda=True):
+        super().__init__()
+        self.separable_conv = nn.Conv2d(in_channels, in_channels, kernel_size, padding=padding, dilation=dilation,
+                                        groups=groups, bias=bias)
+        self.pointwise_conv = nn.Conv2d(in_channels, out_channels, 1, bias=bias)
+        if use_cuda:
+            self.separable_conv.cuda()
+            self.pointwise_conv.cuda()
+
+    def forward(self, x):
+        x = self.separable_conv(x)
+        x = self.pointwise_conv(x)
+        return x
