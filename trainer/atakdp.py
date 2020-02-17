@@ -3,6 +3,8 @@ from functools import reduce
 from utils import inf_loop, MetricTracker, visualize, CityscapesMetricTracker
 from .takdp_trainer import TAKDPTrainer
 from utils.optim.lr_scheduler import MyOneCycleLR, MyReduceLROnPlateau
+from utils.util import EarlyStopTracker
+from pruning import PFEC
 import numpy as np
 
 
@@ -18,10 +20,12 @@ class ATAKDPTrainer(TAKDPTrainer):
 
         self.train_metrics = MetricTracker('loss', 'supervised_loss', 'kd_loss', 'hint_loss', 'teacher_loss',
                                            'aux_loss',*[m.__name__ for m in self.metric_ftns], writer=self.writer)
+        self.val_iou_tracker = EarlyStopTracker('best', 'max', 0.01, 'rel')
 
     def _train_epoch(self, epoch):
         # Teaching assistant
-        if (self._teacher_student_iou_gap < self.ta_tol) or ((self._ta_count % self.ta_interval) == 0):
+        if (self._teacher_student_iou_gap < self.ta_tol) or ((self._ta_count % self.ta_interval) == 0) or \
+                (not self.val_iou_tracker.last_update_success):
             # transfer student to teaching assistant
             self.model.to_teacher()
             # dump the new teacher:
@@ -39,6 +43,7 @@ class ATAKDPTrainer(TAKDPTrainer):
                 self.lr_scheduler.reset()
             self._ta_count = 0
             self.weight_scheduler.reset()
+            self.val_iou_tracker.reset()
 
         self._ta_count += 1
 
@@ -160,6 +165,7 @@ class ATAKDPTrainer(TAKDPTrainer):
             val_log = self._valid_epoch(epoch)
             log.update(**{'val_' + k: v for k, v in val_log.items()})
             log.update(**{'val_mIoU': self.valid_iou_metrics.get_iou()})
+            self.val_iou_tracker.update(self.valid_iou_metrics.get_iou())
 
         self._teacher_student_iou_gap = self.train_teacher_iou_metrics.get_iou() - self.train_iou_metrics.get_iou()
 
@@ -230,3 +236,37 @@ class ATAKDPTrainer(TAKDPTrainer):
             idxes.append(pruning_plan_names.index(soonest_layer_name))
 
         return idxes
+
+    def _resume_checkpoint(self, resume_path):
+        """
+        Resume from saved checkpoints
+
+        :param resume_path: Checkpoint path to be resumed
+        """
+        resume_path = str(resume_path)
+        self.logger.info("Loading checkpoint: {} ...".format(resume_path))
+        checkpoint = torch.load(resume_path)
+        self.start_epoch = checkpoint['epoch'] + 1
+        self.mnt_best = checkpoint['monitor_best']
+
+        # load architecture params from checkpoint.
+        if checkpoint['config']['arch'] != self.config['arch']:
+            self.logger.warning("Warning: Architecture configuration given in config file is different from that of "
+                                "checkpoint. This may yield an exception while state_dict is being loaded.")
+
+        # prune old model
+        self.pruner = PFEC(self.model, checkpoint['config'])
+        for i in range(checkpoint['epoch']+1):
+            self.prune(i)
+        self.model.to_teacher()
+        self.model.load_state_dict(checkpoint['state_dict'])
+
+        # load optimizer state from checkpoint only when optimizer type is not changed.
+        if checkpoint['config']['optimizer']['type'] != self.config['optimizer']['type']:
+            self.logger.warning("Warning: Optimizer type given in config file is different from that of checkpoint. "
+                                "Optimizer parameters not being resumed.")
+        else:
+            self.optimizer.load_state_dict(checkpoint['optimizer'])
+
+        self.logger.info("Checkpoint loaded. Resume training from epoch {}".format(self.start_epoch))
+
