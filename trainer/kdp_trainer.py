@@ -22,7 +22,7 @@ class KDPTrainer(KnowledgeDistillationTrainer):
         self.compress_rate = self.config['pruning']['compress_rate']
 
         if self.config['load_weight']:
-          lw_dict = self.config['load_weight']
+          self.lw_dict = self.config['load_weight']
           print('Load weights from checkpoint: {}'.format(lw_dict['checkpoint']))
           self.load_weight(checkpoint=lw_dict['checkpoint'], epoch=lw_dict['epoch'])
 
@@ -110,10 +110,11 @@ class KDPTrainer(KnowledgeDistillationTrainer):
             new_layers.append(pruner.prune(layer, compress_rate))
 
         # create new Distillation args
+        n_layers_TA = len(to_be_pruned_layers) - self.lw_dict['num_teacher']
         args = []
         for i, new_layer in enumerate(new_layers):
             # check if this layer is trainable or not
-            trainable = to_be_pruned_layers[i]['trainable']
+            trainable = i >= n_layers_TA
             if not trainable:
                 for param in new_layer.parameters():
                     param.requires_grad = False
@@ -131,7 +132,7 @@ class KDPTrainer(KnowledgeDistillationTrainer):
 
         # add new blocks to student model
         self.model.update_pruned_layers(args)
-        self.restore_arch_for_pruned_model()
+        self.restore_arch_for_pruned_model(self.lw_dict['num_teacher'])
         self.logger.info(self.model.dump_trainable_params())
         self.logger.info(self.model.dump_student_teacher_blocks_info())
 
@@ -141,10 +142,11 @@ class KDPTrainer(KnowledgeDistillationTrainer):
         self.model.load_state_dict(state_dict['state_dict'])
         self.optimizer.load_state_dict(state_dict['optimizer'])
 
-    def restore_arch_for_pruned_model(self):
+    def restore_arch_for_pruned_model(self, n_teacher):
         self.model._assign_blocks(student_mode=True)
-        self.model.teacher_blocks = nn.ModuleList([self.model.teacher_blocks[-1]])
-        self.model.student_blocks = nn.ModuleList([self.model.student_blocks[-1]])
+        self.model.teacher_blocks = nn.ModuleList(self.model.teacher_blocks[-n_teacher: ])
+        self.model.student_blocks = nn.ModuleList(self.model.student_blocks[-n_teacher: ])
+        self.model.distillation_args = self.model.distillation_args[-n_teacher: ]
 
     def _train_epoch(self, epoch):
         self.prune(epoch)

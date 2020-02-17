@@ -141,7 +141,8 @@
             {
                 "name": "mod6.block1.convs.conv2",
                 "compress_rate": 0.3,
-                "epoch": 50
+                "epoch": 50,
+                "lr": 0.05
             },
             {
                 "name": "mod7.block1.convs.conv1",
@@ -202,6 +203,7 @@
     },
     "load_weight":{
         "epoch": 11,
-        "checkpoint": "checkpoint-epoch10.pth"
+        "checkpoint": "checkpoint-epoch10.pth",
+        "num_teacher": 3
     }
 }
