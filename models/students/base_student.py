@@ -167,6 +167,28 @@ class BaseStudent(BaseModel):
         if is_teaching:
             self._assign_blocks(student_mode=False)
 
+    def reset(self):
+        """
+        stop pruning current student layers and transfer back to original model
+        :return:
+        """
+        is_learning = False
+        if not self._teaching:
+            self._assign_blocks(False)
+            is_learning = True
+
+        self._remove_hooks()
+        for param in self.parameters():
+            param.requires_grad = False
+        self.teacher_blocks = nn.ModuleList()
+        self.student_blocks = nn.ModuleList()
+        self.distillation_args = []
+        gc.collect()
+        torch.cuda.empty_cache()
+
+        if is_learning:
+            self._assign_blocks(True)
+
     def update_pruned_layers(self, distillation_args):
         """
         Update the model to be compatible with new distillation args
