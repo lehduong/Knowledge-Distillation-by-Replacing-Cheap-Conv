@@ -66,14 +66,12 @@ class LayerCompressibleTrainer(KDPTrainer):
                     self.lr_scheduler.step()
                 self.optimizer.zero_grad()
 
-            self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
-
             # update metrics
-            self.train_metrics.update('loss', loss.item() * self.accumulation_steps)
-            self.train_metrics.update('supervised_loss', supervised_loss.item() * self.accumulation_steps)
-            self.train_metrics.update('kd_loss', kd_loss.item() * self.accumulation_steps)
-            self.train_metrics.update('hint_loss', hint_loss.item() * self.accumulation_steps)
-            self.train_metrics.update('teacher_loss', teacher_loss.item())
+            # self.train_metrics.update('loss', loss.item() * self.accumulation_steps)
+            # self.train_metrics.update('supervised_loss', supervised_loss.item() * self.accumulation_steps)
+            # self.train_metrics.update('kd_loss', kd_loss.item() * self.accumulation_steps)
+            # self.train_metrics.update('hint_loss', hint_loss.item() * self.accumulation_steps)
+            # self.train_metrics.update('teacher_loss', teacher_loss.item())
             self.train_iou_metrics.update(output_st.detach().cpu(), target.cpu())
             self.train_teacher_iou_metrics.update(output_tc.cpu(), target.cpu())
 
@@ -81,10 +79,10 @@ class LayerCompressibleTrainer(KDPTrainer):
                 self.train_metrics.update(met.__name__, met(output_st, target))
 
             if batch_idx % self.log_step == 0:
-                self.writer.add_scalars("mIoU/" + layer_name, {str(lr): self.train_iou_metrics.get_iou()})
-                self.writer.add_scalars("loss/" + layer_name, {str(lr): loss.item()})
+                self.writer.add_scalars("mIoU/" + layer_name.replace('.', '_'), {str(lr): self.train_iou_metrics.get_iou()}, epoch)
+                self.writer.add_scalars("loss/" + layer_name.replace('.', '_'), {str(lr): loss.item()}, epoch)
                 iou_gap = self.train_teacher_iou_metrics.get_iou() - self.train_iou_metrics.get_iou()
-                self.writer.add_scalars("student_teacher_iou_gap/" + layer_name, { str(lr): iou_gap})
+                self.writer.add_scalars("student_teacher_iou_gap/" + layer_name.replace('.', '_'), { str(lr): iou_gap}, epoch)
                 self.logger.info(
                     'Train Epoch: {} [{}]/[{}] Loss: {:.6f} mIoU: {:.6f} Teacher mIoU: {:.6f} Supervised Loss: {:.6f} '
                     'Knowledge Distillation loss: '
