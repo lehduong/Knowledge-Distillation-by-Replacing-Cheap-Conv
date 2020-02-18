@@ -78,11 +78,12 @@ class LayerCompressibleTrainer(KDPTrainer):
             for met in self.metric_ftns:
                 self.train_metrics.update(met.__name__, met(output_st, target))
 
+            iteration = (epoch-1)*self.len_epoch+batch_idx
             if batch_idx % self.log_step == 0:
-                self.writer.add_scalars("mIoU/" + layer_name.replace('.', '_'), {str(lr): self.train_iou_metrics.get_iou()}, epoch)
-                self.writer.add_scalars("loss/" + layer_name.replace('.', '_'), {str(lr): loss.item()}, epoch)
+                self.writer.add_scalars("mIoU/" + layer_name.replace('.', '_'), {str(lr): self.train_iou_metrics.get_iou()}, iteration)
+                self.writer.add_scalars("loss/" + layer_name.replace('.', '_'), {str(lr): loss.item()}, iteration)
                 iou_gap = self.train_teacher_iou_metrics.get_iou() - self.train_iou_metrics.get_iou()
-                self.writer.add_scalars("student_teacher_iou_gap/" + layer_name.replace('.', '_'), { str(lr): iou_gap}, epoch)
+                self.writer.add_scalars("student_teacher_iou_gap/" + layer_name.replace('.', '_'), { str(lr): iou_gap}, iteration)
                 self.logger.info(
                     'Train Epoch: {} [{}]/[{}] Loss: {:.6f} mIoU: {:.6f} Teacher mIoU: {:.6f} Supervised Loss: {:.6f} '
                     'Knowledge Distillation loss: '
