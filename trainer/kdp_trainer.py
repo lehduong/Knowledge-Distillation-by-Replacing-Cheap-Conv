@@ -42,7 +42,7 @@ class KDPTrainer(KnowledgeDistillationTrainer):
             if 'compress_rate' in to_be_pruned_layers[idx]:
                 compress_rate = to_be_pruned_layers[idx]['compress_rate']
             print(str(layer) + " compress rate: " + str(compress_rate))
-            new_layers.append(self.pruner.prune(layer, compress_rate))
+            new_layers.append(self.pruner.prune(layer, compress_rate=compress_rate))
 
         # create new Distillation args
         args = []
