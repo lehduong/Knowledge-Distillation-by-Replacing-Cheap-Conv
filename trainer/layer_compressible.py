@@ -81,10 +81,10 @@ class LayerCompressibleTrainer(KDPTrainer):
                 self.train_metrics.update(met.__name__, met(output_st, target))
 
             if batch_idx % self.log_step == 0:
-                self.writer.add_scalar("mIoU/" + layer_name, {str(lr): self.train_iou_metrics.get_iou()})
-                self.writer.add_scalar("loss/" + layer_name, {str(lr): loss.item()})
+                self.writer.add_scalars("mIoU/" + layer_name, {str(lr): self.train_iou_metrics.get_iou()})
+                self.writer.add_scalars("loss/" + layer_name, {str(lr): loss.item()})
                 iou_gap = self.train_teacher_iou_metrics.get_iou() - self.train_iou_metrics.get_iou()
-                self.writer.add_scalar("student_teacher_iou_gap/" + layer_name, { str(lr): iou_gap})
+                self.writer.add_scalars("student_teacher_iou_gap/" + layer_name, { str(lr): iou_gap})
                 self.logger.info(
                     'Train Epoch: {} [{}]/[{}] Loss: {:.6f} mIoU: {:.6f} Teacher mIoU: {:.6f} Supervised Loss: {:.6f} '
                     'Knowledge Distillation loss: '

@@ -90,7 +90,7 @@
         }
     },
     "trainer": {
-        "name": "ATAKDPTrainer",
+        "name": "LayerCompressibleTrainer",
         "epochs": 2,
         "save_dir": "saved/",
         "save_period": 5,
