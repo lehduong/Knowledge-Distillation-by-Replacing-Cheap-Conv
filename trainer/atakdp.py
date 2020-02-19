@@ -115,8 +115,6 @@ class ATAKDPTrainer(TAKDPTrainer):
             self.train_metrics.update('kd_loss', kd_loss.item() * self.accumulation_steps)
             self.train_metrics.update('hint_loss', hint_loss.item() * self.accumulation_steps)
             self.train_metrics.update('teacher_loss', teacher_loss.item())
-            if not isinstance(aux_loss, float):
-                self.train_metrics.update('aux_loss', aux_loss.item())
             self.train_iou_metrics.update(output_st.detach().cpu(), target.cpu())
             self.train_teacher_iou_metrics.update(output_tc.cpu(), target.cpu())
 
