@@ -5,6 +5,7 @@ from .kdp_trainer import KDPTrainer
 from utils.optim.lr_scheduler import MyOneCycleLR, MyReduceLROnPlateau
 from utils.util import EarlyStopTracker
 from models.students.base_student import DistillationArgs
+from tensorboardX import SummaryWriter
 import copy
 import collections
 
@@ -22,6 +23,7 @@ class LayerCompressibleTrainer(KDPTrainer):
         self.train_metrics = MetricTracker('loss', 'supervised_loss', 'kd_loss', 'hint_loss', 'teacher_loss',
                                            'aux_loss', *[m.__name__ for m in self.metric_ftns], writer=self.writer)
         self.val_iou_tracker = EarlyStopTracker('best', 'max', 0.01, 'rel')
+        self.writer = SummaryWriter(config.log_dir)
 
     def train_epoch(self, epoch, layer_name, compress_rate, lr):
 
