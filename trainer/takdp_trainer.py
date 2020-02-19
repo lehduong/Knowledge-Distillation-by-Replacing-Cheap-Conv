@@ -16,7 +16,7 @@ class TAKDPTrainer(KDPTrainer):
                          valid_data_loader, lr_scheduler, weight_scheduler)
         self.ta_interval = self.config['teaching_assistant']['interval']
         self.ta_tol = self.config['teaching_assistant']['tol']
-        self._ta_count = 0
+        self._ta_count = 1
 
     def _train_epoch(self, epoch):
         if (self._teacher_student_iou_gap < self.ta_tol) or ((self._ta_count % self.ta_interval) == 0):
