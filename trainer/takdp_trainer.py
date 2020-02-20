@@ -112,7 +112,7 @@ class TAKDPTrainer(KDPTrainer):
         self.logger.info('Begin pruning trained TA layers')
         for idx, layer in enumerate(trained_ta_layers):
             layer_name = checkpoint['trained_ta_layers'][idx]
-            compress_rate = pruning_plan_dict[layer_name]['compress_rate']
+            compress_rate = pruning_plan_dict[layer_name]
             self.logger.info(str(layer) + " compress rate: " + str(compress_rate))
             new_layers.append(pruner.prune(layer, compress_rate))
         args = []
@@ -142,7 +142,7 @@ class TAKDPTrainer(KDPTrainer):
         for i, new_layer in enumerate(new_layers):
             for param in new_layer.parameters():
                 param.requires_grad = True
-            layer_name = checkpoint['training_ta_layers'][idx]
+            layer_name = checkpoint['training_ta_layers'][i]
             args.append(DistillationArgs(layer_name, new_layer, layer_name))
 
             optimizer_arg = checkpoint['config']['optimizer']['args']
@@ -150,8 +150,9 @@ class TAKDPTrainer(KDPTrainer):
                                             **optimizer_arg})
         # load state dict
         self.model.update_pruned_layers(args)
-        self.logger.debug(self.model)
         forgiving_state_restore(self.model, checkpoint['state_dict'])
+        #self.logger.debug(self.model)
+        self.logger.debug(self.model.dump_student_teacher_blocks_info())
         self.logger.info("Loaded model's state dict successfully")
 
         # load optimizer state from checkpoint only when optimizer type is not changed.
