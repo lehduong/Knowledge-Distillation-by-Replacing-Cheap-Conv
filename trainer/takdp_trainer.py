@@ -28,7 +28,7 @@ class TAKDPTrainer(KDPTrainer):
     def _train_epoch(self, epoch):
         if (self._teacher_student_iou_gap < self.ta_tol) or ((self._ta_count % self.ta_interval) == 0):
             # transfer student to teaching assistant
-            trained_ta_layers = list(map(lambda x: x['old_block_name'], self.model.distillation_args))
+            trained_ta_layers = list(map(lambda x: x.old_block_name, self.model.distillation_args))
             self._trained_ta_layers += trained_ta_layers
             self.model.to_teacher()
 
@@ -66,7 +66,7 @@ class TAKDPTrainer(KDPTrainer):
         :param save_best: if True, rename the saved checkpoint to 'model_best.pth'
         """
         arch = type(self.model).__name__
-        training_ta_layers = list(map(lambda x: x['old_block_name'], self.model.distillation_args))
+        training_ta_layers = list(map(lambda x: x.old_block_name, self.model.distillation_args))
         state = {
             'arch': arch,
             'epoch': epoch,
