@@ -58,9 +58,9 @@ class KDPTrainer(KnowledgeDistillationTrainer):
             # add new parameters to optimizer
             # if start pruning this epoch and model doesn't have any trainable paramters i.e. just have been \
             # promoted to TA then create new optimizer
-            if i == 0 and list(filter(lambda x: x.requires_grad, self.model.parameters())) == 0:
+            if i == 0 and len(list(filter(lambda x: x.requires_grad, self.model.parameters()))) == 0:
                 self.logger.debug('Creating new optimizer...')
-                self.optimizer = self.config.init_obj('optimizer', optim_module, new_layer.parameters)
+                self.optimizer = self.config.init_obj('optimizer', optim_module, new_layer.parameters())
                 for param_group in self.optimizer.param_groups:
                     param_group['lr'] = optimizer_arg['lr']
             else:

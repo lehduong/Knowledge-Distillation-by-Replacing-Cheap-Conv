@@ -120,7 +120,7 @@ class TAKDPTrainer(KDPTrainer):
         # TODO: Causing problem if not call assign_blocks, will fix later
         self.model.update_pruned_layers(args)
         self.logger.debug(self.model.dump_student_teacher_blocks_info())
-        self.model._assign_blocks(True)
+        self.model._assign_blocks(False)
         self.model.to_teacher()
 
         # Prune training TA layers
@@ -149,7 +149,7 @@ class TAKDPTrainer(KDPTrainer):
         # load state dict
         self.model.update_pruned_layers(args)
         forgiving_state_restore(self.model, checkpoint['state_dict'])
-        #self.logger.debug(self.model)
+        self.logger.debug(self.model)
         self.logger.debug(self.model.dump_student_teacher_blocks_info())
         self.logger.info("Loaded model's state dict successfully")
 
