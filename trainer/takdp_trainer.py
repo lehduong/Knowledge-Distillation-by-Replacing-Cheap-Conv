@@ -114,11 +114,12 @@ class TAKDPTrainer(KDPTrainer):
         for i, new_layer in enumerate(new_layers):
             for param in new_layer.parameters():
                 param.requires_grad = False
-            layer_name = checkpoint['trained_ta_layers'][idx]
+            layer_name = checkpoint['trained_ta_layers'][i]
             args.append(DistillationArgs(layer_name, new_layer, layer_name))
 
         # TODO: Causing problem if not call assign_blocks, will fix later
         self.model.update_pruned_layers(args)
+        self.logger.debug(self.model.dump_student_teacher_blocks_info())
         self.model._assign_blocks(True)
         self.model.to_teacher()
 
@@ -138,9 +139,13 @@ class TAKDPTrainer(KDPTrainer):
             layer_name = checkpoint['training_ta_layers'][i]
             args.append(DistillationArgs(layer_name, new_layer, layer_name))
 
-            optimizer_arg = checkpoint['config']['optimizer']['args']
-            self.optimizer.add_param_group({'params': new_layer.parameters(),
-                                            **optimizer_arg})
+            if i == 0 and list(filter(lambda x: x.requires_grad, self.model.parameters())) == 0:
+                self.logger.debug('Creating new optimizer...')
+                self.optimizer = checkpoint['config'].init_obj('optimizer', optim_module, new_layer.parameters)
+            else:
+                optimizer_arg = checkpoint['config']['optimizer']['args']
+                self.optimizer.add_param_group({'params': new_layer.parameters(),
+                                                **optimizer_arg})
         # load state dict
         self.model.update_pruned_layers(args)
         forgiving_state_restore(self.model, checkpoint['state_dict'])
@@ -149,11 +154,11 @@ class TAKDPTrainer(KDPTrainer):
         self.logger.info("Loaded model's state dict successfully")
 
         # load optimizer state from checkpoint only when optimizer type is not changed.
-        if checkpoint['config']['optimizer']['type'] != self.config['optimizer']['type']:
-            self.logger.warning("Warning: Optimizer type given in config file is different from that of checkpoint. "
-                                "Optimizer parameters not being resumed.")
-        else:
-            self.optimizer.load_state_dict(checkpoint['optimizer'])
+        # if checkpoint['config']['optimizer']['type'] != self.config['optimizer']['type']:
+        #     self.logger.warning("Warning: Optimizer type given in config file is different from that of checkpoint. "
+        #                         "Optimizer parameters not being resumed.")
+        # else:
+        #     self.optimizer.load_state_dict(checkpoint['optimizer'])
 
         self.logger.info("Checkpoint loaded. Resume training from epoch {}".format(self.start_epoch))
 
