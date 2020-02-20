@@ -4,6 +4,7 @@ Knowledge distillation via Pruning with Teacher Assistant
 from .kdp_trainer import KDPTrainer
 from models.students.base_student import DistillationArgs
 from models import forgiving_state_restore
+from utils import optim as optim_module
 import numpy as np
 import torch
 
@@ -31,6 +32,8 @@ class TAKDPTrainer(KDPTrainer):
             trained_ta_layers = list(map(lambda x: x.old_block_name, self.model.distillation_args))
             self._trained_ta_layers += trained_ta_layers
             self.model.to_teacher()
+            # reset optimizer
+            self.optimizer = self.config.init_obj('optimizer', optim_module, self.model.parameters())
 
             # find the soonest layer that will be pruned and prune it now
             prune_epoch_to_now = np.array(list(map(lambda x: x['epoch'], self.pruning_plan)))-epoch
@@ -122,15 +125,13 @@ class TAKDPTrainer(KDPTrainer):
             layer_name = checkpoint['trained_ta_layers'][idx]
             args.append(DistillationArgs(layer_name, new_layer, layer_name))
 
-            optimizer_arg = checkpoint['config']['optimizer']['args']
-            self.optimizer.add_param_group({'params': new_layer.parameters(),
-                                            **optimizer_arg})
         # TODO: Causing problem if not call assign_blocks, will fix later
         self.model.update_pruned_layers(args)
         self.model._assign_blocks(True)
         self.model.to_teacher()
 
         # Prune training TA layers
+        self.optimizer = self.config.init_obj('optimizer', optim_module, self.model.parameters())
         new_layers = []
         self.logger.info('Begin pruning training TA layers')
         for idx, layer in enumerate(training_ta_layers):

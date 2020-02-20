@@ -3,11 +3,7 @@ Knowledge distillation via Pruning i.e. KDP
 """
 from .kd_trainer import KnowledgeDistillationTrainer
 from models.students.base_student import DistillationArgs
-from models import forgiving_state_restore
 import copy
-import collections
-import torch
-import torch.nn as nn
 
 
 class KDPTrainer(KnowledgeDistillationTrainer):
@@ -57,9 +53,6 @@ class KDPTrainer(KnowledgeDistillationTrainer):
             optimizer_arg = copy.deepcopy(self.config['optimizer']['args'])
             if 'lr' in to_be_pruned_layers[i]:
                 optimizer_arg['lr'] = to_be_pruned_layers[i]['lr']
-            # reset optimizer state otherwise the momentum of adam will update teacher blocks even though
-            # the gradient is 0
-            self.optimizer.state = collections.defaultdict(dict)
 
             # add new parameters to optimizer
             self.optimizer.add_param_group({'params': new_layer.parameters(),

@@ -4,10 +4,8 @@ from utils import inf_loop, MetricTracker, visualize, CityscapesMetricTracker
 from .takdp_trainer import TAKDPTrainer
 from utils.optim.lr_scheduler import MyOneCycleLR, MyReduceLROnPlateau
 from utils.util import EarlyStopTracker
-from pruning import PFEC
-from models import forgiving_state_restore
+from utils import optim as optim_module
 import numpy as np
-import torch
 
 
 class ATAKDPTrainer(TAKDPTrainer):
@@ -32,6 +30,9 @@ class ATAKDPTrainer(TAKDPTrainer):
             trained_ta_layers = list(map(lambda x: x.old_block_name, self.model.distillation_args))
             self._trained_ta_layers += trained_ta_layers
             self.model.to_teacher()
+            # reset optimizer
+            self.optimizer = self.config.init_obj('optimizer', optim_module, self.model.parameters())
+
             # dump the new teacher:
             self.logger.info('Promoted Student to Teaching Assistant')
             number_of_param = sum(p.numel() for p in self.model.parameters())
