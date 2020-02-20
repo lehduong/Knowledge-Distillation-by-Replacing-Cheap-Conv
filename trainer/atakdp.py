@@ -29,7 +29,7 @@ class ATAKDPTrainer(TAKDPTrainer):
         if (self._teacher_student_iou_gap < self.ta_tol) or ((self._ta_count % self.ta_interval) == 0) or \
                 (not self.val_iou_tracker.last_update_success):
             # transfer student to teaching assistant
-            trained_ta_layers = list(map(lambda x: x['old_block_name'], self.model.distillation_args))
+            trained_ta_layers = list(map(lambda x: x.old_block_name, self.model.distillation_args))
             self._trained_ta_layers += trained_ta_layers
             self.model.to_teacher()
             # dump the new teacher:
