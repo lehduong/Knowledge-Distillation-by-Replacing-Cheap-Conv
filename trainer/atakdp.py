@@ -5,7 +5,9 @@ from .takdp_trainer import TAKDPTrainer
 from utils.optim.lr_scheduler import MyOneCycleLR, MyReduceLROnPlateau
 from utils.util import EarlyStopTracker
 from pruning import PFEC
+from models import forgiving_state_restore
 import numpy as np
+import torch
 
 
 class ATAKDPTrainer(TAKDPTrainer):
@@ -27,6 +29,8 @@ class ATAKDPTrainer(TAKDPTrainer):
         if (self._teacher_student_iou_gap < self.ta_tol) or ((self._ta_count % self.ta_interval) == 0) or \
                 (not self.val_iou_tracker.last_update_success):
             # transfer student to teaching assistant
+            trained_ta_layers = list(map(lambda x: x['old_block_name'], self.model.distillation_args))
+            self._trained_ta_layers += trained_ta_layers
             self.model.to_teacher()
             # dump the new teacher:
             self.logger.info('Promoted Student to Teaching Assistant')
@@ -90,7 +94,6 @@ class ATAKDPTrainer(TAKDPTrainer):
             else:
                 aux_loss = 0
 
-            # TODO: Early stop with teacher loss
             teacher_loss = self.criterions[0](output_tc, target)  # for comparision
 
             alpha = self.weight_scheduler.alpha
@@ -209,17 +212,6 @@ class ATAKDPTrainer(TAKDPTrainer):
         return aux_layer_names
 
     def get_index_of_pruned_layer(self, epoch):
-        # prune_epoch_to_now = np.array(list(map(lambda x: x['epoch'], self.pruning_plan))) - epoch
-        # idx = -1
-        # min_value = np.inf
-        # for i in range(len(prune_epoch_to_now)):
-        #     if min_value > prune_epoch_to_now[i] >= 0:
-        #         idx = i
-        #         min_value = prune_epoch_to_now[i]
-        # if idx < 0:
-        #     raise Exception('Early stop as there is not any layer to be pruned...')
-        # return idx
-
         unpruned_layers = list(filter(lambda x: x['epoch'] >= epoch, self.pruning_plan))
         unpruned_layers_epoch = np.array(list(map(lambda x: x['epoch'], unpruned_layers)))
         prune_epoch_to_now = unpruned_layers_epoch-epoch
@@ -234,37 +226,4 @@ class ATAKDPTrainer(TAKDPTrainer):
             idxes.append(pruning_plan_names.index(soonest_layer_name))
 
         return idxes
-
-    def _resume_checkpoint(self, resume_path):
-        """
-        Resume from saved checkpoints
-
-        :param resume_path: Checkpoint path to be resumed
-        """
-        resume_path = str(resume_path)
-        self.logger.info("Loading checkpoint: {} ...".format(resume_path))
-        checkpoint = torch.load(resume_path)
-        self.start_epoch = checkpoint['epoch'] + 1
-        self.mnt_best = checkpoint['monitor_best']
-
-        # load architecture params from checkpoint.
-        if checkpoint['config']['arch'] != self.config['arch']:
-            self.logger.warning("Warning: Architecture configuration given in config file is different from that of "
-                                "checkpoint. This may yield an exception while state_dict is being loaded.")
-
-        # prune old model
-        self.pruner = PFEC(self.model, checkpoint['config'])
-        for i in range(checkpoint['epoch']+1):
-            self.prune(i)
-        self.model.to_teacher()
-        self.model.load_state_dict(checkpoint['state_dict'])
-
-        # load optimizer state from checkpoint only when optimizer type is not changed.
-        if checkpoint['config']['optimizer']['type'] != self.config['optimizer']['type']:
-            self.logger.warning("Warning: Optimizer type given in config file is different from that of checkpoint. "
-                                "Optimizer parameters not being resumed.")
-        else:
-            self.optimizer.load_state_dict(checkpoint['optimizer'])
-
-        self.logger.info("Checkpoint loaded. Resume training from epoch {}".format(self.start_epoch))
 

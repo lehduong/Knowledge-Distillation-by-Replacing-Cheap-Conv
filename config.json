@@ -51,7 +51,7 @@
     "optimizer": {
         "type": "RAdam",
         "args": {
-            "lr": 0.005
+            "lr": 0.01
         }
     },
     "supervised_loss": {
@@ -82,10 +82,10 @@
         "args": {
             "mode": "min",
             "threshold": 0.1,
-            "factor": 0.5,
+            "factor": 0.1,
             "patience": 0,
             "verbose": true,
-            "min_lr": 0.00001,
+            "min_lr": 1e-05,
             "threshold_mode": "rel"
         }
     },
@@ -99,7 +99,7 @@
         "early_stop": 1000,
         "accumulation_steps": 1,
         "log_step": 5,
-        "do_validation_interval": 5,
+        "do_validation_interval": 2,
         "lr_scheduler_step_interval": 15,
         "len_epoch": 200,
         "tensorboard": true
@@ -114,70 +114,65 @@
         "auxiliary_num_layers": 6,
         "pruning_plan": [
             {
-                "name": "mod5.block1.convs.conv1",
-                "compress_rate": 0.3,
-                "epoch": 40
+                "name": "mod4.block2.convs.conv2",
+                "compress_rate": 0,
+                "epoch": 1
             },
             {
-                "name": "mod5.block2.convs.conv1",
-                "compress_rate": 0.2,
-                "epoch": 40
+                "name": "mod4.block3.convs.conv1",
+                "compress_rate": 0,
+                "epoch": 1
+            },
+            {
+                "name": "mod4.block3.convs.conv2",
+                "compress_rate": 0,
+                "epoch": 1
+            },
+            {
+                "name": "mod4.block4.convs.conv2",
+                "compress_rate": 0,
+                "epoch": 1
+            },
+            {
+                "name": "mod4.block5.convs.conv2",
+                "compress_rate": 0,
+                "epoch": 1
+            },
+            {
+                "name": "mod4.block6.convs.conv2",
+                "compress_rate": 0,
+                "epoch": 1
             },
             {
                 "name": "mod5.block2.convs.conv2",
-                "compress_rate": 0.2,
-                "epoch": 40
-            },
-            {
-                "name": "mod5.block3.convs.conv1",
-                "compress_rate": 0.2,
-                "epoch": 40
-            },
-            {
-                "name": "mod5.block3.convs.conv2",
-                "compress_rate": 0.2,
-                "epoch": 70
-            },
-            {
-                "name": "mod6.block1.convs.conv2",
-                "compress_rate": 0.2,
-                "epoch": 70
-            },
-            {
-                "name": "mod7.block1.convs.conv1",
-                "compress_rate": 0.2,
-                "epoch": 70
+                "compress_rate": 0,
+                "epoch": 1
             },
             {
                 "name": "mod7.block1.convs.conv2",
-                "compress_rate": 0.15,
-                "epoch": 20
-            },
-            {
-                "name": "mod7.block1.convs.conv3",
-                "compress_rate": 0.1,
+                "compress_rate": 0,
                 "epoch": 20
             },
             {
                 "name": "aspp.features.1.0",
-                "compress_rate": 0.2,
-                "epoch": 1
+                "compress_rate": 0,
+                "epoch": 40
             },
             {
                 "name": "aspp.features.2.0",
-                "compress_rate": 0.2,
-                "epoch": 1
+                "compress_rate": 0,
+                "epoch": 40
             },
             {
                 "name": "aspp.features.3.0",
-                "compress_rate": 0.2,
-                "epoch": 1
+                "compress_rate": 0,
+                "epoch": 40
             }
         ]
     },
     "teaching_assistant": {
-        "interval": 15,
-        "tol": 0.005
+        "interval": 10,
+        "tol": 0.007
     },
     "weight_scheduler": {
         "alpha": {
@@ -194,10 +189,5 @@
             "value": 1,
             "anneal_rate": 1
         }
-    },
-    "load_weight":{
-        "epoch": 11,
-        "checkpoint": "checkpoint-epoch10.pth",
-        "num_teacher": 3
     }
 }
