@@ -23,8 +23,8 @@ class KDPTrainer(KnowledgeDistillationTrainer):
 
         if self.config['load_weight']:
           self.lw_dict = self.config['load_weight']
-          print('Load weights from checkpoint: {}'.format(lw_dict['checkpoint']))
-          self.load_weight(checkpoint=lw_dict['checkpoint'], epoch=lw_dict['epoch'])
+          print('Load weights from checkpoint: {}'.format(self.lw_dict['checkpoint']))
+          self.load_weight(checkpoint=self.lw_dict['checkpoint'], epoch=self.lw_dict['epoch'])
 
     def prune(self, epoch):
         # get ALL layers that will be pruned in this step
