@@ -148,8 +148,8 @@ class TAKDPTrainer(KDPTrainer):
                                                 **optimizer_arg})
         # load state dict
         self.model.update_pruned_layers(args)
+        self.model._assign_blocks(True)
         forgiving_state_restore(self.model, checkpoint['state_dict'])
-        self.logger.debug(self.model)
         self.logger.debug(self.model.dump_student_teacher_blocks_info())
         self.logger.info("Loaded model's state dict successfully")
 
