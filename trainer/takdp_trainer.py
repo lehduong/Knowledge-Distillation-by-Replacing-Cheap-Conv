@@ -103,9 +103,10 @@ class TAKDPTrainer(KDPTrainer):
         pruner = self.pruner
         pruning_plan = checkpoint['config']['pruning']['pruning_plan']
         pruning_plan_dict = {elem["name"]: elem["compress_rate"] for elem in pruning_plan}
-        trained_ta_layers = [self.model.get_block(layer['name']) for layer in checkpoint['trained_ta_layers']]
-        training_ta_layers = [self.model.get_block(layer['name']) for layer in checkpoint['training_ta_layers']]
-
+        trained_ta_layers = [self.model.get_block(layer) for layer in checkpoint['trained_ta_layers']]
+        training_ta_layers = [self.model.get_block(layer) for layer in checkpoint['training_ta_layers']]
+        self.logger.info('trained: '+str(checkpoint['trained_ta_layers']))
+        self.logger.info('training: '+str(checkpoint['training_ta_layers']))
         # Prune trained TA layers
         new_layers = []
         self.logger.info('Begin pruning trained TA layers')
@@ -125,15 +126,16 @@ class TAKDPTrainer(KDPTrainer):
             self.optimizer.add_param_group({'params': new_layer.parameters(),
                                             **optimizer_arg})
         # TODO: Causing problem if not call assign_blocks, will fix later
+        self.model.update_pruned_layers(args)
         self.model._assign_blocks(True)
-        self.to_teacher()
+        self.model.to_teacher()
 
         # Prune training TA layers
         new_layers = []
         self.logger.info('Begin pruning training TA layers')
         for idx, layer in enumerate(training_ta_layers):
             layer_name = checkpoint['training_ta_layers'][idx]
-            compress_rate = pruning_plan_dict[layer_name]['compress_rate']
+            compress_rate = pruning_plan_dict[layer_name]
             self.logger.info(str(layer) + " compress rate: " + str(compress_rate))
             new_layers.append(pruner.prune(layer, compress_rate))
         args = []
@@ -147,6 +149,8 @@ class TAKDPTrainer(KDPTrainer):
             self.optimizer.add_param_group({'params': new_layer.parameters(),
                                             **optimizer_arg})
         # load state dict
+        self.model.update_pruned_layers(args)
+        self.logger.debug(self.model)
         forgiving_state_restore(self.model, checkpoint['state_dict'])
         self.logger.info("Loaded model's state dict successfully")
 
