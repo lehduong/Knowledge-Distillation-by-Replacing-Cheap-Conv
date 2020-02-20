@@ -211,20 +211,3 @@ class ATAKDPTrainer(TAKDPTrainer):
             aux_layer_names = sorted_layer_names[pruned_layer_name_idx + 1: pruned_layer_name_idx + num + 1]
 
         return aux_layer_names
-
-    def get_index_of_pruned_layer(self, epoch):
-        unpruned_layers = list(filter(lambda x: x['epoch'] >= epoch, self.pruning_plan))
-        unpruned_layers_epoch = np.array(list(map(lambda x: x['epoch'], unpruned_layers)))
-        prune_epoch_to_now = unpruned_layers_epoch-epoch
-        soonest_layer_idxes = np.where(prune_epoch_to_now == prune_epoch_to_now.min())[0]
-        soonest_layer_names = list()
-        for i in soonest_layer_idxes:
-            soonest_layer_names.append(unpruned_layers[i]['name'])
-
-        pruning_plan_names = list(map(lambda x: x['name'], self.pruning_plan))
-        idxes = []
-        for soonest_layer_name in soonest_layer_names:
-            idxes.append(pruning_plan_names.index(soonest_layer_name))
-
-        return idxes
-

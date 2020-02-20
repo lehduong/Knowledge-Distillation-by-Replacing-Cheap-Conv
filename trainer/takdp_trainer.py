@@ -35,19 +35,10 @@ class TAKDPTrainer(KDPTrainer):
             # reset optimizer
             self.optimizer = self.config.init_obj('optimizer', optim_module, self.model.parameters())
 
-            # find the soonest layer that will be pruned and prune it now
-            prune_epoch_to_now = np.array(list(map(lambda x: x['epoch'], self.pruning_plan)))-epoch
-            idx = -1
-            min = np.inf
-            for i in range(len(prune_epoch_to_now)):
-                if min > prune_epoch_to_now[i] >= 0:
-                    idx = i
-                    min = prune_epoch_to_now[i]
-            if idx < 0:
-                print('Early stop as student mIoU is close enough to teacher')
-                return {}
-
-            self.pruning_plan[idx]['epoch'] = epoch
+            # find the first layer that will be pruned afterward and set its pruned epoch to current epoch
+            idxes = self.get_index_of_pruned_layer(epoch)
+            for idx in idxes:
+                self.pruning_plan[idx]['epoch'] = epoch
 
             # dump the new teacher:
             self.logger.debug('Promoted Student to Teaching Assistant')
@@ -108,6 +99,7 @@ class TAKDPTrainer(KDPTrainer):
         pruning_plan_dict = {elem["name"]: elem["compress_rate"] for elem in pruning_plan}
         trained_ta_layers = [self.model.get_block(layer) for layer in checkpoint['trained_ta_layers']]
         training_ta_layers = [self.model.get_block(layer) for layer in checkpoint['training_ta_layers']]
+        self._trained_ta_layers += trained_ta_layers
         self.logger.info('trained: '+str(checkpoint['trained_ta_layers']))
         self.logger.info('training: '+str(checkpoint['training_ta_layers']))
         # Prune trained TA layers
@@ -178,3 +170,19 @@ class TAKDPTrainer(KDPTrainer):
         # print logged informations to the screen
         for key, value in log.items():
             self.logger.info('    {:15s}: {}'.format(str(key), value))
+
+    def get_index_of_pruned_layer(self, epoch):
+        unpruned_layers = list(filter(lambda x: x['epoch'] >= epoch and x['name'] not in self._trained_ta_layers, self.pruning_plan))
+        unpruned_layers_epoch = np.array(list(map(lambda x: x['epoch'], unpruned_layers)))
+        prune_epoch_to_now = unpruned_layers_epoch-epoch
+        soonest_layer_idxes = np.where(prune_epoch_to_now == prune_epoch_to_now.min())[0]
+        soonest_layer_names = list()
+        for i in soonest_layer_idxes:
+            soonest_layer_names.append(unpruned_layers[i]['name'])
+
+        pruning_plan_names = list(map(lambda x: x['name'], self.pruning_plan))
+        idxes = []
+        for soonest_layer_name in soonest_layer_names:
+            idxes.append(pruning_plan_names.index(soonest_layer_name))
+
+        return idxes

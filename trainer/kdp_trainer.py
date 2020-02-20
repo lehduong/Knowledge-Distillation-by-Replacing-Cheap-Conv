@@ -3,6 +3,7 @@ Knowledge distillation via Pruning i.e. KDP
 """
 from .kd_trainer import KnowledgeDistillationTrainer
 from models.students.base_student import DistillationArgs
+from utils import optim as optim_module
 import copy
 
 
@@ -55,8 +56,16 @@ class KDPTrainer(KnowledgeDistillationTrainer):
                 optimizer_arg['lr'] = to_be_pruned_layers[i]['lr']
 
             # add new parameters to optimizer
-            self.optimizer.add_param_group({'params': new_layer.parameters(),
-                                            **optimizer_arg})
+            # if start pruning this epoch and model doesn't have any trainable paramters i.e. just have been \
+            # promoted to TA then create new optimizer
+            if i == 0 and list(filter(lambda x: x.requires_grad, self.model.parameters())) == 0:
+                self.logger.debug('Creating new optimizer...')
+                self.optimizer = self.config.init_obj('optimizer', optim_module, new_layer.parameters)
+                for param_group in self.optimizer.param_groups:
+                    param_group['lr'] = optimizer_arg['lr']
+            else:
+                self.optimizer.add_param_group({'params': new_layer.parameters(),
+                                                **optimizer_arg})
         # add new blocks to student model
         self.model.update_pruned_layers(args)
         self.logger.info('Number of trainable parameters after pruning: ' + str(self.model.dump_trainable_params()))
