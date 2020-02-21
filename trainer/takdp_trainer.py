@@ -133,6 +133,7 @@ class TAKDPTrainer(KDPTrainer):
             self.logger.info(str(layer) + " compress rate: " + str(compress_rate))
             new_layers.append(pruner.prune(layer, compress_rate))
         args = []
+        self.logger.debug('Adding new layers')
         for i, new_layer in enumerate(new_layers):
             for param in new_layer.parameters():
                 param.requires_grad = True
@@ -147,6 +148,8 @@ class TAKDPTrainer(KDPTrainer):
                 self.optimizer.add_param_group({'params': new_layer.parameters(),
                                                 **optimizer_arg})
         # load state dict
+        for param_group in self.optimizer.param_groups:
+            print(param_group['params'][0].shape)
         self.model.update_pruned_layers(args)
         self.model._assign_blocks(True)
         forgiving_state_restore(self.model, checkpoint['state_dict'])

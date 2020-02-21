@@ -99,10 +99,7 @@ class ATAKDPTrainer(TAKDPTrainer):
 
             alpha = self.weight_scheduler.alpha
             beta = self.weight_scheduler.beta
-            if len(self.model.student_aux_outputs) > 0:
-                loss = beta * hint_loss + (1 - beta) * aux_loss
-            else:
-                loss = hint_loss
+            loss = beta*hint_loss + (1-beta)*supervised_loss
             loss.backward()
 
             if batch_idx % self.accumulation_steps == 0:
