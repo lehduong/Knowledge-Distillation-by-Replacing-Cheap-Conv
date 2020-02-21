@@ -139,9 +139,9 @@ class TAKDPTrainer(KDPTrainer):
             layer_name = checkpoint['training_ta_layers'][i]
             args.append(DistillationArgs(layer_name, new_layer, layer_name))
 
-            if i == 0 and list(filter(lambda x: x.requires_grad, self.model.parameters())) == 0:
+            if i == 0 and len(list(filter(lambda x: x.requires_grad, self.model.parameters()))) == 0:
                 self.logger.debug('Creating new optimizer...')
-                self.optimizer = checkpoint['config'].init_obj('optimizer', optim_module, new_layer.parameters)
+                self.optimizer = checkpoint['config'].init_obj('optimizer', optim_module, new_layer.parameters())
             else:
                 optimizer_arg = checkpoint['config']['optimizer']['args']
                 self.optimizer.add_param_group({'params': new_layer.parameters(),
