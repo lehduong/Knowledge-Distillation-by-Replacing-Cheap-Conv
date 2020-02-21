@@ -1,13 +1,13 @@
 from torchvision.utils import make_grid
 from functools import reduce
 from utils import inf_loop, MetricTracker, visualize, CityscapesMetricTracker
-from .takdp_trainer import TAKDPTrainer
+from .atakdp import ATAKDPTrainer
 from utils.optim.lr_scheduler import MyOneCycleLR, MyReduceLROnPlateau
 from utils.util import EarlyStopTracker
 from utils import optim as optim_module
 
 
-class IndependentTrainer(TAKDPTrainer):
+class IndependentTrainer(ATAKDPTrainer):
     """
     Independent teaching assistant knowledge distillation pruning
     """
@@ -33,11 +33,12 @@ class IndependentTrainer(TAKDPTrainer):
 
             # find the first layer that will be pruned afterward and set its pruned epoch to current epoch
             idxes = self.get_index_of_pruned_layer(epoch)
-            for idx in idxes:
-                self.pruning_plan[idx]['epoch'] = epoch
             if len(idxes) == 0:
                 self.logger.info("All layers have been trained, now unfreeze all of them and finetune again...")
                 self.model.restore()
+            else:
+                for idx in idxes:
+                    self.pruning_plan[idx]['epoch'] = epoch
 
             # reset lr scheduler o.w. the lr of new layer would be constantly reduced
             if isinstance(self.lr_scheduler, MyReduceLROnPlateau):
@@ -178,32 +179,3 @@ class IndependentTrainer(TAKDPTrainer):
         self.weight_scheduler.step()
 
         return log
-
-    def _clean_cache(self):
-        self.model.student_aux_outputs, self.model.teacher_aux_outputs = None, None
-        super()._clean_cache()
-
-    def get_aux_layer_names(self, epoch):
-        # sort pruning plan according to epoch (smallest to largest)
-        sorted_pruning_plan = sorted(self.pruning_plan, key=lambda x: x['epoch'])
-
-        # names of layer in (sorted pruning plan)
-        sorted_layer_names = list(map(lambda x: x['name'], sorted_pruning_plan))
-
-        # names of layers that will be pruned in this epoch
-        pruned_layer_names = list(map(lambda x: x['name'], filter(lambda x: x['epoch'] == epoch, self.pruning_plan)))
-
-        # indexes of layers that will be pruned in this epoch in pruning_plan list
-        pruned_layer_name_idxes = [sorted_layer_names.index(pruned_layer_name) for pruned_layer_name in pruned_layer_names]
-        # largest index in previous list
-        if len(pruned_layer_name_idxes) == 0:
-            return []
-        pruned_layer_name_idx = max(pruned_layer_name_idxes)
-
-        num = self.config['pruning']['auxiliary_num_layers']
-        if pruned_layer_name_idx > (len(sorted_layer_names) - num):
-            aux_layer_names = sorted_layer_names[pruned_layer_name_idx + 1:]
-        else:
-            aux_layer_names = sorted_layer_names[pruned_layer_name_idx + 1: pruned_layer_name_idx + num + 1]
-
-        return aux_layer_names

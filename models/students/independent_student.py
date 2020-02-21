@@ -11,8 +11,8 @@ class IndependentStudent(AuxStudent):
         :param distillation_args: LIST of DistillationArgs object - contains the distillation information
         """
         super().__init__(model, distillation_args, aux_args, logger)
-        self.saved_student_blocks = nn.Module()
-        self.saved_teacher_blocks = nn.Module()
+        self.saved_student_blocks = nn.ModuleList()
+        self.saved_teacher_blocks = nn.ModuleList()
         self.saved_distillation_args = list()
 
     def reset(self):

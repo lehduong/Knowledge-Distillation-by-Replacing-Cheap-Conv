@@ -178,6 +178,8 @@ class TAKDPTrainer(KDPTrainer):
 
     def get_index_of_pruned_layer(self, epoch):
         unpruned_layers = list(filter(lambda x: x['epoch'] >= epoch and x['name'] not in self._trained_ta_layers, self.pruning_plan))
+        if len(unpruned_layers) == 0:
+            return []
         unpruned_layers_epoch = np.array(list(map(lambda x: x['epoch'], unpruned_layers)))
         prune_epoch_to_now = unpruned_layers_epoch-epoch
         soonest_layer_idxes = np.where(prune_epoch_to_now == prune_epoch_to_now.min())[0]
