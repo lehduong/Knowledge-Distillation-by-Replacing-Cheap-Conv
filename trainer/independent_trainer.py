@@ -4,7 +4,7 @@ from utils import inf_loop, MetricTracker, visualize, CityscapesMetricTracker
 from .atakdp import ATAKDPTrainer
 from utils.optim.lr_scheduler import MyOneCycleLR, MyReduceLROnPlateau
 from utils.util import EarlyStopTracker
-from utils import optim as optim_module
+from utils import optim as module_optim
 
 
 class IndependentTrainer(ATAKDPTrainer):
@@ -19,23 +19,30 @@ class IndependentTrainer(ATAKDPTrainer):
         self.train_metrics = MetricTracker('loss', 'supervised_loss', 'kd_loss', 'hint_loss', 'teacher_loss',
                                            'aux_loss',*[m.__name__ for m in self.metric_ftns], writer=self.writer)
         self.val_iou_tracker = EarlyStopTracker('best', 'max', 0.01, 'rel')
+        self._complete = False
 
     def _train_epoch(self, epoch):
         # Teaching assistant
-        if (self._teacher_student_iou_gap < self.ta_tol) or ((self._ta_count % self.ta_interval) == 0) or \
-                (not self.val_iou_tracker.last_update_success):
+        if (not self._complete) and ((self._teacher_student_iou_gap < self.ta_tol) or ((self._ta_count % self.ta_interval) == 0) or \
+                (not self.val_iou_tracker.last_update_success)):
             # transfer student to teaching assistant
             trained_ta_layers = list(map(lambda x: x.old_block_name, self.model.distillation_args))
             self._trained_ta_layers += trained_ta_layers
             self.model.reset()
             # reset optimizer
-            self.optimizer = self.config.init_obj('optimizer', optim_module, self.model.parameters())
+            self.optimizer = self.config.init_obj('optimizer', module_optim, self.model.parameters())
+            self.lr_scheduler = self.config.init_obj('lr_scheduler', module_optim.lr_scheduler, self.optimizer)
 
             # find the first layer that will be pruned afterward and set its pruned epoch to current epoch
             idxes = self.get_index_of_pruned_layer(epoch)
             if len(idxes) == 0:
                 self.logger.info("All layers have been trained, now unfreeze all of them and finetune again...")
                 self.model.restore()
+                self._complete = True
+                self.optimizer = self.config.init_obj('optimizer', module_optim, self.model.student_blocks.parameters())
+                for param_group in self.optimizer.param_groups:
+                    param_group['lr'] = self.config['optimizer']['args']['lr']/50
+                self.logger.debug(self.model)
             else:
                 for idx in idxes:
                     self.pruning_plan[idx]['epoch'] = epoch
@@ -71,35 +78,37 @@ class IndependentTrainer(ATAKDPTrainer):
 
             supervised_loss = self.criterions[0](output_st, target) / self.accumulation_steps
             kd_loss = self.criterions[1](output_st, output_tc) / self.accumulation_steps
-
-            # when computing the loss between output of teacher net and student net, we penalty the shallow layer
-            # more than deep layer
-            # the following loss will gradually increase the weight for former layer by exponential of gamma
-            # i.e. (loss_layer5*gamma^3 + loss_layer8*gamma^2 + loss_layer12*gamma^1)/(gamma^3+gamma^2+gamma^1)
-            gamma = self.weight_scheduler.gamma
-            exponent_magnitude = list(range(1, 1 + len(self.model.teacher_hidden_outputs)))
-            normalized_term = reduce(lambda acc, elem: acc + gamma ** elem, exponent_magnitude, 0)
-            hint_loss = reduce(lambda acc, elem: acc + gamma ** elem[2] * self.criterions[2](elem[0], elem[1]),
-                               zip(self.model.student_hidden_outputs, self.model.teacher_hidden_outputs,
-                                   exponent_magnitude),
-                               0) / self.accumulation_steps / normalized_term
-
-            # auxiliary loss:
-            if len(self.model.student_aux_outputs) > 0:
-                aux_loss = reduce(lambda acc, elem: acc + self.criterions[2](elem[0], elem[1]),
-                                  zip(self.model.student_aux_outputs, self.model.teacher_aux_outputs),
-                                  0) / self.accumulation_steps / len(self.model.student_aux_outputs)
-            else:
-                aux_loss = 0
-
             teacher_loss = self.criterions[0](output_tc, target)  # for comparision
 
-            alpha = self.weight_scheduler.alpha
-            beta = self.weight_scheduler.beta
-            if len(self.model.student_aux_outputs) > 0:
-                loss = beta * hint_loss + (1 - beta) * aux_loss
+            if not self._complete:
+                # when computing the loss between output of teacher net and student net, we penalty the shallow layer
+                # more than deep layer
+                # the following loss will gradually increase the weight for former layer by exponential of gamma
+                # i.e. (loss_layer5*gamma^3 + loss_layer8*gamma^2 + loss_layer12*gamma^1)/(gamma^3+gamma^2+gamma^1)
+                gamma = self.weight_scheduler.gamma
+                exponent_magnitude = list(range(1, 1 + len(self.model.teacher_hidden_outputs)))
+                normalized_term = reduce(lambda acc, elem: acc + gamma ** elem, exponent_magnitude, 0)
+                hint_loss = reduce(lambda acc, elem: acc + gamma ** elem[2] * self.criterions[2](elem[0], elem[1]),
+                                   zip(self.model.student_hidden_outputs, self.model.teacher_hidden_outputs,
+                                       exponent_magnitude),
+                                   0) / self.accumulation_steps / normalized_term
+
+                # auxiliary loss:
+                if len(self.model.student_aux_outputs) > 0:
+                    aux_loss = reduce(lambda acc, elem: acc + self.criterions[2](elem[0], elem[1]),
+                                      zip(self.model.student_aux_outputs, self.model.teacher_aux_outputs),
+                                      0) / self.accumulation_steps / len(self.model.student_aux_outputs)
+                else:
+                    aux_loss = 0
+
+                alpha = self.weight_scheduler.alpha
+                beta = self.weight_scheduler.beta
+                if len(self.model.student_aux_outputs) > 0:
+                    loss = beta * hint_loss + (1 - beta) * aux_loss
+                else:
+                    loss = hint_loss
             else:
-                loss = hint_loss
+                loss = kd_loss+supervised_loss
             loss.backward()
 
             if batch_idx % self.accumulation_steps == 0:
@@ -114,7 +123,6 @@ class IndependentTrainer(ATAKDPTrainer):
             self.train_metrics.update('loss', loss.item() * self.accumulation_steps)
             self.train_metrics.update('supervised_loss', supervised_loss.item() * self.accumulation_steps)
             self.train_metrics.update('kd_loss', kd_loss.item() * self.accumulation_steps)
-            self.train_metrics.update('hint_loss', hint_loss.item() * self.accumulation_steps)
             self.train_metrics.update('teacher_loss', teacher_loss.item())
             self.train_iou_metrics.update(output_st.detach().cpu(), target.cpu())
             self.train_teacher_iou_metrics.update(output_tc.cpu(), target.cpu())

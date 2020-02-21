@@ -3,7 +3,7 @@ Knowledge distillation via Pruning i.e. KDP
 """
 from .kd_trainer import KnowledgeDistillationTrainer
 from models.students.base_student import DistillationArgs
-from utils import optim as optim_module
+from utils import optim as module_optim
 import copy
 
 
@@ -60,7 +60,8 @@ class KDPTrainer(KnowledgeDistillationTrainer):
             # promoted to TA then create new optimizer
             if i == 0 and len(list(filter(lambda x: x.requires_grad, self.model.parameters()))) == 0:
                 self.logger.debug('Creating new optimizer...')
-                self.optimizer = self.config.init_obj('optimizer', optim_module, new_layer.parameters())
+                self.optimizer = self.config.init_obj('optimizer', module_optim, new_layer.parameters())
+                self.lr_scheduler = self.config.init_obj('lr_scheduler', module_optim.lr_scheduler, self.optimizer)
                 for param_group in self.optimizer.param_groups:
                     param_group['lr'] = optimizer_arg['lr']
             else:

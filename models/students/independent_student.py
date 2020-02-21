@@ -28,7 +28,6 @@ class IndependentStudent(AuxStudent):
         self._remove_hooks()
         for param in self.parameters():
             param.requires_grad = False
-        self.teacher_blocks = nn.ModuleList()
 
         # saving student blocks for later usage
         for blocks in self.student_blocks:
@@ -53,6 +52,7 @@ class IndependentStudent(AuxStudent):
         self.student_blocks = self.saved_student_blocks
         self.teacher_blocks = self.saved_teacher_blocks
         self._register_hooks()
-
-        for param in self.model.parameters():
+        for param in self.parameters():
+            param.requires_grad = False
+        for param in self.student_blocks.parameters():
             param.requires_grad = True
