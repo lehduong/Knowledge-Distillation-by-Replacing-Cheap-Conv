@@ -49,3 +49,13 @@ def _create_transform(config):
     target_transform = extended_transforms.MaskToTensor()
 
     return train_joint_transform, train_input_transform, target_transform, val_input_transform
+
+def _create_test_transform(config):
+
+    transforms_list = []
+    transforms_list.append(standard_transforms.Lambda(lambda image: _scale_and_flip_image(image, mean_std,
+                                                                                          args['scales'])))
+    transforms_list.append(standard_transforms.Lambda(lambda images: _get_crops_image(images, scales=args['scales'],
+                                                                                      crop_size= args['crop_size'])))
+    transforms = standard_transforms.Compose(transforms_list)
+    return transforms

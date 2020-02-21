@@ -176,6 +176,21 @@ class TAKDPTrainer(KDPTrainer):
         for key, value in log.items():
             self.logger.info('    {:15s}: {}'.format(str(key), value))
 
+    def test(self):
+        self.model.to_teacher()
+        self.logger.debug(self.model.model)
+        result = self._test_epoch(1)
+
+        # save logged informations into log dict
+        log = {}
+        log.update(result)
+        log.update(**{'test_mIoU': self.test_iou_metrics.get_iou()})
+
+        # print logged informations to the screen
+        for key, value in log.items():
+            self.logger.info('    {:15s}: {}'.format(str(key), value))
+
+
     def get_index_of_pruned_layer(self, epoch):
         unpruned_layers = list(filter(lambda x: x['epoch'] >= epoch and x['name'] not in self._trained_ta_layers, self.pruning_plan))
         if len(unpruned_layers) == 0:
