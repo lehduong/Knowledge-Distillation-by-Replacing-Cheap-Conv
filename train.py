@@ -7,10 +7,10 @@ import losses as module_loss
 import models.metric as module_metric
 import models as module_arch
 import utils.optim as module_optim
-from models.students import BaseStudent, AuxStudent
+from models.students import BaseStudent, AuxStudent, IndependentStudent
 from data_loader import _create_transform
 from parse_config import ConfigParser
-from trainer import KDPTrainer, TAKDPTrainer, ATAKDPTrainer
+from trainer import KDPTrainer, TAKDPTrainer, ATAKDPTrainer, LayerCompressibleTrainer, IndependentTrainer
 from pruning import PFEC
 from utils import WeightScheduler
 
@@ -38,7 +38,10 @@ def main(config):
 
     # build models architecture, then print to console
     args = []
-    if config['trainer']['name'] != 'ATAKDPTrainer':
+    if config['trainer']['name'] == 'IndependentTrainer':
+        aux_args = []
+        student = IndependentStudent(teacher, args, aux_args)
+    elif config['trainer']['name'] != 'ATAKDPTrainer':
         student = BaseStudent(teacher, args)
     else:
         aux_args = []
@@ -59,8 +62,11 @@ def main(config):
     weight_scheduler = WeightScheduler(config['weight_scheduler'])
 
     # Knowledge Distillation only
-    pruner = PFEC(student, config, config['pruning']['compress_rate'])
-    if config['trainer']['name'] == "TAKDPTrainer":
+    pruner = PFEC(student, config)
+    if config['trainer']['name'] == 'LayerCompressibleTrainer':
+        trainer = LayerCompressibleTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
+                                           valid_data_loader, lr_scheduler, weight_scheduler)
+    elif config['trainer']['name'] == "TAKDPTrainer":
         trainer = TAKDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
                                valid_data_loader, lr_scheduler, weight_scheduler)
     elif config['trainer']['name'] == 'KDPTrainer':
@@ -69,6 +75,9 @@ def main(config):
     elif config['trainer']['name'] == 'ATAKDPTrainer':
         trainer = ATAKDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
                                 valid_data_loader, lr_scheduler, weight_scheduler)
+    elif config['trainer']['name'] == 'IndependentTrainer':
+        trainer = IndependentTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
+                                     valid_data_loader, lr_scheduler, weight_scheduler)
     else:
         raise Exception("Unsupported trainer")
 

@@ -136,6 +136,7 @@ class EarlyStopTracker:
         self.threshold_mode = threshold_mode
         self.last = None
         self.best = None
+        self.last_update_success = True
 
     def is_better(self, old_value, new_value):
         if old_value is None:
@@ -167,9 +168,16 @@ class EarlyStopTracker:
             if self.mode == 'best':
                 self.best = new_value
             self.last = new_value
+            self.last_update_success = True
             return True
         else:
             self.last = new_value
+            self.last_update_success = False
             return False
+
+    def reset(self):
+        self.last = None
+        self.best = None
+        self.last_update_success = True
 
 

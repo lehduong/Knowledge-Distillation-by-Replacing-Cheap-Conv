@@ -4,8 +4,9 @@ from torchvision.utils import make_grid
 from functools import reduce
 from base import BaseTrainer
 from utils import inf_loop, MetricTracker, visualize, CityscapesMetricTracker
-import gc
 from utils.optim.lr_scheduler import MyOneCycleLR, MyReduceLROnPlateau
+import gc
+import copy
 
 
 class KnowledgeDistillationTrainer(BaseTrainer):
@@ -217,3 +218,142 @@ class KnowledgeDistillationTrainer(BaseTrainer):
                 self._progress(batch_idx),
                 loss.item()))
             self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
+
+    def finetune(self):
+        self.model._assign_blocks(False)
+        self.teacher = copy.deepcopy(self.model)
+        self.teacher.to(self.device)
+        for param in self.teacher.parameters():
+            param.requires_grad = False
+
+        self.model._assign_blocks(True)
+        self.model.to_teacher()
+        for param in self.model.parameters():
+            param.requires_grad = True
+
+        not_improved_count = 0
+        for epoch in range(self.start_epoch, self.epochs + 1):
+            result = self._finetune_epoch(epoch)
+
+            # save logged informations into log dict
+            log = {'epoch': epoch}
+            log.update(result)
+
+            # print logged informations to the screen
+            for key, value in log.items():
+                self.logger.info('    {:15s}: {}'.format(str(key), value))
+
+            # evaluate models performance according to configured metric, save best checkpoint as model_best
+            best = False
+            if self.mnt_mode != 'off':
+                try:
+                    # check whether models performance improved or not, according to specified metric(mnt_metric)
+                    improved = (self.mnt_mode == 'min' and log[self.mnt_metric] <= self.mnt_best) or \
+                               (self.mnt_mode == 'max' and log[self.mnt_metric] >= self.mnt_best)
+                except KeyError:
+                    self.logger.warning("Warning: Metric '{}' is not found. "
+                                        "Model performance monitoring is disabled.".format(self.mnt_metric))
+                    self.mnt_mode = 'off'
+                    improved = False
+
+                if improved:
+                    self.mnt_best = log[self.mnt_metric]
+                    not_improved_count = 0
+                    best = True
+                else:
+                    not_improved_count += 1
+
+                if not_improved_count > self.early_stop:
+                    self.logger.info("Validation performance didn\'t improve for {} epochs. "
+                                     "Training stops.".format(self.early_stop))
+                    break
+
+            if epoch % self.save_period == 0:
+                self._save_checkpoint(epoch, save_best=best)
+
+    def _finetune_epoch(self, epoch):
+        self.model.train()
+        self.train_metrics.reset()
+        self.train_iou_metrics.reset()
+        self.train_teacher_iou_metrics.reset()
+        self._clean_cache()
+
+        for batch_idx, (data, target) in enumerate(self.train_data_loader):
+            data, target = data.to(self.device), target.to(self.device)
+
+            output_st, _ = self.model(data)
+            with torch.no_grad():
+                output_tc = self.teacher(data)
+
+            supervised_loss = self.criterions[0](output_st, target) / self.accumulation_steps
+            kd_loss = self.criterions[1](output_st, output_tc) / self.accumulation_steps
+            teacher_loss = self.criterions[0](output_tc, target)  # for comparision
+
+            alpha = self.weight_scheduler.alpha
+            loss = alpha * supervised_loss + (1-alpha) * kd_loss
+            loss.backward()
+
+            if (batch_idx + 1) % self.accumulation_steps == 0:
+                self.optimizer.step()
+                if isinstance(self.lr_scheduler, MyOneCycleLR):
+                    self.lr_scheduler.step()
+                self.optimizer.zero_grad()
+
+            self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
+
+            # update metrics
+            self.train_metrics.update('loss', loss.item() * self.accumulation_steps)
+            self.train_metrics.update('supervised_loss', supervised_loss.item() * self.accumulation_steps)
+            self.train_metrics.update('kd_loss', kd_loss.item() * self.accumulation_steps)
+            self.train_metrics.update('teacher_loss', teacher_loss.item())
+            self.train_iou_metrics.update(output_st.detach().cpu(), target.cpu())
+            self.train_teacher_iou_metrics.update(output_tc.cpu(), target.cpu())
+
+            for met in self.metric_ftns:
+                self.train_metrics.update(met.__name__, met(output_st, target))
+
+            if batch_idx % self.log_step == 0:
+                self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
+                # st_masks = visualize.viz_pred_cityscapes(output_st)
+                # tc_masks = visualize.viz_pred_cityscapes(output_tc)
+                # self.writer.add_image('st_pred', make_grid(st_masks, nrow=8, normalize=False))
+                # self.writer.add_image('tc_pred', make_grid(tc_masks, nrow=8, normalize=False))
+                self.logger.info(
+                    'Train Epoch: {} [{}]/[{}] Loss: {:.6f} mIoU: {:.6f} Teacher mIoU: {:.6f} Supervised Loss: {:.6f} Knowledge Distillation loss: '
+                    '{:.6f} Teacher Loss: {:.6f}'.format(
+                        epoch,
+                        batch_idx,
+                        self.len_epoch,
+                        self.train_metrics.avg('loss'),
+                        self.train_iou_metrics.get_iou(),
+                        self.train_teacher_iou_metrics.get_iou(),
+                        self.train_metrics.avg('supervised_loss'),
+                        self.train_metrics.avg('kd_loss'),
+                        self.train_metrics.avg('teacher_loss'),
+                    ))
+
+            if batch_idx == self.len_epoch:
+                break
+
+        log = self.train_metrics.result()
+        log.update({'train_teacher_mIoU': self.train_teacher_iou_metrics.get_iou()})
+        log.update({'train_student_mIoU': self.train_iou_metrics.get_iou()})
+
+        if self.do_validation and ((epoch % self.do_validation_interval) == 0):
+            # clean cache to prevent out-of-memory with 1 gpu
+            self._clean_cache()
+            val_log = self._valid_epoch(epoch)
+            log.update(**{'val_' + k: v for k, v in val_log.items()})
+            log.update(**{'val_mIoU': self.valid_iou_metrics.get_iou()})
+
+        self._teacher_student_iou_gap = self.train_teacher_iou_metrics.get_iou() - self.train_iou_metrics.get_iou()
+
+        if (self.lr_scheduler is not None) and (not isinstance(self.lr_scheduler, MyOneCycleLR)):
+            if isinstance(self.lr_scheduler, MyReduceLROnPlateau):
+                pass
+            else:
+                self.lr_scheduler.step()
+
+        self.weight_scheduler.step()
+
+        return log
