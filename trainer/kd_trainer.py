@@ -282,7 +282,8 @@ class KnowledgeDistillationTrainer(BaseTrainer):
             data, target = data.to(self.device), target.to(self.device)
 
             output_st, _ = self.model(data)
-            output_tc = self.teacher(data)
+            with torch.no_grad():
+                output_tc = self.teacher(data)
 
             supervised_loss = self.criterions[0](output_st, target) / self.accumulation_steps
             kd_loss = self.criterions[1](output_st, output_tc) / self.accumulation_steps
