@@ -211,7 +211,9 @@ class Cityscapes(VisionDataset):
             target = self.target_transform(target)
 
         if self.rt_img_name:
-            return self.images[index], image, target
+            img_file = os.path.basename(self.images[index])
+            img_name = os.path.splitext(img_file)[0]
+            return img_name, image, target
 
         return image, target
 

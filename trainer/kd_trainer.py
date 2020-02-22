@@ -216,7 +216,7 @@ class KnowledgeDistillationTrainer(BaseTrainer):
                 # output = self.model.inference_test(data, args)
                 output = self.model.inference(data)
                 if save_4_sm:
-                    self.save_for_submission(output, img_name)
+                    self.save_for_submission(output, img_name[0])
                 supervised_loss = self.criterions[0](output, target)
                 self.writer.set_step((epoch - 1) * len(self.valid_data_loader) + batch_idx, 'test')
                 self.test_metrics.update('supervised_loss', supervised_loss.item())
