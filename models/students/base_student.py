@@ -232,7 +232,7 @@ class BaseStudent(BaseModel):
 
         return out
 
-    def inference_test(self, data):
+    def inference_test(self, data, args):
         if self._teaching:
             self._assign_blocks(student_mode=True)
         self.student_hidden_outputs = []
@@ -240,20 +240,19 @@ class BaseStudent(BaseModel):
 
         to_PIL = transforms.ToPILImage()
         mean_std = ([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-        args = self.config['test']['args']
 
         result = []
-        images = [to_PIL(x) for x in data]
+        images = [to_PIL(x.cpu()) for x in data]
         for image in images:
             image_data = _scale_and_flip_image(image, mean_std, args['scales'])
             ori_size, mapping, tensors = _get_crops_image(image_data, args['scales'], crop_size=args['crop_size'])
-            results_model = self.model(tensors).data.cpu().numpy()
-            outputs = self.reverse_mapping(mapping, results_model)
+            results_model = self.model(tensors.cuda()).data.cpu().numpy()
+            outputs = self.reverse_mapping(mapping, results_model, ori_size)
             outputs_mean_for_scales = np.mean(outputs, axis=0)
             result.append(np.expand_dims(outputs_mean_for_scales, axis=0))
 
         result_arr = np.concatenate(result, axis=0)
-        return torch.from_numpy(result_arr)
+        return torch.from_numpy(result_arr).cuda()
 
     def reverse_mapping(self, mapping, results, ori_size):
         idx = 0
@@ -264,7 +263,9 @@ class BaseStudent(BaseModel):
             n_slices = len(coordinates)
             probs_no_flip = self.collect_windows_result(w, h, coordinates, results[idx: idx + n_slices])
             probs_flipped = self.collect_windows_result(w, h, coordinates, results[idx + n_slices: idx + 2*n_slices])
-            probs_flipped_restored = np.concatenate([np.fliplr(x) for x in probs_flipped], axis=0)
+
+            list_slices_restore = [np.expand_dims(np.fliplr(x), 0) for x in probs_flipped]
+            probs_flipped_restored = np.concatenate(list_slices_restore, axis=0)
 
             probs_no_flip_rs = self.resize_output(probs_no_flip, ori_size)
             probs_flipped_rs = self.resize_output(probs_flipped_restored, ori_size)
@@ -276,12 +277,16 @@ class BaseStudent(BaseModel):
         return np.concatenate(outputs, axis=0)
 
     def resize_output(self, masks, ori_size):
-        mask_rs = [cv2.resize(x, ori_size, interpolation=cv2.INTER_LINEAR) for x in masks]
+        mask_rs = []
+        for x in masks:
+            img_rs = cv2.resize(x, ori_size, interpolation=cv2.INTER_LINEAR)
+            mask_rs.append(np.expand_dims(img_rs, axis=0))
+
         result = np.concatenate(mask_rs, axis=0)
-        return mask_rs
+        return result
 
     def collect_windows_result(self, w, h, coordinates, windows):
-        num_classes = windows.size()[1]
+        num_classes = windows.shape[1]
         full_probs = np.zeros((num_classes, h, w))
         count_predictions = np.zeros((num_classes, h, w))
         for i, coor in enumerate(coordinates):
@@ -402,8 +407,8 @@ def _scale_and_flip_image(image, mean_std, scales=[1.0]):
     for scale in scales:
         tg_w, tg_h = int(w * scale), int(h * scale)
         scaled_image = image.resize((tg_w, tg_h), Image.BILINEAR)
-        scaled_image = img_transform(scaled_image)
         flipped_image = scaled_image.transpose(Image.FLIP_LEFT_RIGHT)
+        scaled_image = img_transform(scaled_image)
         flipped_image = img_transform(flipped_image)
         new_images.append([scaled_image, flipped_image])
 
@@ -425,7 +430,7 @@ def _get_crops_image(image_data, scales=[1.0], crop_size=512, overlap=1 / 3):
 
     for i, scale in enumerate(scales):
         scaled_image, flipped_image = new_images[i]
-        w, h = scaled_image.size
+        h, w = scaled_image.shape[1:]
         tile_size = (int(scale * crop_size), int(scale * crop_size))
         stride = ceil(tile_size[0] * (1 - overlap))
         tile_rows = int(ceil((w - tile_size[0]) / stride) + 1)
@@ -447,8 +452,10 @@ def _get_crops_image(image_data, scales=[1.0], crop_size=512, overlap=1 / 3):
                     y1 = 0
 
                 coordinates[2].append((x1, y1, x2, y2))
-                windows_image.append(scaled_image[:, y1:y2, x1:x2])
-                windows_flipped_image(flipped_image[:, y1:y2, x1:x2])
+                img_ts = scaled_image[:, y1:y2, x1:x2].unsqueeze(0)
+                fl_img_ts = flipped_image[:, y1:y2, x1:x2].unsqueeze(0)
+                windows_image.append(img_ts)
+                windows_flipped_image.append(fl_img_ts)
 
         windows_image = torch.cat(windows_image, dim=0)
         windows_flipped_image = torch.cat(windows_flipped_image, dim=0)

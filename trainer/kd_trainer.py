@@ -203,10 +203,11 @@ class KnowledgeDistillationTrainer(BaseTrainer):
         self.model.eval()
         self.test_metrics.reset()
         self.test_iou_metrics.reset()
+        args = self.config['test']['args']
         with torch.no_grad():
             for batch_idx, (data, target) in enumerate(self.valid_data_loader):
                 data, target = data.to(self.device), target.to(self.device)
-                output = self.model.inference_test(data)
+                output = self.model.inference_test(data, args)
                 supervised_loss = self.criterions[0](output, target)
 
                 self.writer.set_step((epoch - 1) * len(self.valid_data_loader) + batch_idx, 'test')

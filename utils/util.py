@@ -107,6 +107,8 @@ class CityscapesMetricTracker:
         self.conf = self.conf + conf
 
     def get_iou(self):
+        if not np.any(self.conf):
+            return 1.
         tp = np.diag(self.conf)
         iou_pc = tp / (np.sum(self.conf, 0) + np.sum(self.conf, 1) - tp)
         return np.nanmean(iou_pc)
