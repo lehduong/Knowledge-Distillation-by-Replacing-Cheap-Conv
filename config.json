@@ -210,5 +210,10 @@
             "scales": [1.0],
             "crop_size": 512
         }
+    },
+    "submission": {
+        "save_output": true,
+        "path_output": "submission/",
+        "ext": "png"
     }
 }

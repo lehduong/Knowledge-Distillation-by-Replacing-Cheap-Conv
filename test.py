@@ -30,8 +30,8 @@ def main(config):
     train_joint_transform, train_input_transform, target_transform, val_input_transform = _create_transform(config)
     train_data_loader = config.init_obj('train_data_loader', module_data, transform=train_input_transform,
                                         transforms=train_joint_transform, target_transform=target_transform)
-    test_data_loader = config.init_obj('test_data_loader', module_data, transform=transforms.ToTensor(),
-                                        target_transform=target_transform)
+    test_data_loader = config.init_obj('test_data_loader', module_data, transform=val_input_transform,
+                                        target_transform=target_transform, return_image_name=True)
 
     # Load pretrained teacher model
     teacher = config.restore_snapshot('teacher', module_arch)
