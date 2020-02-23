@@ -322,7 +322,4 @@ class GSCNN(nn.Module):
         dec1 = self.final_seg(dec0)
         seg_out = self.interpolate(dec1, x_size[2:], mode='bilinear')
 
-        if self.training:
-            return self.criterion((seg_out, edge_out), gts)
-        else:
-            return seg_out, edge_out
+        return seg_out
