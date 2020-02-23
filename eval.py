@@ -33,7 +33,7 @@ def main(config):
                                         target_transform=target_transform)
 
     # Load pretrained teacher model
-    teacher = config.restore_snapshot('teacher', module_arch)
+    teacher = module_arch.get_seg_model(config['teacher']['args']['config'])
     teacher = teacher.cpu()  # saved some memory as student network will use a (deep) copy of teacher model
 
     # build models architecture, then print to console

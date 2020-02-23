@@ -1,5 +1,6 @@
 from .deeplabv3 import DeepWV3Plus
 from .deeplabv3 import get_distil_model
+from .hrnet_ocr import HighResolutionNet, get_seg_model
 from functools import reduce
 from torch import nn
 import torch

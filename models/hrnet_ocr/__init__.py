@@ -1,1 +1,1 @@
-from .seg_hrnet_ocr import HighResolutionNet
+from .seg_hrnet_ocr import HighResolutionNet, get_seg_model

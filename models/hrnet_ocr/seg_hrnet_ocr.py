@@ -422,9 +422,9 @@ class HighResolutionNet(nn.Module):
 
     def __init__(self, config, **kwargs):
         global ALIGN_CORNERS
-        extra = config.MODEL.EXTRA
+        extra = config['extra']
         super(HighResolutionNet, self).__init__()
-        ALIGN_CORNERS = config.MODEL.ALIGN_CORNERS
+        ALIGN_CORNERS = config['align_corners']
 
         # stem net
         self.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=2, padding=1,
@@ -473,8 +473,8 @@ class HighResolutionNet(nn.Module):
             self.stage4_cfg, num_channels, multi_scale_output=True)
 
         last_inp_channels = np.int(np.sum(pre_stage_channels))
-        ocr_mid_channels = config.MODEL.OCR.MID_CHANNELS
-        ocr_key_channels = config.MODEL.OCR.KEY_CHANNELS
+        ocr_mid_channels = config['ocr.mid_channels']
+        ocr_key_channels = config['ocr.key_channels']
 
         self.conv3x3_ocr = nn.Sequential(
             nn.Conv2d(last_inp_channels, ocr_mid_channels,
@@ -482,7 +482,7 @@ class HighResolutionNet(nn.Module):
             BatchNorm2d(ocr_mid_channels),
             nn.ReLU(inplace=relu_inplace),
         )
-        self.ocr_gather_head = SpatialGather_Module(config.DATASET.NUM_CLASSES)
+        self.ocr_gather_head = SpatialGather_Module(config['num_classes'])
 
         self.ocr_distri_head = SpatialOCR_Module(in_channels=ocr_mid_channels,
                                                  key_channels=ocr_key_channels,
@@ -491,14 +491,14 @@ class HighResolutionNet(nn.Module):
                                                  dropout=0.05,
                                                  )
         self.cls_head = nn.Conv2d(
-            ocr_mid_channels, config.DATASET.NUM_CLASSES, kernel_size=1, stride=1, padding=0, bias=True)
+            ocr_mid_channels, config['num_classes'], kernel_size=1, stride=1, padding=0, bias=True)
 
         self.aux_head = nn.Sequential(
             nn.Conv2d(last_inp_channels, last_inp_channels,
                       kernel_size=1, stride=1, padding=0),
             BatchNorm2d(last_inp_channels),
             nn.ReLU(inplace=relu_inplace),
-            nn.Conv2d(last_inp_channels, config.DATASET.NUM_CLASSES,
+            nn.Conv2d(last_inp_channels, config['num_classes'],
                       kernel_size=1, stride=1, padding=0, bias=True)
         )
 
@@ -683,6 +683,6 @@ class HighResolutionNet(nn.Module):
 
 def get_seg_model(cfg, **kwargs):
     model = HighResolutionNet(cfg, **kwargs)
-    model.init_weights(cfg.MODEL.PRETRAINED)
+    model.init_weights(cfg['snapshot'])
 
     return model
