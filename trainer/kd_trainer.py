@@ -209,12 +209,13 @@ class KnowledgeDistillationTrainer(BaseTrainer):
         path_output = self.config['submission']['path_output']
         if save_4_sm and not os.path.exists(path_output):
             os.mkdir(path_output)
-
+        n_samples = len(self.valid_data_loader)
         with torch.no_grad():
             for batch_idx, (img_name, data, target) in enumerate(self.valid_data_loader):
+                print('{}/{}'.format(batch_idx, n_samples))
                 data, target = data.to(self.device), target.to(self.device)
-                # output = self.model.inference_test(data, args)
-                output = self.model.inference(data)
+                output = self.model.inference_test(data, args)
+                # output = self.model.inference(data)
                 if save_4_sm:
                     self.save_for_submission(output, img_name[0])
                 supervised_loss = self.criterions[0](output, target)
@@ -231,7 +232,7 @@ class KnowledgeDistillationTrainer(BaseTrainer):
         #     self.writer.add_histogram(name, p, bins='auto')
         return self.test_metrics.result()
 
-    def save_for_submission(self, output, image_name, img_type=np.int16):
+    def save_for_submission(self, output, image_name, img_type=np.uint8):
         args = self.config['submission']
         path_output = args['path_output']
         image_save = '{}.{}'.format(image_name, args['ext'])
