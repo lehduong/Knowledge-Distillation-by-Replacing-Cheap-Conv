@@ -5,6 +5,7 @@ from .kdp_trainer import KDPTrainer
 from models.students.base_student import DistillationArgs
 from models import forgiving_state_restore
 from utils import optim as optim_module
+from pruning import PFEC
 import numpy as np
 import torch
 
@@ -94,7 +95,7 @@ class TAKDPTrainer(KDPTrainer):
         # load architecture params from checkpoint.
         # first, transform the student to have identical to checkpoint architecture
         # TODO: Generalize pruner
-        pruner = self.pruner
+        pruner =  PFEC(self.model, checkpoint['config'])
         pruning_plan = checkpoint['config']['pruning']['pruning_plan']
         pruning_plan_dict = {elem["name"]: elem["compress_rate"] for elem in pruning_plan}
         trained_ta_layers = [self.model.get_block(layer) for layer in checkpoint['trained_ta_layers']]
