@@ -208,7 +208,7 @@
         "type": "sliding",
         "args": {
             "scales": [1.0],
-            "crop_size": 512
+            "crop_size": 1024
         }
     },
     "submission": {

@@ -246,9 +246,9 @@ class KnowledgeDistillationTrainer(BaseTrainer):
 
     def re_map_for_submission(self, output):
         mapping = self.valid_data_loader.dataset.id_to_trainid
-        cp_output = copy.deepcopy(output)
+        cp_output = torch.zeros(output.size())
         for k, v in mapping.items():
-            cp_output[cp_output == v] = k
+            cp_output[output == v] = k
 
         return cp_output
 
