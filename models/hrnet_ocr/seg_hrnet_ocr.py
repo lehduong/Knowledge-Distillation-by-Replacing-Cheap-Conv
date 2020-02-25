@@ -26,9 +26,9 @@ ALIGN_CORNERS = True
 BN_MOMENTUM = 0.1
 logger = logging.getLogger(__name__)
 
-default_config_file = 'config_hrnet_ocr.json'
+default_config_file = 'models/hrnet_ocr/config_hrnet_ocr.json'
 with open(default_config_file, 'r') as df_cfg:
-    default_config = json.load(df_cfg)
+    default_config = json.load(df_cfg)['config']
 
 class ModuleHelper:
 
