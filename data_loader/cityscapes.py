@@ -100,7 +100,8 @@ class Cityscapes(VisionDataset):
     ignore_label = 255
     
     def __init__(self, root, split='train', mode='fine', target_type='semantic',
-                 transform=None, target_transform=None, transforms=None,num_samples=None):
+                 transform=None, target_transform=None, transforms=None, num_samples=None,
+                 return_image_name=False):
         super(Cityscapes, self).__init__(root, transforms, transform, target_transform)
         self.mode = 'gtFine' if mode == 'fine' else 'gtCoarse'
         self.images_dir = os.path.join(self.root, 'leftImg8bit', split)
@@ -117,6 +118,7 @@ class Cityscapes(VisionDataset):
                               28: 15, 29: self.ignore_label, 30: self.ignore_label, 31: 16, 32: 17, 33: 18}
 
         verify_str_arg(mode, "mode", ("fine", "coarse"))
+        self.rt_img_name = return_image_name
         if mode == "fine":
             valid_modes = ("train", "test", "val")
         else:
@@ -207,6 +209,11 @@ class Cityscapes(VisionDataset):
 
         if self.target_transform is not None:
             target = self.target_transform(target)
+
+        if self.rt_img_name:
+            img_file = os.path.basename(self.images[index])
+            img_name = os.path.splitext(img_file)[0]
+            return img_name, image, target
 
         return image, target
 

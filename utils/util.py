@@ -5,6 +5,7 @@ import numpy as np
 from pathlib import Path
 from itertools import repeat
 from collections import OrderedDict
+from PIL import Image
 
 
 def stat_cuda(msg):
@@ -40,6 +41,9 @@ def inf_loop(data_loader):
     for loader in repeat(data_loader):
         yield from loader
 
+def save_image(np_arr, file_path):
+    img = Image.fromarray(np_arr)
+    img.save(file_path)
 
 class MetricTracker:
     def __init__(self, *keys, writer=None):
@@ -107,6 +111,8 @@ class CityscapesMetricTracker:
         self.conf = self.conf + conf
 
     def get_iou(self):
+        if not np.any(self.conf):
+            return 1.
         tp = np.diag(self.conf)
         iou_pc = tp / (np.sum(self.conf, 0) + np.sum(self.conf, 1) - tp)
         return np.nanmean(iou_pc)

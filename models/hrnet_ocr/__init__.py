@@ -1,0 +1,1 @@
+from .seg_hrnet_ocr import HighResolutionNet

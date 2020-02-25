@@ -3,11 +3,12 @@ import torch.nn as nn
 from torchvision.utils import make_grid
 from functools import reduce
 from base import BaseTrainer
-from utils import inf_loop, MetricTracker, visualize, CityscapesMetricTracker
+from utils import inf_loop, MetricTracker, visualize, CityscapesMetricTracker, save_image
 from utils.optim.lr_scheduler import MyOneCycleLR, MyReduceLROnPlateau
 import gc
 import copy
-
+import os
+import numpy as np
 
 class KnowledgeDistillationTrainer(BaseTrainer):
     """
@@ -41,7 +42,10 @@ class KnowledgeDistillationTrainer(BaseTrainer):
 
         self.valid_metrics = MetricTracker('loss', 'supervised_loss', 'kd_loss', 'hint_loss', 'teacher_loss',
                                            *[m.__name__ for m in self.metric_ftns], writer=self.writer)
+        self.test_metrics = MetricTracker('loss', 'supervised_loss', 'kd_loss', 'hint_loss', 'teacher_loss',
+                                           *[m.__name__ for m in self.metric_ftns], writer=self.writer)
         self.valid_iou_metrics = CityscapesMetricTracker(writer=self.writer)
+        self.test_iou_metrics = CityscapesMetricTracker(writer=self.writer)
         self.valid_teacher_iou_metrics = CityscapesMetricTracker(writer=self.writer)
 
         # Only used list of criterions and remove the unused property
@@ -196,6 +200,59 @@ class KnowledgeDistillationTrainer(BaseTrainer):
         # for name, p in self.model.named_parameters():
         #     self.writer.add_histogram(name, p, bins='auto')
         return self.valid_metrics.result()
+
+    def _test_epoch(self, epoch):
+        self.model.eval()
+        self.test_metrics.reset()
+        self.test_iou_metrics.reset()
+        args = self.config['test']['args']
+        save_4_sm = self.config['submission']['save_output']
+        path_output = self.config['submission']['path_output']
+        if save_4_sm and not os.path.exists(path_output):
+            os.mkdir(path_output)
+        n_samples = len(self.valid_data_loader)
+        with torch.no_grad():
+            for batch_idx, (img_name, data, target) in enumerate(self.valid_data_loader):
+                print('{}/{}'.format(batch_idx, n_samples))
+                data, target = data.to(self.device), target.to(self.device)
+                output = self.model.inference_test(data, args)
+                # output = self.model.inference(data)
+                if save_4_sm:
+                    self.save_for_submission(output, img_name[0])
+                supervised_loss = self.criterions[0](output, target)
+                self.writer.set_step((epoch - 1) * len(self.valid_data_loader) + batch_idx, 'test')
+                self.test_metrics.update('supervised_loss', supervised_loss.item())
+                self.test_iou_metrics.update(output.detach().cpu(), target)
+
+                for met in self.metric_ftns:
+                    self.test_metrics.update(met.__name__, met(output, target))
+                #self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
+
+        # add histogram of models parameters to the tensorboard
+        # for name, p in self.model.named_parameters():
+        #     self.writer.add_histogram(name, p, bins='auto')
+        return self.test_metrics.result()
+
+    def save_for_submission(self, output, image_name, img_type=np.uint8):
+        args = self.config['submission']
+        path_output = args['path_output']
+        image_save = '{}.{}'.format(image_name, args['ext'])
+        path_save = os.path.join(path_output, image_save)
+        result = torch.argmax(output, dim=1)
+        result_mapped = self.re_map_for_submission(result)
+        if output.size()[0] == 1:
+            result_mapped = result_mapped[0]
+
+        save_image(result_mapped.cpu().numpy().astype(img_type), path_save)
+        print('Saved output of test data: {}'.format(image_save))
+
+    def re_map_for_submission(self, output):
+        mapping = self.valid_data_loader.dataset.id_to_trainid
+        cp_output = torch.zeros(output.size())
+        for k, v in mapping.items():
+            cp_output[output == v] = k
+
+        return cp_output
 
     def _progress(self, batch_idx):
         base = '[{}/{} ({:.0f}%)]'
