@@ -1,18 +1,16 @@
 from torchvision.utils import make_grid
 from functools import reduce
 from utils import inf_loop, MetricTracker, visualize, CityscapesMetricTracker
-from .takdp_trainer import TAKDPTrainer
+from .atakdp import ATAKDPTrainer
 from utils.optim.lr_scheduler import MyOneCycleLR, MyReduceLROnPlateau
 from utils.util import EarlyStopTracker
-from utils import optim as optim_module
-import numpy as np
+from utils import optim as module_optim
 
 
-class ATAKDPTrainer(TAKDPTrainer):
+class IndependentTrainer(ATAKDPTrainer):
     """
-    Auxiliary loss teaching assistant knowledge distillation pruning
+    Independent teaching assistant knowledge distillation pruning
     """
-
     def __init__(self, model, pruner, criterions, metric_ftns, optimizer, config, train_data_loader,
                  valid_data_loader=None, lr_scheduler=None, weight_scheduler=None):
         super().__init__(model, pruner, criterions, metric_ftns, optimizer, config, train_data_loader,
@@ -21,27 +19,33 @@ class ATAKDPTrainer(TAKDPTrainer):
         self.train_metrics = MetricTracker('loss', 'supervised_loss', 'kd_loss', 'hint_loss', 'teacher_loss',
                                            'aux_loss',*[m.__name__ for m in self.metric_ftns], writer=self.writer)
         self.val_iou_tracker = EarlyStopTracker('best', 'max', 0.01, 'rel')
+        self._complete = False
 
     def _train_epoch(self, epoch):
         # Teaching assistant
-        if (self._teacher_student_iou_gap < self.ta_tol) or ((self._ta_count % self.ta_interval) == 0) or \
-                (not self.val_iou_tracker.last_update_success):
+        if (not self._complete) and ((self._teacher_student_iou_gap < self.ta_tol) or ((self._ta_count % self.ta_interval) == 0) or \
+                (not self.val_iou_tracker.last_update_success)):
             # transfer student to teaching assistant
             trained_ta_layers = list(map(lambda x: x.old_block_name, self.model.distillation_args))
             self._trained_ta_layers += trained_ta_layers
-            self.model.to_teacher()
+            self.model.reset()
             # reset optimizer
-            self.optimizer = self.config.init_obj('optimizer', optim_module, self.model.parameters())
-
-            # dump the new teacher:
-            self.logger.info('Promoted Student to Teaching Assistant')
-            number_of_param = sum(p.numel() for p in self.model.parameters())
-            self.logger.info('Number of parameters: ' + str(number_of_param))
+            self.optimizer = self.config.init_obj('optimizer', module_optim, self.model.parameters())
+            self.lr_scheduler = self.config.init_obj('lr_scheduler', module_optim.lr_scheduler, self.optimizer)
 
             # find the first layer that will be pruned afterward and set its pruned epoch to current epoch
             idxes = self.get_index_of_pruned_layer(epoch)
-            for idx in idxes:
-                self.pruning_plan[idx]['epoch'] = epoch
+            if len(idxes) == 0:
+                self.logger.info("All layers have been trained, now unfreeze all of them and finetune again...")
+                self.model.restore()
+                self._complete = True
+                self.optimizer = self.config.init_obj('optimizer', module_optim, self.model.student_blocks.parameters())
+                for param_group in self.optimizer.param_groups:
+                    param_group['lr'] = self.config['optimizer']['args']['lr']/50
+                self.logger.debug(self.model)
+            else:
+                for idx in idxes:
+                    self.pruning_plan[idx]['epoch'] = epoch
 
             # reset lr scheduler o.w. the lr of new layer would be constantly reduced
             if isinstance(self.lr_scheduler, MyReduceLROnPlateau):
@@ -74,32 +78,37 @@ class ATAKDPTrainer(TAKDPTrainer):
 
             supervised_loss = self.criterions[0](output_st, target) / self.accumulation_steps
             kd_loss = self.criterions[1](output_st, output_tc) / self.accumulation_steps
-
-            # when computing the loss between output of teacher net and student net, we penalty the shallow layer
-            # more than deep layer
-            # the following loss will gradually increase the weight for former layer by exponential of gamma
-            # i.e. (loss_layer5*gamma^3 + loss_layer8*gamma^2 + loss_layer12*gamma^1)/(gamma^3+gamma^2+gamma^1)
-            gamma = self.weight_scheduler.gamma
-            exponent_magnitude = list(range(1, 1 + len(self.model.teacher_hidden_outputs)))
-            normalized_term = reduce(lambda acc, elem: acc + gamma ** elem, exponent_magnitude, 0)
-            hint_loss = reduce(lambda acc, elem: acc + gamma ** elem[2] * self.criterions[2](elem[0], elem[1]),
-                               zip(self.model.student_hidden_outputs, self.model.teacher_hidden_outputs,
-                                   exponent_magnitude),
-                               0) / self.accumulation_steps / normalized_term
-
-            # auxiliary loss:
-            if len(self.model.student_aux_outputs) > 0:
-                aux_loss = reduce(lambda acc, elem: acc + self.criterions[2](elem[0], elem[1]),
-                                  zip(self.model.student_aux_outputs, self.model.teacher_aux_outputs),
-                                  0) / self.accumulation_steps / len(self.model.student_aux_outputs)
-            else:
-                aux_loss = 0
-
             teacher_loss = self.criterions[0](output_tc, target)  # for comparision
 
-            alpha = self.weight_scheduler.alpha
-            beta = self.weight_scheduler.beta
-            loss = beta*hint_loss + (1-beta)*supervised_loss
+            if not self._complete:
+                # when computing the loss between output of teacher net and student net, we penalty the shallow layer
+                # more than deep layer
+                # the following loss will gradually increase the weight for former layer by exponential of gamma
+                # i.e. (loss_layer5*gamma^3 + loss_layer8*gamma^2 + loss_layer12*gamma^1)/(gamma^3+gamma^2+gamma^1)
+                gamma = self.weight_scheduler.gamma
+                exponent_magnitude = list(range(1, 1 + len(self.model.teacher_hidden_outputs)))
+                normalized_term = reduce(lambda acc, elem: acc + gamma ** elem, exponent_magnitude, 0)
+                hint_loss = reduce(lambda acc, elem: acc + gamma ** elem[2] * self.criterions[2](elem[0], elem[1]),
+                                   zip(self.model.student_hidden_outputs, self.model.teacher_hidden_outputs,
+                                       exponent_magnitude),
+                                   0) / self.accumulation_steps / normalized_term
+
+                # auxiliary loss:
+                if len(self.model.student_aux_outputs) > 0:
+                    aux_loss = reduce(lambda acc, elem: acc + self.criterions[2](elem[0], elem[1]),
+                                      zip(self.model.student_aux_outputs, self.model.teacher_aux_outputs),
+                                      0) / self.accumulation_steps / len(self.model.student_aux_outputs)
+                else:
+                    aux_loss = 0
+
+                alpha = self.weight_scheduler.alpha
+                beta = self.weight_scheduler.beta
+                if len(self.model.student_aux_outputs) > 0:
+                    loss = beta * hint_loss + (1 - beta) * aux_loss
+                else:
+                    loss = hint_loss
+            else:
+                loss = kd_loss+supervised_loss
             loss.backward()
 
             if batch_idx % self.accumulation_steps == 0:
@@ -114,13 +123,18 @@ class ATAKDPTrainer(TAKDPTrainer):
             self.train_metrics.update('loss', loss.item() * self.accumulation_steps)
             self.train_metrics.update('supervised_loss', supervised_loss.item() * self.accumulation_steps)
             self.train_metrics.update('kd_loss', kd_loss.item() * self.accumulation_steps)
-            self.train_metrics.update('hint_loss', hint_loss.item() * self.accumulation_steps)
             self.train_metrics.update('teacher_loss', teacher_loss.item())
             self.train_iou_metrics.update(output_st.detach().cpu(), target.cpu())
             self.train_teacher_iou_metrics.update(output_tc.cpu(), target.cpu())
 
             for met in self.metric_ftns:
                 self.train_metrics.update(met.__name__, met(output_st, target))
+
+            # if isinstance(self.lr_scheduler, MyReduceLROnPlateau) and \
+            #         (((batch_idx+1) % self.config['trainer']['lr_scheduler_step_interval']) == 0):
+            #     # batch + 1 as the result of batch 0 always much smaller than other
+            #     # don't know why ( ͡° ͜ʖ ͡°)
+            #     self.lr_scheduler.step(self.train_metrics.avg('loss'))
 
             if batch_idx % self.log_step == 0:
                 self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
@@ -173,32 +187,3 @@ class ATAKDPTrainer(TAKDPTrainer):
         self.weight_scheduler.step()
 
         return log
-
-    def _clean_cache(self):
-        self.model.student_aux_outputs, self.model.teacher_aux_outputs = None, None
-        super()._clean_cache()
-
-    def get_aux_layer_names(self, epoch):
-        # sort pruning plan according to epoch (smallest to largest)
-        sorted_pruning_plan = sorted(self.pruning_plan, key=lambda x: x['epoch'])
-
-        # names of layer in (sorted pruning plan)
-        sorted_layer_names = list(map(lambda x: x['name'], sorted_pruning_plan))
-
-        # names of layers that will be pruned in this epoch
-        pruned_layer_names = list(map(lambda x: x['name'], filter(lambda x: x['epoch'] == epoch, self.pruning_plan)))
-
-        # indexes of layers that will be pruned in this epoch in pruning_plan list
-        pruned_layer_name_idxes = [sorted_layer_names.index(pruned_layer_name) for pruned_layer_name in pruned_layer_names]
-        # largest index in previous list
-        if len(pruned_layer_name_idxes) == 0:
-            return []
-        pruned_layer_name_idx = max(pruned_layer_name_idxes)
-
-        num = self.config['pruning']['auxiliary_num_layers']
-        if pruned_layer_name_idx > (len(sorted_layer_names) - num):
-            aux_layer_names = sorted_layer_names[pruned_layer_name_idx + 1:]
-        else:
-            aux_layer_names = sorted_layer_names[pruned_layer_name_idx + 1: pruned_layer_name_idx + num + 1]
-
-        return aux_layer_names

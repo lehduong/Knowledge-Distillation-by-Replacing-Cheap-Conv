@@ -7,12 +7,13 @@ import losses as module_loss
 import models.metric as module_metric
 import models as module_arch
 import utils.optim as module_optim
-from models.students.base_student import BaseStudent
-from data_loader import _create_transform
+from models.students import BaseStudent, AuxStudent
+from data_loader import _create_transform, _create_test_transform
 from parse_config import ConfigParser
-from trainer import TAKDPTrainer
+from trainer import KDPTrainer, TAKDPTrainer, ATAKDPTrainer, LayerCompressibleTrainer
 from pruning import PFEC
 from utils import WeightScheduler
+from torchvision import transforms
 
 # fix random seeds for reproducibility
 SEED = 123
@@ -29,17 +30,20 @@ def main(config):
     train_joint_transform, train_input_transform, target_transform, val_input_transform = _create_transform(config)
     train_data_loader = config.init_obj('train_data_loader', module_data, transform=train_input_transform,
                                         transforms=train_joint_transform, target_transform=target_transform)
-    valid_data_loader = config.init_obj('val_data_loader', module_data, transform=val_input_transform,
-                                        target_transform=target_transform)
+    test_data_loader = config.init_obj('test_data_loader', module_data, transform=transforms.ToTensor(),
+                                        target_transform=target_transform, return_image_name=True)
 
     # Load pretrained teacher model
     teacher = config.restore_snapshot('teacher', module_arch)
-    teacher = teacher.cpu() # saved some memory as student network will use a (deep) copy of teacher model
+    teacher = teacher.cpu()  # saved some memory as student network will use a (deep) copy of teacher model
 
     # build models architecture, then print to console
     args = []
-    student = BaseStudent(teacher, args)
-    logger.info(student)
+    if config['trainer']['name'] != 'ATAKDPTrainer':
+        student = BaseStudent(teacher, args)
+    else:
+        aux_args = []
+        student = AuxStudent(teacher, args, aux_args)
 
     # get function handles of loss and metrics
     supervised_criterion = config.init_obj('supervised_loss', module_loss)
@@ -55,11 +59,23 @@ def main(config):
     weight_scheduler = WeightScheduler(config['weight_scheduler'])
 
     # Knowledge Distillation only
-    pruner = PFEC(student, config, config['pruning']['compress_rate'])
-    trainer = TAKDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
-                           valid_data_loader, lr_scheduler, weight_scheduler)
+    pruner = PFEC(student, config)
+    if config['trainer']['name'] == 'LayerCompressibleTrainer':
+        trainer = LayerCompressibleTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
+                                           test_data_loader, lr_scheduler, weight_scheduler)
+    elif config['trainer']['name'] == "TAKDPTrainer":
+        trainer = TAKDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
+                               test_data_loader, lr_scheduler, weight_scheduler)
+    elif config['trainer']['name'] == 'KDPTrainer':
+        trainer = KDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
+                             test_data_loader, lr_scheduler, weight_scheduler)
+    elif config['trainer']['name'] == 'ATAKDPTrainer':
+        trainer = ATAKDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
+                                test_data_loader, lr_scheduler, weight_scheduler)
+    else:
+        raise Exception("Unsupported trainer")
 
-    trainer.train()
+    trainer.test()
 
 
 if __name__ == '__main__':
