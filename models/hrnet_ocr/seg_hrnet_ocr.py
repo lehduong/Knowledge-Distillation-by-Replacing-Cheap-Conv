@@ -18,6 +18,7 @@ import torch
 import torch.nn as nn
 import torch._utils
 import torch.nn.functional as F
+import json
 
 from .bn_helper import BatchNorm2d, BatchNorm2d_class, relu_inplace
 
@@ -25,6 +26,9 @@ ALIGN_CORNERS = True
 BN_MOMENTUM = 0.1
 logger = logging.getLogger(__name__)
 
+default_config_file = 'config_hrnet_ocr.json'
+with open(default_config_file, 'r') as df_cfg:
+    default_config = json.load(df_cfg)
 
 class ModuleHelper:
 
@@ -420,7 +424,7 @@ blocks_dict = {
 
 class HighResolutionNet(nn.Module):
 
-    def __init__(self, config, **kwargs):
+    def __init__(self, config=default_config, **kwargs):
         global ALIGN_CORNERS
         extra = config['extra']
         super(HighResolutionNet, self).__init__()
@@ -650,7 +654,7 @@ class HighResolutionNet(nn.Module):
         out_aux_seg.append(out_aux)
         out_aux_seg.append(out_orgn_size)
 
-        return out_aux_seg
+        return out_aux_seg[-1]
 
     def init_weights(self, pretrained='', ):
         logger.info('=> init weights from normal distribution')
