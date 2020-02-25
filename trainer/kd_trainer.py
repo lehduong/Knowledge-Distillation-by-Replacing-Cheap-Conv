@@ -184,7 +184,7 @@ class KnowledgeDistillationTrainer(BaseTrainer):
         with torch.no_grad():
             for batch_idx, (data, target) in enumerate(self.valid_data_loader):
                 data, target = data.to(self.device), target.to(self.device)
-                output = self.model.inference(data)
+                output_aux, output = self.model.inference(data)
                 supervised_loss = self.criterions[0](output, target)
 
                 self.writer.set_step((epoch - 1) * len(self.valid_data_loader) + batch_idx, 'valid')
@@ -231,7 +231,7 @@ class KnowledgeDistillationTrainer(BaseTrainer):
         #     self.writer.add_histogram(name, p, bins='auto')
         return self.test_metrics.result()
 
-    def save_for_submission(self, output, image_name, img_type=np.int16):
+    def save_for_submission(self, output, image_name, img_type=np.uint8):
         args = self.config['submission']
         path_output = args['path_output']
         image_save = '{}.{}'.format(image_name, args['ext'])
@@ -246,9 +246,9 @@ class KnowledgeDistillationTrainer(BaseTrainer):
 
     def re_map_for_submission(self, output):
         mapping = self.valid_data_loader.dataset.id_to_trainid
-        cp_output = copy.deepcopy(output)
+        cp_output = torch.zeros(output.size())
         for k, v in mapping.items():
-            cp_output[cp_output == v] = k
+            cp_output[output == v] = k
 
         return cp_output
 

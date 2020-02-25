@@ -585,6 +585,7 @@ class HighResolutionNet(nn.Module):
         return nn.Sequential(*modules), num_inchannels
 
     def forward(self, x):
+        orgn_height, orgn_width = x.size()[-2:]
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -645,9 +646,9 @@ class HighResolutionNet(nn.Module):
         feats = self.ocr_distri_head(feats, context)
 
         out = self.cls_head(feats)
-
+        out_orgn_size = F.interpolate(out, (orgn_height, orgn_width), mode='bilinear', align_corners=ALIGN_CORNERS)
         out_aux_seg.append(out_aux)
-        out_aux_seg.append(out)
+        out_aux_seg.append(out_orgn_size)
 
         return out_aux_seg
 

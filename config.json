@@ -71,9 +71,9 @@
                 "align_corners": true,
                 "ocr.mid_channels": 512,
                 "ocr.key_channels": 256,
-                "num_classes": 19
-            },
-            "snapshot": "checkpoints/hrnet_ocr_cs_8162_torch11.pth"
+                "num_classes": 19,
+                "snapshot": "checkpoints/hrnet_ocr_cs_8162_torch11.pth"
+            }
         }
     },
     "transforms": {
@@ -276,7 +276,7 @@
         "type": "sliding",
         "args": {
             "scales": [1.0],
-            "crop_size": 512
+            "crop_size": 1024
         }
     },
     "submission": {
