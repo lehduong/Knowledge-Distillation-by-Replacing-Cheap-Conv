@@ -55,16 +55,17 @@ class PFEC(BasePruner):
     # BasicBlock in seg_hrnet_ocr.py
     def branch_pruning_for_hrnet_ocr(self, branches):
         holding_rate = 1/len(branches)
-        n_kept_blocks = len(branches)*holding_rate
+        n_kept_blocks = int(len(branches)*holding_rate)
         first_block = branches[0]
         in_channels = first_block.conv1.in_channels
         out_channels = first_block.conv1.out_channels
-        new_branch = torch.nn.Sequential()
+        new_branch = []
         from models.hrnet_ocr.seg_hrnet_ocr import BasicBlock
         for i in range(n_kept_blocks):
             new_bs_block = BasicBlock(in_channels, out_channels)
-            new_branch.add_module(new_bs_block)
+            new_branch.append(new_bs_block)
 
+        new_branch = nn.Sequential(*new_branch)
         if self.use_cuda:
             new_branch.cuda()
 
@@ -105,23 +106,23 @@ class PFEC(BasePruner):
         if compress_rate is None:
             compress_rate = self.compress_rate
 
-        num_kept_filter = int(compress_rate * layer.weight.shape[0])
-        if num_kept_filter > 0:
-            new_layer = self.norm_based_pruning(layer, num_kept_filter)
-            # keep weight of pre-trained layer
-            for param in new_layer.parameters():
-                param.requires_grad = True
-            transform_block = TransformBlock(num_kept_filter, layer, new_layer, self.kernel_size, self.padding,
-                                             self.dilation, self.use_cuda)
-            #transform_block = self.transform_block(num_kept_filter, layer)
-            #return nn.Sequential(new_layer, transform_block)
-        else:
-            if type(layer) == nn.Conv2d:
+        if type(layer) is nn.Conv2d or type(layer) is nn.Linear:
+            num_kept_filter = int(compress_rate * layer.weight.shape[0])
+            if num_kept_filter > 0:
+                new_layer = self.norm_based_pruning(layer, num_kept_filter)
+                # keep weight of pre-trained layer
+                for param in new_layer.parameters():
+                    param.requires_grad = True
+                transform_block = TransformBlock(num_kept_filter, layer, new_layer, self.kernel_size, self.padding,
+                                                 self.dilation, self.use_cuda)
+                #transform_block = self.transform_block(num_kept_filter, layer)
+                #return nn.Sequential(new_layer, transform_block)
+            else:
                 transform_block = DepthwiseSeparableBlock(layer.in_channels, layer.out_channels, self.kernel_size,
-                                                      self.padding, self.dilation, layer.in_channels, False)
-            # Only support for Sequential of BasicBlock in hrnet_ocr !
-            elif type(layer) == nn.Sequential:
-                transform_block = self.branch_pruning_for_hrnet_ocr(layer)
+                                                          self.padding, self.dilation, layer.in_channels, False)
+        # Only support for Sequential of BasicBlock in hrnet_ocr !
+        elif type(layer) == nn.Sequential:
+            transform_block = self.branch_pruning_for_hrnet_ocr(layer)
 
         return transform_block
 
