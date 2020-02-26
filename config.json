@@ -48,6 +48,20 @@
             "num_samples": 50
         }
     },
+    "test_data_loader": {
+        "type": "CityscapesDataloader",
+        "args": {
+            "data_dir": "data/",
+            "batch_size": 1,
+            "shuffle": false,
+            "validation_split": 0,
+            "num_workers": 0,
+            "split": "test",
+            "mode": "fine",
+            "target_type": "semantic",
+            "num_samples": 50
+        }
+    },
     "optimizer": {
         "type": "RAdam",
         "args": {
@@ -187,5 +201,17 @@
             "value": 1,
             "anneal_rate": 1
         }
+    },
+    "test": {
+        "type": "sliding",
+        "args": {
+            "scales": [1.0],
+            "crop_size": 1024
+        }
+    },
+    "submission": {
+        "save_output": true,
+        "path_output": "submission/",
+        "ext": "png"
     }
 }
