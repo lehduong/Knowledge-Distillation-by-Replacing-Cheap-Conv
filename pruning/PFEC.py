@@ -159,6 +159,12 @@ class DepthwiseSeparableBlock(nn.Module):
             self.separable_conv.cuda()
             self.pointwise_conv.cuda()
 
+    def initialize(self, reference_layer):
+        mean = reference_layer.weight.data.mean().item()
+        std = reference_layer.weight.data.std().item()
+        self.separable_conv.weight.data.normal_(mean, std)
+        self.pointwise_conv.weight.data.normal_(mean, std)
+
     def forward(self, x):
         x = self.separable_conv(x)
         x = self.pointwise_conv(x)

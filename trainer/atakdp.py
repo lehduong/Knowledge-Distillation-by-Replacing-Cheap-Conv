@@ -32,7 +32,8 @@ class ATAKDPTrainer(TAKDPTrainer):
             self.model.to_teacher()
             # reset optimizer
             self.optimizer = self.config.init_obj('optimizer', optim_module, self.model.parameters())
-
+            self.lr_scheduler = self.config.init_obj('lr_scheduler', optim_module.lr_scheduler, self.optimizer)
+            
             # dump the new teacher:
             self.logger.info('Promoted Student to Teaching Assistant')
             number_of_param = sum(p.numel() for p in self.model.parameters())
