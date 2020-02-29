@@ -79,7 +79,10 @@ class IndependentTrainer(ATAKDPTrainer):
                                0) / self.accumulation_steps / normalized_term
 
             beta = self.weight_scheduler.beta
-            loss = beta * hint_loss + (1 - beta) * supervised_loss
+            if self._complete:
+                loss = kd_loss
+            else:
+                loss = hint_loss
             loss.backward()
 
             if batch_idx % self.accumulation_steps == 0:

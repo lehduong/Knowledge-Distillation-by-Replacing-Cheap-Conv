@@ -90,7 +90,6 @@ class KnowledgeDistillationTrainer(BaseTrainer):
                                  exponent_magnitude),
                              0)/self.accumulation_steps/normalized_term
 
-            #TODO: Early stop with teacher loss
             teacher_loss = self.criterions[0](output_tc, target) # for comparision
 
             alpha = self.weight_scheduler.alpha

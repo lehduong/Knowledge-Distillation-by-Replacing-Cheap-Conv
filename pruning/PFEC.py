@@ -5,6 +5,7 @@ import torch.nn.parallel
 import torch.optim
 import torch.utils.data
 import numpy as np
+import copy
 from torch import nn
 from base import BasePruner
 
@@ -94,11 +95,18 @@ class PFEC(BasePruner):
                 param.requires_grad = True
             transform_block = TransformBlock(num_kept_filter, layer, new_layer, self.kernel_size, self.padding,
                                              self.dilation, self.use_cuda)
-            #transform_block = self.transform_block(num_kept_filter, layer)
-            #return nn.Sequential(new_layer, transform_block)
         else:
             transform_block = DepthwiseSeparableBlock(layer.in_channels, layer.out_channels, self.kernel_size,
                                                       self.padding, self.dilation, layer.in_channels, False)
+            # copied_layer = copy.deepcopy(layer)
+            # for param in copied_layer.parameters():
+            #     param.requires_grad = True
+            # transform_block = nn.Sequential(
+            #     copied_layer,
+            #     nn.Dropout(0.5)
+            # )
+            # transform_block.cuda()
+
         return transform_block
 
 
