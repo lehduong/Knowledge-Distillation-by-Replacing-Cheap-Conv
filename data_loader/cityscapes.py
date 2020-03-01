@@ -3,10 +3,10 @@ import os
 from collections import namedtuple
 
 from torchvision.datasets.utils import extract_archive, verify_str_arg, iterable_to_str
-from datasets import VisionDataset
+from .datasets import VisionDataset
 from torch.utils import data
 from PIL import Image
-import uniform
+from . import uniform
 import numpy as np
 
 CV_SPLITS = 3
