@@ -148,7 +148,7 @@ class LayerwiseTrainer(KnowledgeDistillationTrainer):
                 self.logger.info(
                     'Train Epoch: {} [{}]/[{}] Loss: {:.6f} mIoU: {:.6f} Teacher mIoU: {:.6f} Supervised Loss: {:.6f} '
                     'Knowledge Distillation loss: '
-                    '{:.6f} Hint Loss: {:.6f} Aux Loss: {:.6f} Teacher Loss: {:.6f}'.format(
+                    '{:.6f} Hint Loss: {:.6f} Teacher Loss: {:.6f}'.format(
                         epoch,
                         batch_idx,
                         self.len_epoch,
@@ -158,7 +158,6 @@ class LayerwiseTrainer(KnowledgeDistillationTrainer):
                         self.train_metrics.avg('supervised_loss'),
                         self.train_metrics.avg('kd_loss'),
                         self.train_metrics.avg('hint_loss'),
-                        self.train_metrics.avg('aux_loss'),
                         self.train_metrics.avg('teacher_loss'),
                     ))
 
