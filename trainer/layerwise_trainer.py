@@ -5,6 +5,7 @@ from .kd_trainer import KnowledgeDistillationTrainer
 from utils.optim.lr_scheduler import MyOneCycleLR, MyReduceLROnPlateau
 from utils.util import EarlyStopTracker
 from utils import optim as optim_module
+from models.students import WrappedStudent
 import numpy as np
 
 
@@ -14,7 +15,7 @@ class LayerwiseTrainer(KnowledgeDistillationTrainer):
         TA's one i.e. we have to use WrappedStudent instead of BaseStudent
     """
 
-    def __init__(self, model, criterions, metric_ftns, optimizer, config, train_data_loader,
+    def __init__(self, model: WrappedStudent, criterions, metric_ftns, optimizer, config, train_data_loader,
                  valid_data_loader=None, lr_scheduler=None, weight_scheduler=None):
         super().__init__(model, criterions, metric_ftns, optimizer, config, train_data_loader,
                          valid_data_loader, lr_scheduler, weight_scheduler)
@@ -29,7 +30,9 @@ class LayerwiseTrainer(KnowledgeDistillationTrainer):
         """
         # Check if there is any layer that would be replaced in this epoch
         # list of epochs that would have an update on student networks
-        epochs = list(map(lambda x: x['epoch'], self.config['pruning']['pruning_plan']))
+        epochs = list(map(lambda x: x['epoch'], self.config['pruning']['pruning_plan']+
+                                                self.config['pruning']['hint']+
+                                                self.config['pruning']['unfreeze']))
         # if not:
         if epoch not in epochs:
             self.logger.info('EPOCH: ' + str(epoch))

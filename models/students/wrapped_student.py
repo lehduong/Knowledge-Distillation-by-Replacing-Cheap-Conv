@@ -10,7 +10,6 @@ from beautifultable import BeautifulTable
 from pruning.PFEC import DepthwiseSeparableBlock
 
 BLOCKS_LEVEL_SPLIT_CHAR = '.'
-DistillationArgs = namedtuple('DistillationArgs', ['old_block_name', 'new_block', 'new_block_name'])
 
 
 class WrappedStudent(BaseModel):
@@ -57,7 +56,7 @@ class WrappedStudent(BaseModel):
         """
         for block_name in block_names:
             self.aux_block_names.append(block_name)
-            # get teacher block to retrieve information such as channel dim,...
+            # get teacher and student block 
             teacher_block = self.get_block(block_name, self.teacher)
             student_block = self.get_block(block_name, self.student)
             # teacher's hook
@@ -161,27 +160,6 @@ class WrappedStudent(BaseModel):
         out = self.student(x)
 
         return out
-
-    #TODO: Implement
-    def reset(self):
-        """
-        stop pruning current student layers and transfer back to original model
-        :return:
-        """
-        raise Exception('Not Implemented...')
-        self._remove_hooks()
-        # saving student blocks for later usage
-        for blocks in self.student_blocks:
-            self.saved_student_blocks.append(blocks)
-
-        self.saved_distillation_args += self.replaced_block_names
-        self.student_blocks = nn.ModuleList()
-        self.teacher_blocks = nn.ModuleList()
-        self.replaced_block_names = []
-
-        # flush memory
-        gc.collect()
-        torch.cuda.empty_cache()
 
     def eval(self):
         self.training = False

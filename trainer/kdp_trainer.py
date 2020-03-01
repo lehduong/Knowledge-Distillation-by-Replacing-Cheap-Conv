@@ -21,10 +21,6 @@ class KDPTrainer(KnowledgeDistillationTrainer):
         self.compress_rate = self.config['pruning']['compress_rate']
 
     def prune(self, epoch):
-        # freeze all previous layers
-        for param in self.model.parameters():
-            param.requires_grad = False
-
         # get ALL layers that will be pruned in this step
         to_be_pruned_layers = list(filter(lambda x: x['epoch'] == epoch, self.pruning_plan))
 
@@ -32,6 +28,10 @@ class KDPTrainer(KnowledgeDistillationTrainer):
         if not to_be_pruned_layers:
             return
         else:
+            # freeze all previous layers
+            self.logger.info('Freeze ALL previous layers...')
+            for param in self.model.parameters():
+                param.requires_grad = False
             # logging the layers being pruned
             self._ta_count = 1  # reset TA interval if using TA
             self.logger.info('Pruning layer(s): ' + str(list(map(lambda x: x['name'], to_be_pruned_layers))))
