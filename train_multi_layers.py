@@ -8,7 +8,7 @@ import models.metric as module_metric
 import models as module_arch
 import utils.optim as module_optim
 from models.students import WrappedStudent
-from models.students.wrapped_student import BLOCKS_LEVEL_SPLIT_CHAR
+from data_loader import _create_transform
 from parse_config import ConfigParser
 from trainer import KnowledgeDistillationTrainer
 from utils import WeightScheduler
@@ -24,8 +24,12 @@ np.random.seed(SEED)
 def main(config):
     logger = config.get_logger('train')
 
-    train_data_loader = config.init_obj('train_data_loader', module_data)
-    valid_data_loader = config.init_obj('val_data_loader', module_data)
+    # setup data_loader instances
+    train_joint_transform, train_input_transform, target_transform, val_input_transform = _create_transform(config)
+    train_data_loader = config.init_obj('train_data_loader', module_data, transform=train_input_transform,
+                                        transforms=train_joint_transform, target_transform=target_transform)
+    valid_data_loader = config.init_obj('val_data_loader', module_data, transform=val_input_transform,
+                                        target_transform=target_transform)
 
     # Load pretrained teacher model
     teacher = config.restore_snapshot('teacher', module_arch)
