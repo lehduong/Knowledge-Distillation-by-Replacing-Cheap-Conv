@@ -99,7 +99,7 @@ class TAKDPTrainer(KDPTrainer):
         pruning_plan_dict = {elem["name"]: elem["compress_rate"] for elem in pruning_plan}
         trained_ta_layers = [self.model.get_block(layer) for layer in checkpoint['trained_ta_layers']]
         training_ta_layers = [self.model.get_block(layer) for layer in checkpoint['training_ta_layers']]
-        self._trained_ta_layers += trained_ta_layers
+        self._trained_ta_layers += checkpoint['trained_ta_layers']
         self.logger.info('trained: '+str(checkpoint['trained_ta_layers']))
         self.logger.info('training: '+str(checkpoint['training_ta_layers']))
         # Prune trained TA layers
