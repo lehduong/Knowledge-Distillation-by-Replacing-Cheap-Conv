@@ -30,8 +30,7 @@
             "num_workers": 0,
             "split": "train",
             "mode": "fine",
-            "target_type": "semantic",
-            "num_samples": 2048
+            "target_type": "semantic"
         }
     },
     "val_data_loader": {
@@ -90,19 +89,14 @@
     },
     "metrics": [],
     "lr_scheduler": {
-        "type": "MyReduceLROnPlateau",
+        "type": "StepLR",
         "args": {
-            "mode": "min",
-            "threshold": 0.02,
-            "factor": 0.1,
-            "patience": 0,
-            "verbose": true,
-            "min_lr": 1e-05,
-            "threshold_mode": "rel"
+            "step_size": 1,
+            "gamma": 0.2
         }
     },
     "trainer": {
-        "name": "ATAKDPTrainer",
+        "name": "LayerwiseTrainer",
         "epochs": 1000,
         "save_dir": "saved/",
         "save_period": 1,
@@ -122,68 +116,144 @@
             "padding": 12,
             "kernel_size": 3
         },
-
         "pruning_plan": [
             {
                 "name": "mod4.block2.convs.conv2",
-                "compress_rate": 0,
                 "epoch": 1
             },
             {
                 "name": "mod4.block3.convs.conv1",
-                "compress_rate": 0,
-                "epoch": 1
+                "epoch": 3
             },
             {
                 "name": "mod4.block3.convs.conv2",
-                "compress_rate": 0,
-                "epoch": 1
+                "epoch": 6
             },
             {
                 "name": "mod4.block4.convs.conv2",
-                "compress_rate": 0,
-                "epoch": 1
+                "epoch": 9
             },
             {
                 "name": "mod4.block5.convs.conv2",
-                "compress_rate": 0,
-                "epoch": 1
+                "epoch": 12
             },
             {
                 "name": "mod4.block6.convs.conv2",
-                "compress_rate": 0,
-                "epoch": 1
+                "epoch": 15
             },
             {
                 "name": "mod5.block2.convs.conv2",
-                "compress_rate": 0,
-                "epoch": 1
+                "epoch": 18
             },
             {
                 "name": "mod7.block1.convs.conv2",
-                "compress_rate": 0,
-                "epoch": 1
+                "epoch": 21
             },
             {
                 "name": "aspp.features.1.0",
-                "compress_rate": 0,
-                "epoch": 1
+                "epoch": 24
             },
             {
                 "name": "aspp.features.2.0",
-                "compress_rate": 0,
-                "epoch": 1
+                "epoch": 27
             },
             {
                 "name": "aspp.features.3.0",
-                "compress_rate": 0,
+                "epoch": 30
+            }
+        ],
+        "hint": [
+            {
+                "name": "mod4.block2.convs.conv2",
                 "epoch": 1
+            },
+            {
+                "name": "mod4.block3.convs.conv1",
+                "epoch": 3
+            },
+            {
+                "name": "mod4.block3.convs.conv2",
+                "epoch": 6
+            },
+            {
+                "name": "mod4.block4.convs.conv2",
+                "epoch": 9
+            },
+            {
+                "name": "mod4.block5.convs.conv2",
+                "epoch": 12
+            },
+            {
+                "name": "mod4.block6.convs.conv2",
+                "epoch": 15
+            },
+            {
+                "name": "mod5.block2.convs.conv2",
+                "epoch": 18
+            },
+            {
+                "name": "mod7.block1.convs.conv2",
+                "epoch": 21
+            },
+            {
+                "name": "aspp.features.1.0",
+                "epoch": 24
+            },
+            {
+                "name": "aspp.features.2.0",
+                "epoch": 27
+            },
+            {
+                "name": "aspp.features.3.0",
+                "epoch": 30
+            }
+        ],
+        "unfreeze": [
+            {
+                "name": "mod4.block2.convs.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "mod4.block3.convs.conv1",
+                "epoch": 3
+            },
+            {
+                "name": "mod4.block3.convs.conv2",
+                "epoch": 6
+            },
+            {
+                "name": "mod4.block4.convs.conv2",
+                "epoch": 9
+            },
+            {
+                "name": "mod4.block5.convs.conv2",
+                "epoch": 12
+            },
+            {
+                "name": "mod4.block6.convs.conv2",
+                "epoch": 15
+            },
+            {
+                "name": "mod5.block2.convs.conv2",
+                "epoch": 18
+            },
+            {
+                "name": "mod7.block1.convs.conv2",
+                "epoch": 21
+            },
+            {
+                "name": "aspp.features.1.0",
+                "epoch": 24
+            },
+            {
+                "name": "aspp.features.2.0",
+                "epoch": 27
+            },
+            {
+                "name": "aspp.features.3.0",
+                "epoch": 30
             }
         ]
-    },
-    "teaching_assistant": {
-        "interval": 10,
-        "tol": 0.01
     },
     "weight_scheduler": {
         "alpha": {

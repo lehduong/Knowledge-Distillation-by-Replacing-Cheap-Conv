@@ -10,7 +10,7 @@ import utils.optim as module_optim
 from models.students import BaseStudent, AuxStudent, IndependentStudent
 from data_loader import _create_transform
 from parse_config import ConfigParser
-from trainer import KDPTrainer, TAKDPTrainer, ATAKDPTrainer, LayerCompressibleTrainer, IndependentTrainer
+from trainer import KDPTrainer, TAKDPTrainer, ATAKDPTrainer, LayerCompressibleTrainer, IndependentTrainer, LayerwiseTrainer
 from pruning import PFEC
 from utils import WeightScheduler
 
@@ -78,6 +78,9 @@ def main(config):
     elif config['trainer']['name'] == 'IndependentTrainer':
         trainer = IndependentTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
                                      valid_data_loader, lr_scheduler, weight_scheduler)
+    elif config['trainer']['name'] == 'LayerwiseTrainer':
+        trainer = LayerwiseTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
+                                   valid_data_loader, lr_scheduler, weight_scheduler)
     else:
         raise Exception("Unsupported trainer")
 
