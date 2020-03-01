@@ -48,7 +48,6 @@ def main(config):
     else:
         aux_args = []
         student = AuxStudent(teacher, args, aux_args)
-    logger.info(student)
 
     # get function handles of loss and metrics
     supervised_criterion = config.init_obj('supervised_loss', module_loss)

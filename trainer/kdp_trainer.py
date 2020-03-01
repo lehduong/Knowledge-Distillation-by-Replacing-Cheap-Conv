@@ -21,6 +21,10 @@ class KDPTrainer(KnowledgeDistillationTrainer):
         self.compress_rate = self.config['pruning']['compress_rate']
 
     def prune(self, epoch):
+        # freeze all previous layers
+        for param in self.model.parameters():
+            param.requires_grad = False
+
         # get ALL layers that will be pruned in this step
         to_be_pruned_layers = list(filter(lambda x: x['epoch'] == epoch, self.pruning_plan))
 
@@ -69,7 +73,7 @@ class KDPTrainer(KnowledgeDistillationTrainer):
                                                 **optimizer_arg})
         # add new blocks to student model
         self.model.update_pruned_layers(args)
-        self.logger.info('Number of trainable parameters after pruning: ' + str(self.model.dump_trainable_params()))
+        self.logger.info(self.model.dump_trainable_params())
         self.logger.info(self.model.dump_student_teacher_blocks_info())
 
     def _train_epoch(self, epoch):
