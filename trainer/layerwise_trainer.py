@@ -109,7 +109,7 @@ class LayerwiseTrainer(KnowledgeDistillationTrainer):
             supervised_loss = self.criterions[0](output_st, target) / self.accumulation_steps
             kd_loss = self.criterions[1](output_st, output_tc) / self.accumulation_steps
 
-            hint_loss = reduce(lambda acc, elem: acc + elem[2] * self.criterions[2](elem[0], elem[1]),
+            hint_loss = reduce(lambda acc, elem: acc + self.criterions[2](elem[0], elem[1]),
                                zip(self.model.student_hidden_outputs, self.model.teacher_hidden_outputs),
                                0) / self.accumulation_steps
 

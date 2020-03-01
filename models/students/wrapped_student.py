@@ -71,7 +71,6 @@ class WrappedStudent(BaseModel):
 
     def unfreeze(self, block_names):
         for block_name in block_names:
-            print('Unfreeze block: ', str(block_name))
             block = self.get_block(block_name, self.student)
             for param in block.parameters():
                 param.requires_grad = True
