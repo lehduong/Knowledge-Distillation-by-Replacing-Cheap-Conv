@@ -7,7 +7,7 @@ import losses as module_loss
 import models.metric as module_metric
 import models as module_arch
 import utils.optim as module_optim
-from models.students import BaseStudent, AuxStudent, IndependentStudent
+from models.students import BaseStudent, AuxStudent, IndependentStudent, WrappedStudent
 from data_loader import _create_transform
 from parse_config import ConfigParser
 from trainer import KDPTrainer, TAKDPTrainer, ATAKDPTrainer, LayerCompressibleTrainer, IndependentTrainer, LayerwiseTrainer
@@ -41,6 +41,8 @@ def main(config):
     if config['trainer']['name'] == 'IndependentTrainer':
         aux_args = []
         student = IndependentStudent(teacher, args, aux_args)
+    elif config['trainer']['name'] == 'LayerwiseTrainer':
+        student = WrappedStudent(teacher, config)
     elif config['trainer']['name'] != 'ATAKDPTrainer':
         student = BaseStudent(teacher, args)
     else:
