@@ -87,7 +87,8 @@ class LayerwiseTrainer(KnowledgeDistillationTrainer):
         self.train_iou_metrics.reset()  # train iou of student
         self.valid_iou_metrics.reset()  # val iou of student
         self.train_teacher_iou_metrics.reset()  # train iou of teacher
-        self.lr_scheduler.reset()
+        if isinstance(self.lr_scheduler, MyReduceLROnPlateau):
+            self.lr_scheduler.reset()
 
     def _train_epoch(self, epoch):
         # replace chosen layers in this epoch
