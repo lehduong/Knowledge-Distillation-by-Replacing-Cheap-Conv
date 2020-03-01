@@ -62,27 +62,28 @@ def main(config):
     weight_scheduler = WeightScheduler(config['weight_scheduler'])
 
     # Knowledge Distillation only
-    pruner = PFEC(student, config)
-    if config['trainer']['name'] == 'LayerCompressibleTrainer':
-        trainer = LayerCompressibleTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
-                                           valid_data_loader, lr_scheduler, weight_scheduler)
-    elif config['trainer']['name'] == "TAKDPTrainer":
-        trainer = TAKDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
-                               valid_data_loader, lr_scheduler, weight_scheduler)
-    elif config['trainer']['name'] == 'KDPTrainer':
-        trainer = KDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
-                             valid_data_loader, lr_scheduler, weight_scheduler)
-    elif config['trainer']['name'] == 'ATAKDPTrainer':
-        trainer = ATAKDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
-                                valid_data_loader, lr_scheduler, weight_scheduler)
-    elif config['trainer']['name'] == 'IndependentTrainer':
-        trainer = IndependentTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
-                                     valid_data_loader, lr_scheduler, weight_scheduler)
-    elif config['trainer']['name'] == 'LayerwiseTrainer':
-        trainer = LayerwiseTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
+    if config['trainer']['name'] == 'LayerwiseTrainer':
+        trainer = LayerwiseTrainer(student, criterions, metrics, optimizer, config, train_data_loader,
                                    valid_data_loader, lr_scheduler, weight_scheduler)
     else:
-        raise Exception("Unsupported trainer")
+        pruner = PFEC(student, config)
+        if config['trainer']['name'] == 'LayerCompressibleTrainer':
+            trainer = LayerCompressibleTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
+                                               valid_data_loader, lr_scheduler, weight_scheduler)
+        elif config['trainer']['name'] == "TAKDPTrainer":
+            trainer = TAKDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
+                                   valid_data_loader, lr_scheduler, weight_scheduler)
+        elif config['trainer']['name'] == 'KDPTrainer':
+            trainer = KDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
+                                 valid_data_loader, lr_scheduler, weight_scheduler)
+        elif config['trainer']['name'] == 'ATAKDPTrainer':
+            trainer = ATAKDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
+                                    valid_data_loader, lr_scheduler, weight_scheduler)
+        elif config['trainer']['name'] == 'IndependentTrainer':
+            trainer = IndependentTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
+                                         valid_data_loader, lr_scheduler, weight_scheduler)
+        else:
+            raise Exception("Unsupported trainer")
 
     trainer.train()
 

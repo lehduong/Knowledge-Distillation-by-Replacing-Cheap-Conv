@@ -14,9 +14,9 @@ class LayerwiseTrainer(KnowledgeDistillationTrainer):
         TA's one i.e. we have to use WrappedStudent instead of BaseStudent
     """
 
-    def __init__(self, model, pruner, criterions, metric_ftns, optimizer, config, train_data_loader,
+    def __init__(self, model, criterions, metric_ftns, optimizer, config, train_data_loader,
                  valid_data_loader=None, lr_scheduler=None, weight_scheduler=None):
-        super().__init__(model, pruner, criterions, metric_ftns, optimizer, config, train_data_loader,
+        super().__init__(model, criterions, metric_ftns, optimizer, config, train_data_loader,
                          valid_data_loader, lr_scheduler, weight_scheduler)
 
         self.val_iou_tracker = EarlyStopTracker('best', 'max', 0.01, 'rel')
