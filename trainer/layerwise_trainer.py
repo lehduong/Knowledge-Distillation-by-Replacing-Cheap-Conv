@@ -1,14 +1,14 @@
 from torchvision.utils import make_grid
 from functools import reduce
 from utils import inf_loop, MetricTracker, visualize, CityscapesMetricTracker
-from .takdp_trainer import TAKDPTrainer
+from .kd_trainer import KnowledgeDistillationTrainer
 from utils.optim.lr_scheduler import MyOneCycleLR, MyReduceLROnPlateau
 from utils.util import EarlyStopTracker
 from utils import optim as optim_module
 import numpy as np
 
 
-class LayerwiseTrainer(TAKDPTrainer):
+class LayerwiseTrainer(KnowledgeDistillationTrainer):
     """
     Train each layer separately. Note that the later layer will be trained to reconstruct the TEACHER output, not the
         TA's one i.e. we have to use WrappedStudent instead of BaseStudent
@@ -19,8 +19,6 @@ class LayerwiseTrainer(TAKDPTrainer):
         super().__init__(model, pruner, criterions, metric_ftns, optimizer, config, train_data_loader,
                          valid_data_loader, lr_scheduler, weight_scheduler)
 
-        self.train_metrics = MetricTracker('loss', 'supervised_loss', 'kd_loss', 'hint_loss', 'teacher_loss',
-                                           'aux_loss', *[m.__name__ for m in self.metric_ftns], writer=self.writer)
         self.val_iou_tracker = EarlyStopTracker('best', 'max', 0.01, 'rel')
 
     def prepare_train_epoch(self, epoch):
