@@ -103,12 +103,6 @@ class KnowledgeDistillationTrainer(BaseTrainer):
                     self.lr_scheduler.step()
                 self.optimizer.zero_grad()
 
-            if isinstance(self.lr_scheduler, MyReduceLROnPlateau) and \
-                    (((batch_idx+1) % self.config['trainer']['lr_scheduler_step_interval']) == 0):
-                # batch + 1 as the result of batch 0 always much smaller than other
-                # don't know why ( ͡° ͜ʖ ͡°)
-                self.lr_scheduler.step(self.train_metrics.avg('loss'))
-
             self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
 
             # update metrics
@@ -162,7 +156,7 @@ class KnowledgeDistillationTrainer(BaseTrainer):
 
         if (self.lr_scheduler is not None) and (not isinstance(self.lr_scheduler, MyOneCycleLR)):
             if isinstance(self.lr_scheduler, MyReduceLROnPlateau):
-                pass
+                self.lr_scheduler.step(self.train_metrics.avg('loss'))
             else:
                 self.lr_scheduler.step()
 
