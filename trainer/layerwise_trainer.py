@@ -27,12 +27,19 @@ class LayerwiseTrainer(KnowledgeDistillationTrainer):
         if 'resume_path' in self.config['trainer']: 
             self.resume(self.config['trainer']['resume_path'])
 
-    def prepare_train_epoch(self, epoch):
+    def prepare_train_epoch(self, epoch, config=None):
         """
-        Prepare before training an epoch i.e. prune new layer, create new optimizer ....
-        :param epoch:
-        :return:
+        Prepare before training an epoch i.e. prune new layer, unfreeze some layers, create new optimizer ....
+        :param epoch:  int - indicate which epoch the trainer's in
+        :param config: a config object that contain pruning_plan, hint, unfreeze information
+        :return: 
         """
+        #  if the config is not set (training normaly, then set config to current trainer config)
+        #  if the config is set (in resume case) then use that config to replace layers in student in order 
+        # to match it with saved checkpoint  
+        if config is None:
+            config = self.config 
+
         # Check if there is any layer that would be replaced in this epoch
         # list of epochs that would have an update on student networks
         epochs = list(map(lambda x: x['epoch'], self.config['pruning']['pruning_plan']+
@@ -47,25 +54,26 @@ class LayerwiseTrainer(KnowledgeDistillationTrainer):
         # there is at least 1 layer would be replaced then:
         # freeze all previous layers
         self.logger.debug('Freeze all weight of student network')
+        # TODO: Verify if we should freeze previous layer or not 
         for param in self.model.parameters():
             param.requires_grad = False
 
         # layers that would be replaced by depthwise separable conv
         replaced_layers = list(map(lambda x: x['name'],
                                    filter(lambda x: x['epoch'] == epoch,
-                                          self.config['pruning']['pruning_plan'])
+                                          config['pruning']['pruning_plan'])
                                    )
                                )
         # layers which outputs will be used as loss
         hint_layers = list(map(lambda x: x['name'],
                                filter(lambda x: x['epoch'] == epoch,
-                                      self.config['pruning']['hint'])
+                                      config['pruning']['hint'])
                                )
                            )
         # layers that would be trained in this epoch
         unfreeze_layers = list(map(lambda x: x['name'],
                                    filter(lambda x: x['epoch'] == epoch,
-                                          self.config['pruning']['unfreeze'])
+                                          config['pruning']['unfreeze'])
                                    )
                                )
         self.logger.info('EPOCH: ' + str(epoch))
@@ -241,44 +249,7 @@ class LayerwiseTrainer(KnowledgeDistillationTrainer):
         epoch = checkpoint['epoch']  # stopped epoch
 
         # reconstruct the network architecture
-        pruning_plan = config['pruning']['pruning_plan']
-        self._reconstruct_saved_model_architecture(pruning_plan, epoch)
+        for i in range(epoch+1):
+            self.prepare_train_epoch(i, config)
         forgiving_state_restore(self.model, checkpoint['state_dict'])
         self.logger.info("Loaded model's state dict successfully")
-
-        # layers which outputs will be used as loss
-        hint_layers = list(map(lambda x: x['name'],
-                               filter(lambda x: x['epoch'] == epoch,
-                                      config['pruning']['hint'])
-                               )
-                           )
-        # layers that would be trained in this epoch
-        unfreeze_layers = list(map(lambda x: x['name'],
-                                   filter(lambda x: x['epoch'] == epoch,
-                                          config['pruning']['unfreeze'])
-                                   )
-                               )
-        # register hint layers and unfreeze some layers
-        self.model.register_hint_layers(hint_layers)  # assign which layers output would be used as hint loss
-        self.model.unfreeze(unfreeze_layers)  # unfreeze chosen layers
-        self.logger.info('Register hint layers and set unfreeze completed...')
-
-    def _reconstruct_saved_model_architecture(self, pruning_plan, epoch):
-        """
-        Reconstruct the model of checkpoint 
-        """
-        for i in range(epoch+1):
-            # layers that would be replaced by depthwise separable conv
-            replaced_layers = list(map(lambda x: x['name'],
-                                       filter(lambda x: x['epoch'] == i,
-                                              pruning_plan
-                                             )
-                                      )
-                                  )
-            self.model.replace(replaced_layers)
-
-
-
-        
-
-
