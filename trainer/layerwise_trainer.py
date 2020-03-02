@@ -83,12 +83,43 @@ class LayerwiseTrainer(KnowledgeDistillationTrainer):
         self.model.replace(replaced_layers)  # replace those layers with depthwise separable conv
         self.model.register_hint_layers(hint_layers)  # assign which layers output would be used as hint loss
         self.model.unfreeze(unfreeze_layers)  # unfreeze chosen layers
-        self.create_new_optimizer() # create new optimizer to remove the effect of momentum
+
+        # TODO: Verify if we should unfreeze the trained layer or not 
+        if epoch == 1:
+            self.create_new_optimizer() # create new optimizer to remove the effect of momentum
+        else:
+            self.update_optimizer(list(filter(lambda x: x['epoch']==epoch, config['pruning']['unfreeze'])))
+        
         self.logger.info(self.model.dump_trainable_params())
         self.logger.info(self.model.dump_student_teacher_blocks_info())
         self.reset_scheduler()
     
+    def update_optimizer(self, unfreeze_config):
+        """
+        Update param groups for optimizer with unfreezed layers of this epoch
+        :param unfreeze_config - list of arg. Each arg is the dictionary with following format:
+            {'name': 'layer1', 'epoch':1, 'lr'(optional): 0.01}
+        return: 
+        """
+        self.logger.debug('Updating optimizer for new layer')
+        for config in unfreeze_config:
+            layer_name = config['name']  # layer that will be unfreezed
+            self.logger.debug('Add parameters of layer: {} to optimizer'.format(layer_name))
+
+            layer = self.model.get_block(layer_name, self.model.student)  # actual layer i.e. nn.Module obj
+            optimizer_arg = self.config['optimizer']['args']  # default args for optimizer
+            
+            # we can also specify layerwise learning ! 
+            if "lr" in config:
+                optimizer_arg['lr'] = config['lr']
+            # add unfreezed layer's parameters to optimizer 
+            self.optimizer.add_param_group({'params': layer.parameters(),
+                                            **optimizer_arg})
+
     def create_new_optimizer(self):
+        """
+        Create new optimizer if trainer is in epoch 1 otherwise just run update optimizer
+        """
         # Create new optimizer
         self.logger.debug('Creating new optimizer ...')
         self.optimizer = self.config.init_obj('optimizer',
@@ -100,7 +131,7 @@ class LayerwiseTrainer(KnowledgeDistillationTrainer):
 
     def reset_scheduler(self):
         """
-        reset all schedulers, metrics, trackers, etc
+        reset all schedulers, metrics, trackers, etc when unfreeze new layer
         :return:
         """
         self.weight_scheduler.reset()  # weight between loss
@@ -114,7 +145,10 @@ class LayerwiseTrainer(KnowledgeDistillationTrainer):
             self.lr_scheduler.reset()
 
     def _train_epoch(self, epoch):
-        # replace chosen layers in this epoch
+        """
+        Training logic for 1 epoch
+        """
+        # Prepare the network i.e. unfreezed new layers, replaced new layer with depthwise separable conv, ...
         self.prepare_train_epoch(epoch)
 
         # reset
@@ -249,7 +283,7 @@ class LayerwiseTrainer(KnowledgeDistillationTrainer):
         epoch = checkpoint['epoch']  # stopped epoch
 
         # reconstruct the network architecture
-        for i in range(epoch+1):
+        for i in range(1, epoch+1):
             self.prepare_train_epoch(i, config)
         forgiving_state_restore(self.model, checkpoint['state_dict'])
         self.logger.info("Loaded model's state dict successfully")
