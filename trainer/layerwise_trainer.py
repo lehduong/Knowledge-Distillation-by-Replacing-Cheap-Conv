@@ -69,18 +69,23 @@ class LayerwiseTrainer(KnowledgeDistillationTrainer):
         self.logger.info('Replaced layers: ' + str(replaced_layers))
         self.logger.info('Hint layers: ' + str(hint_layers))
         self.logger.info('Unfreeze layers: ' + str(unfreeze_layers))
-        self.model.replace(replaced_layers)
-        self.model.register_hint_layers(hint_layers)
-        self.model.unfreeze(unfreeze_layers)
-
+        self.model.replace(replaced_layers)  # replace those layers with depthwise separable conv
+        self.model.register_hint_layers(hint_layers)  # assign which layers output would be used as hint loss
+        self.model.unfreeze(unfreeze_layers)  # unfreeze chosen layers
+        self.create_new_optimizer() # create new optimizer to remove the effect of momentum
+        self.logger.info(self.model.dump_trainable_params())
+        self.logger.info(self.model.dump_student_teacher_blocks_info())
+        self.reset_scheduler()
+    
+    def create_new_optimizer(self):
         # Create new optimizer
         self.logger.debug('Creating new optimizer ...')
         self.optimizer = self.config.init_obj('optimizer',
                                               optim_module,
                                               list(filter(lambda x: x.requires_grad, self.model.student.parameters())))
-        self.logger.info(self.model.dump_trainable_params())
-        self.logger.info(self.model.dump_student_teacher_blocks_info())
-        self.reset_scheduler()
+        self.lr_scheduler = self.config.init_obj('lr_scheduler',
+                                                 optim_module.lr_scheduler,
+                                                 self.optimizer)
 
     def reset_scheduler(self):
         """
@@ -222,3 +227,26 @@ class LayerwiseTrainer(KnowledgeDistillationTrainer):
         # for name, p in self.model.named_parameters():
         #     self.writer.add_histogram(name, p, bins='auto')
         return self.valid_metrics.result()
+
+    def resume(self, checkpoint_path):
+        raise Exception("Not Implemented")
+        self.logger.info("Loading checkpoint: {} ...".format(checkpoint_path))
+        checkpoint = torch.load(checkpoint_path, map_location=torch.device('cpu'))
+        self.start_epoch = checkpoint['epoch'] + 1
+        self.mnt_best = checkpoint['monitor_best']
+
+        config = checkpoint['config']
+        pruning_plan = config['pruning']['pruning_plan']
+        hint_layers = config['pruning']['hint']
+        unfreeze_layers = config['pruning']['unfreeze']
+
+    def _reconstruct_saved_model_architecture(self, pruning_plan, epoch):
+        """
+        Reconstruct the model of checkpoint 
+        """
+        pass 
+
+
+        
+
+
