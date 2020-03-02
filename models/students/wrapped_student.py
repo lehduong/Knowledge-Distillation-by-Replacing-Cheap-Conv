@@ -54,6 +54,9 @@ class WrappedStudent(BaseModel):
         :param block_names: str
         :return:
         """
+        # remove all added hint layers....
+        self._remove_hooks()
+        # add new hint layers
         for block_name in block_names:
             self.aux_block_names.append(block_name)
             # get teacher and student block 
