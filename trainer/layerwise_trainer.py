@@ -53,10 +53,10 @@ class LayerwiseTrainer(KnowledgeDistillationTrainer):
 
         # there is at least 1 layer would be replaced then:
         # freeze all previous layers
-        self.logger.debug('Freeze all weight of student network')
         # TODO: Verify if we should freeze previous layer or not 
-        for param in self.model.parameters():
-            param.requires_grad = False
+        # self.logger.debug('Freeze all weight of student network')
+        # for param in self.model.parameters():
+        #     param.requires_grad = False
 
         # layers that would be replaced by depthwise separable conv
         replaced_layers = list(map(lambda x: x['name'],
