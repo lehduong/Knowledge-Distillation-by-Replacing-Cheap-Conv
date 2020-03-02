@@ -162,20 +162,20 @@ class WrappedStudent(BaseModel):
         return out
 
     def eval(self):
-        self.training = False
-        self.student.eval()
-
-        return self
+        self._remove_hooks()
+        return super().eval()
 
     def train(self):
         """
         The parameters of TEACHER's network will always be set to EVAL
         :return: self
         """
-        self.training = True
-        self.student.train()
-
-        return self
+        # register hint layers's hooks if they have been remove
+        if len(self._student_hook_handlers) == 0 and len(self.aux_block_names) > 0:
+            hint_layers = copy.deepcopy(self.aux_block_names)
+            self.aux_block_names = list()
+            self.register_hint_layers(hint_layers)
+        return super().train()
 
     @staticmethod
     def __get_number_param(mod):

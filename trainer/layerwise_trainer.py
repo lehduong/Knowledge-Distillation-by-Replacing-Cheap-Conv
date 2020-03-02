@@ -7,6 +7,7 @@ from utils.util import EarlyStopTracker
 from utils import optim as optim_module
 from models.students import WrappedStudent
 import numpy as np
+import torch
 
 
 class LayerwiseTrainer(KnowledgeDistillationTrainer):
@@ -87,11 +88,11 @@ class LayerwiseTrainer(KnowledgeDistillationTrainer):
         """
         self.weight_scheduler.reset()  # weight between loss
         self.val_iou_tracker.reset()  # verify val iou would increase each time
-        self.train_metrics.reset()  # metrics for loss,... in training phase
-        self.valid_metrics.reset()  # metrics for loss,... in validating phase
-        self.train_iou_metrics.reset()  # train iou of student
-        self.valid_iou_metrics.reset()  # val iou of student
-        self.train_teacher_iou_metrics.reset()  # train iou of teacher
+        #self.train_metrics.reset()  # metrics for loss,... in training phase
+        #self.valid_metrics.reset()  # metrics for loss,... in validating phase
+        #self.train_iou_metrics.reset()  # train iou of student
+        #self.valid_iou_metrics.reset()  # val iou of student
+        #self.train_teacher_iou_metrics.reset()  # train iou of teacher
         if isinstance(self.lr_scheduler, MyReduceLROnPlateau):
             self.lr_scheduler.reset()
 
@@ -100,7 +101,7 @@ class LayerwiseTrainer(KnowledgeDistillationTrainer):
         self.prepare_train_epoch(epoch)
 
         # reset
-        self.model.student.train()
+        self.model.train()
         self.train_metrics.reset()
         self.train_iou_metrics.reset()
         self.train_teacher_iou_metrics.reset()
@@ -202,13 +203,13 @@ class LayerwiseTrainer(KnowledgeDistillationTrainer):
         :param epoch: Integer, current training epoch.
         :return: A log that contains information about validation
         """
-        self.model.student.eval()
+        self.model.eval()
         self.valid_metrics.reset()
         self.valid_iou_metrics.reset()
         with torch.no_grad():
             for batch_idx, (data, target) in enumerate(self.valid_data_loader):
                 data, target = data.to(self.device), target.to(self.device)
-                output = self.model.student(data)
+                output = self.model.inference(data)
                 supervised_loss = self.criterions[0](output, target)
 
                 self.writer.set_step((epoch - 1) * len(self.valid_data_loader) + batch_idx, 'valid')
