@@ -6,6 +6,7 @@ from utils.optim.lr_scheduler import MyOneCycleLR, MyReduceLROnPlateau
 from utils.util import EarlyStopTracker
 from utils import optim as optim_module
 from models.students import WrappedStudent
+from models import forgiving_state_restore
 from utils import stat_cuda
 import numpy as np
 import torch
@@ -23,6 +24,8 @@ class LayerwiseTrainer(KnowledgeDistillationTrainer):
                          valid_data_loader, lr_scheduler, weight_scheduler)
 
         self.val_iou_tracker = EarlyStopTracker('best', 'max', 0.01, 'rel')
+        if 'resume_path' in self.config['trainer']: 
+            self.resume(self.config['trainer']['resume_path'])
 
     def prepare_train_epoch(self, epoch):
         """
@@ -229,22 +232,51 @@ class LayerwiseTrainer(KnowledgeDistillationTrainer):
         return self.valid_metrics.result()
 
     def resume(self, checkpoint_path):
-        raise Exception("Not Implemented")
         self.logger.info("Loading checkpoint: {} ...".format(checkpoint_path))
         checkpoint = torch.load(checkpoint_path, map_location=torch.device('cpu'))
         self.start_epoch = checkpoint['epoch'] + 1
         self.mnt_best = checkpoint['monitor_best']
 
-        config = checkpoint['config']
+        config = checkpoint['config']  # config of checkpoint
+        epoch = checkpoint['epoch']  # stopped epoch
+
+        # reconstruct the network architecture
         pruning_plan = config['pruning']['pruning_plan']
-        hint_layers = config['pruning']['hint']
-        unfreeze_layers = config['pruning']['unfreeze']
+        self._reconstruct_saved_model_architecture(pruning_plan, epoch)
+        forgiving_state_restore(self.model, checkpoint['state_dict'])
+        self.logger.info("Loaded model's state dict successfully")
+
+        # layers which outputs will be used as loss
+        hint_layers = list(map(lambda x: x['name'],
+                               filter(lambda x: x['epoch'] == epoch,
+                                      config['pruning']['hint'])
+                               )
+                           )
+        # layers that would be trained in this epoch
+        unfreeze_layers = list(map(lambda x: x['name'],
+                                   filter(lambda x: x['epoch'] == epoch,
+                                          config['pruning']['unfreeze'])
+                                   )
+                               )
+        # register hint layers and unfreeze some layers
+        self.model.register_hint_layers(hint_layers)  # assign which layers output would be used as hint loss
+        self.model.unfreeze(unfreeze_layers)  # unfreeze chosen layers
+        self.logger.info('Register hint layers and set unfreeze completed...')
 
     def _reconstruct_saved_model_architecture(self, pruning_plan, epoch):
         """
         Reconstruct the model of checkpoint 
         """
-        pass 
+        for i in range(epoch+1):
+            # layers that would be replaced by depthwise separable conv
+            replaced_layers = list(map(lambda x: x['name'],
+                                       filter(lambda x: x['epoch'] == i,
+                                              pruning_plan
+                                             )
+                                      )
+                                  )
+            self.model.replace(replaced_layers)
+
 
 
         
