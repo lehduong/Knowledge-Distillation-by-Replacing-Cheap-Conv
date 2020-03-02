@@ -163,7 +163,7 @@ class WrappedStudent(BaseModel):
 
     def eval(self):
         self._remove_hooks()
-        return super().eval()
+        return super().train(False)
 
     def train(self):
         """
