@@ -150,22 +150,12 @@ class WrappedStudent(BaseModel):
         # flush the output of last forward
         self.student_hidden_outputs = []
         self.teacher_hidden_outputs = []
-
         # in training mode, the network has to forward 2 times, one for computing teacher's prediction \
         # and another for student's one
         with torch.no_grad():
             teacher_pred = self.teacher(x)
-
         student_pred = self.student(x)
-
         return student_pred, teacher_pred
-
-    def inference(self, x):
-        self.student_hidden_outputs = []
-        self.teacher_hidden_outputs = []
-        out = self.student(x)
-
-        return out
 
     @staticmethod
     def __get_number_param(mod):

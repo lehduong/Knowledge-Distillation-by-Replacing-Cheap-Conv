@@ -6,6 +6,7 @@ from utils.optim.lr_scheduler import MyOneCycleLR, MyReduceLROnPlateau
 from utils.util import EarlyStopTracker
 from utils import optim as optim_module
 from models.students import WrappedStudent
+from utils import stat_cuda
 import numpy as np
 import torch
 
@@ -88,11 +89,11 @@ class LayerwiseTrainer(KnowledgeDistillationTrainer):
         """
         self.weight_scheduler.reset()  # weight between loss
         self.val_iou_tracker.reset()  # verify val iou would increase each time
-        #self.train_metrics.reset()  # metrics for loss,... in training phase
-        #self.valid_metrics.reset()  # metrics for loss,... in validating phase
-        #self.train_iou_metrics.reset()  # train iou of student
-        #self.valid_iou_metrics.reset()  # val iou of student
-        #self.train_teacher_iou_metrics.reset()  # train iou of teacher
+        self.train_metrics.reset()  # metrics for loss,... in training phase
+        self.valid_metrics.reset()  # metrics for loss,... in validating phase
+        self.train_iou_metrics.reset()  # train iou of student
+        self.valid_iou_metrics.reset()  # val iou of student
+        self.train_teacher_iou_metrics.reset()  # train iou of teacher
         if isinstance(self.lr_scheduler, MyReduceLROnPlateau):
             self.lr_scheduler.reset()
 
@@ -127,8 +128,6 @@ class LayerwiseTrainer(KnowledgeDistillationTrainer):
 
             if batch_idx % self.accumulation_steps == 0:
                 self.optimizer.step()
-                if isinstance(self.lr_scheduler, MyOneCycleLR):
-                    self.lr_scheduler.step()
                 self.optimizer.zero_grad()
 
             self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
@@ -175,8 +174,6 @@ class LayerwiseTrainer(KnowledgeDistillationTrainer):
         log.update({'train_student_mIoU': self.train_iou_metrics.get_iou()})
 
         if self.do_validation and ((epoch % self.config["trainer"]["do_validation_interval"]) == 0):
-            # clean cache to prevent out-of-memory with 1 gpu
-            self._clean_cache()
             val_log = self._valid_epoch(epoch)
             log.update(**{'val_' + k: v for k, v in val_log.items()})
             log.update(**{'val_mIoU': self.valid_iou_metrics.get_iou()})
@@ -203,15 +200,15 @@ class LayerwiseTrainer(KnowledgeDistillationTrainer):
         :param epoch: Integer, current training epoch.
         :return: A log that contains information about validation
         """
+        self._clean_cache()
         self.model.eval()
         self.valid_metrics.reset()
         self.valid_iou_metrics.reset()
         with torch.no_grad():
             for batch_idx, (data, target) in enumerate(self.valid_data_loader):
                 data, target = data.to(self.device), target.to(self.device)
-                output = self.model.inference(data)
+                output, _ = self.model(data)
                 supervised_loss = self.criterions[0](output, target)
-
                 self.writer.set_step((epoch - 1) * len(self.valid_data_loader) + batch_idx, 'valid')
                 self.valid_metrics.update('supervised_loss', supervised_loss.item())
                 self.valid_iou_metrics.update(output.detach().cpu(), target)
@@ -225,7 +222,3 @@ class LayerwiseTrainer(KnowledgeDistillationTrainer):
         # for name, p in self.model.named_parameters():
         #     self.writer.add_histogram(name, p, bins='auto')
         return self.valid_metrics.result()
-
-    def _clean_cache(self):
-        self.model.student_aux_outputs, self.model.teacher_aux_outputs = None, None
-        super()._clean_cache()

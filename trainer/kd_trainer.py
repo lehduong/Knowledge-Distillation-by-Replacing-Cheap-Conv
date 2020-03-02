@@ -59,7 +59,7 @@ class KnowledgeDistillationTrainer(BaseTrainer):
         self._teacher_student_iou_gap = 1
 
     def _clean_cache(self):
-        self.model.student_hidden_outputs, self.model.teacher_hidden_outputs = None, None
+        self.model.student_hidden_outputs, self.model.teacher_hidden_outputs = list(), list()
         gc.collect()
         torch.cuda.empty_cache()
 

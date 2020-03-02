@@ -18,7 +18,7 @@ from utils import WeightScheduler
 SEED = 123
 torch.manual_seed(SEED)
 torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark = False
+torch.backends.cudnn.benchmark = True
 np.random.seed(SEED)
 
 
