@@ -60,10 +60,16 @@ class WrappedStudent(BaseModel):
             teacher_block = self.get_block(block_name, self.teacher)
             student_block = self.get_block(block_name, self.student)
             # teacher's hook
-            teacher_handler = teacher_block.register_forward_hook(lambda m, inp, out: self.teacher_hidden_outputs.append(out))
+            def teacher_handle(m, inp, out):
+                if self.training:
+                    self.teacher_hidden_outputs.append(out)
+            teacher_handler = teacher_block.register_forward_hook(teacher_handle)
             self._teacher_hook_handlers.append(teacher_handler)
             # student's hook
-            student_handler = student_block.register_forward_hook(lambda m, inp, out: self.student_hidden_outputs.append(out))
+            def student_handle(m, inp, out):
+                if self.training:
+                    self.student_hidden_outputs.append(out)
+            student_handler = student_block.register_forward_hook(student_handle)
             self._student_hook_handlers.append(student_handler)
         gc.collect()
         torch.cuda.empty_cache()
@@ -160,22 +166,6 @@ class WrappedStudent(BaseModel):
         out = self.student(x)
 
         return out
-
-    def eval(self):
-        self._remove_hooks()
-        return super().train(False)
-
-    def train(self):
-        """
-        The parameters of TEACHER's network will always be set to EVAL
-        :return: self
-        """
-        # register hint layers's hooks if they have been remove
-        if len(self._student_hook_handlers) == 0 and len(self.aux_block_names) > 0:
-            hint_layers = copy.deepcopy(self.aux_block_names)
-            self.aux_block_names = list()
-            self.register_hint_layers(hint_layers)
-        return super().train()
 
     @staticmethod
     def __get_number_param(mod):
