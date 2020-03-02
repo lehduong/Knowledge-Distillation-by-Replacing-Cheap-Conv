@@ -41,6 +41,7 @@ class LayerwiseTrainer(KnowledgeDistillationTrainer):
 
         # there is at least 1 layer would be replaced then:
         # freeze all previous layers
+        self.logger.debug('Freeze all weight of student network')
         for param in self.model.parameters():
             param.requires_grad = False
 
@@ -71,6 +72,7 @@ class LayerwiseTrainer(KnowledgeDistillationTrainer):
         self.model.unfreeze(unfreeze_layers)
 
         # Create new optimizer
+        self.logger.debug('Creating new optimizer ...')
         self.optimizer = self.config.init_obj('optimizer',
                                               optim_module,
                                               list(filter(lambda x: x.requires_grad, self.model.student.parameters())))
@@ -192,6 +194,36 @@ class LayerwiseTrainer(KnowledgeDistillationTrainer):
         self.weight_scheduler.step()
 
         return log
+
+    def _valid_epoch(self, epoch):
+        """
+        Validate after training an epoch
+
+        :param epoch: Integer, current training epoch.
+        :return: A log that contains information about validation
+        """
+        self.model.student.eval()
+        self.valid_metrics.reset()
+        self.valid_iou_metrics.reset()
+        with torch.no_grad():
+            for batch_idx, (data, target) in enumerate(self.valid_data_loader):
+                data, target = data.to(self.device), target.to(self.device)
+                output = self.model.student(data)
+                supervised_loss = self.criterions[0](output, target)
+
+                self.writer.set_step((epoch - 1) * len(self.valid_data_loader) + batch_idx, 'valid')
+                self.valid_metrics.update('supervised_loss', supervised_loss.item())
+                self.valid_iou_metrics.update(output.detach().cpu(), target)
+                self.logger.debug(str(batch_idx) + " : " + str(self.valid_iou_metrics.get_iou()))
+
+                for met in self.metric_ftns:
+                    self.valid_metrics.update(met.__name__, met(output, target))
+                #self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
+
+        # add histogram of models parameters to the tensorboard
+        # for name, p in self.model.named_parameters():
+        #     self.writer.add_histogram(name, p, bins='auto')
+        return self.valid_metrics.result()
 
     def _clean_cache(self):
         self.model.student_aux_outputs, self.model.teacher_aux_outputs = None, None
