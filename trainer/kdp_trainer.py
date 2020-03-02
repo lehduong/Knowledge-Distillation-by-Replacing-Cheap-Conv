@@ -28,6 +28,10 @@ class KDPTrainer(KnowledgeDistillationTrainer):
         if not to_be_pruned_layers:
             return
         else:
+            # freeze all previous layers
+            self.logger.info('Freeze ALL previous layers...')
+            for param in self.model.parameters():
+                param.requires_grad = False
             # logging the layers being pruned
             self._ta_count = 1  # reset TA interval if using TA
             self.logger.info('Pruning layer(s): ' + str(list(map(lambda x: x['name'], to_be_pruned_layers))))
@@ -69,7 +73,7 @@ class KDPTrainer(KnowledgeDistillationTrainer):
                                                 **optimizer_arg})
         # add new blocks to student model
         self.model.update_pruned_layers(args)
-        self.logger.info('Number of trainable parameters after pruning: ' + str(self.model.dump_trainable_params()))
+        self.logger.info(self.model.dump_trainable_params())
         self.logger.info(self.model.dump_student_teacher_blocks_info())
 
     def _train_epoch(self, epoch):

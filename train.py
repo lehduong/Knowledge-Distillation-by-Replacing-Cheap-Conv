@@ -7,10 +7,10 @@ import losses as module_loss
 import models.metric as module_metric
 import models as module_arch
 import utils.optim as module_optim
-from models.students import BaseStudent, AuxStudent, IndependentStudent
+from models.students import BaseStudent, AuxStudent, IndependentStudent, WrappedStudent
 from data_loader import _create_transform
 from parse_config import ConfigParser
-from trainer import KDPTrainer, TAKDPTrainer, ATAKDPTrainer, LayerCompressibleTrainer, IndependentTrainer
+from trainer import KDPTrainer, TAKDPTrainer, ATAKDPTrainer, LayerCompressibleTrainer, IndependentTrainer, LayerwiseTrainer
 from pruning import PFEC
 from utils import WeightScheduler
 
@@ -18,7 +18,7 @@ from utils import WeightScheduler
 SEED = 123
 torch.manual_seed(SEED)
 torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark = False
+torch.backends.cudnn.benchmark = True
 np.random.seed(SEED)
 
 
@@ -41,12 +41,13 @@ def main(config):
     if config['trainer']['name'] == 'IndependentTrainer':
         aux_args = []
         student = IndependentStudent(teacher, args, aux_args)
+    elif config['trainer']['name'] == 'LayerwiseTrainer':
+        student = WrappedStudent(teacher, config)
     elif config['trainer']['name'] != 'ATAKDPTrainer':
         student = BaseStudent(teacher, args)
     else:
         aux_args = []
         student = AuxStudent(teacher, args, aux_args)
-    logger.info(student)
 
     # get function handles of loss and metrics
     supervised_criterion = config.init_obj('supervised_loss', module_loss)
@@ -62,24 +63,28 @@ def main(config):
     weight_scheduler = WeightScheduler(config['weight_scheduler'])
 
     # Knowledge Distillation only
-    pruner = PFEC(student, config)
-    if config['trainer']['name'] == 'LayerCompressibleTrainer':
-        trainer = LayerCompressibleTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
-                                           valid_data_loader, lr_scheduler, weight_scheduler)
-    elif config['trainer']['name'] == "TAKDPTrainer":
-        trainer = TAKDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
-                               valid_data_loader, lr_scheduler, weight_scheduler)
-    elif config['trainer']['name'] == 'KDPTrainer':
-        trainer = KDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
-                             valid_data_loader, lr_scheduler, weight_scheduler)
-    elif config['trainer']['name'] == 'ATAKDPTrainer':
-        trainer = ATAKDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
-                                valid_data_loader, lr_scheduler, weight_scheduler)
-    elif config['trainer']['name'] == 'IndependentTrainer':
-        trainer = IndependentTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
-                                     valid_data_loader, lr_scheduler, weight_scheduler)
+    if config['trainer']['name'] == 'LayerwiseTrainer':
+        trainer = LayerwiseTrainer(student, criterions, metrics, optimizer, config, train_data_loader,
+                                   valid_data_loader, lr_scheduler, weight_scheduler)
     else:
-        raise Exception("Unsupported trainer")
+        pruner = PFEC(student, config)
+        if config['trainer']['name'] == 'LayerCompressibleTrainer':
+            trainer = LayerCompressibleTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
+                                               valid_data_loader, lr_scheduler, weight_scheduler)
+        elif config['trainer']['name'] == "TAKDPTrainer":
+            trainer = TAKDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
+                                   valid_data_loader, lr_scheduler, weight_scheduler)
+        elif config['trainer']['name'] == 'KDPTrainer':
+            trainer = KDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
+                                 valid_data_loader, lr_scheduler, weight_scheduler)
+        elif config['trainer']['name'] == 'ATAKDPTrainer':
+            trainer = ATAKDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
+                                    valid_data_loader, lr_scheduler, weight_scheduler)
+        elif config['trainer']['name'] == 'IndependentTrainer':
+            trainer = IndependentTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
+                                         valid_data_loader, lr_scheduler, weight_scheduler)
+        else:
+            raise Exception("Unsupported trainer")
 
     trainer.train()
 

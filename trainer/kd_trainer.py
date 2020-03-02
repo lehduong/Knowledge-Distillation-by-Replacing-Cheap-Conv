@@ -59,7 +59,7 @@ class KnowledgeDistillationTrainer(BaseTrainer):
         self._teacher_student_iou_gap = 1
 
     def _clean_cache(self):
-        self.model.student_hidden_outputs, self.model.teacher_hidden_outputs = None, None
+        self.model.student_hidden_outputs, self.model.teacher_hidden_outputs = list(), list()
         gc.collect()
         torch.cuda.empty_cache()
 
@@ -90,7 +90,6 @@ class KnowledgeDistillationTrainer(BaseTrainer):
                                  exponent_magnitude),
                              0)/self.accumulation_steps/normalized_term
 
-            #TODO: Early stop with teacher loss
             teacher_loss = self.criterions[0](output_tc, target) # for comparision
 
             alpha = self.weight_scheduler.alpha
@@ -103,12 +102,6 @@ class KnowledgeDistillationTrainer(BaseTrainer):
                 if isinstance(self.lr_scheduler, MyOneCycleLR):
                     self.lr_scheduler.step()
                 self.optimizer.zero_grad()
-
-            if isinstance(self.lr_scheduler, MyReduceLROnPlateau) and \
-                    (((batch_idx+1) % self.config['trainer']['lr_scheduler_step_interval']) == 0):
-                # batch + 1 as the result of batch 0 always much smaller than other
-                # don't know why ( ͡° ͜ʖ ͡°)
-                self.lr_scheduler.step(self.train_metrics.avg('loss'))
 
             self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
 
@@ -163,7 +156,7 @@ class KnowledgeDistillationTrainer(BaseTrainer):
 
         if (self.lr_scheduler is not None) and (not isinstance(self.lr_scheduler, MyOneCycleLR)):
             if isinstance(self.lr_scheduler, MyReduceLROnPlateau):
-                pass
+                self.lr_scheduler.step(self.train_metrics.avg('loss'))
             else:
                 self.lr_scheduler.step()
 

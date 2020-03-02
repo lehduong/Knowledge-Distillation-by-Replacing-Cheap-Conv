@@ -2,6 +2,7 @@ from torchvision import datasets
 from torchvision import transforms as tfs
 from base import BaseDataLoader
 from .cityscapes import Cityscapes
+from torch.utils.data import ConcatDataset
 
 
 class MnistDataLoader(BaseDataLoader):
@@ -77,9 +78,20 @@ class CityscapesDataloader(BaseDataLoader):
                  transform=None, target_transform=None, transforms=None, mode='fine', target_type='semantic',
                  num_samples=None, return_image_name=False):
         self.data_dir = data_dir
-        self.dataset = Cityscapes(root=self.data_dir, transform=transform, transforms=transforms,
-                                  target_transform=target_transform, split=split, mode=mode,
-                                  target_type=target_type, num_samples=num_samples,
-                                  return_image_name=return_image_name)
+        if split == 'train_val':
+            train_dataset = self.dataset = Cityscapes(root=self.data_dir, transform=transform, transforms=transforms,
+                                                           target_transform=target_transform, split='train', mode=mode,
+                                                           target_type=target_type, num_samples=num_samples,
+                                                           return_image_name=return_image_name)
+            val_dataset = self.dataset = Cityscapes(root=self.data_dir, transform=transform, transforms=transforms,
+                                                         target_transform=target_transform, split='val', mode=mode,
+                                                         target_type=target_type, num_samples=num_samples,
+                                                         return_image_name=return_image_name)
+            self.dataset = ConcatDataset([train_dataset, val_dataset])
+        else:
+            self.dataset = Cityscapes(root=self.data_dir, transform=transform, transforms=transforms,
+                                      target_transform=target_transform, split=split, mode=mode,
+                                      target_type=target_type, num_samples=num_samples,
+                                      return_image_name=return_image_name)
 
         super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers)

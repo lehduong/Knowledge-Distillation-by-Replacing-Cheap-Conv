@@ -45,3 +45,4 @@ class NeuralDecompositionBlock(nn.Module):
                                bias=bias)
 
     def forward(self):
+        pass

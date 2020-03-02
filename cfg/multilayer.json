@@ -122,7 +122,24 @@
             "padding": 12,
             "kernel_size": 3
         },
-
+        "compress_rate": 0.2,
+        "auxiliary_num_layers": 6,
+        "unfreeze": [
+          "mod4.block2",
+          "mod4.block3",
+          "mod4.block4",
+          "mod4.block5",
+          "mod4.block6",
+          "mod5.block2",
+          "mod7.block1.convs.conv2",
+          "mod7.block1.convs.conv3",
+          "aspp.features"
+        ],
+        "hint": [
+          "mod5.block1.convs.conv1",
+          "mod7.block1.convs.conv3",
+          "aspp.features"
+        ],
         "pruning_plan": [
             {
                 "name": "mod4.block2.convs.conv2",
