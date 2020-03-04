@@ -1,4 +1,4 @@
-# Knowledge Distillation in Convolutional Neural Network for Semantic Segmantation and Classfiication in Low-Resource Regime
+# Plug (Cheap Conv) and Play
 This repository contains the code for Knowledge Distillation in Convolutional Neural Network in **Low-resource settings** (both computational cost and data). The code is usable for both Classification and Semantic Segmantation tasks. 
 ## Usage
 Follow below instructions for running knowledge distillation in DeepWV3Plus model for Cityscapes dataset:
