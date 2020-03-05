@@ -380,9 +380,9 @@ class CityScapesUniform(data.Dataset):
 
     def __init__(self, root, quality, mode, maxSkip=0, joint_transform_list=None, sliding_crop=None,
                  transform=None, target_transform=None, class_uniform_pct=0.5,
-                 class_uniform_tile=1024, coarse_boost_classes=None):
+                 class_uniform_tile=1024, coarse_boost_classes=None, num_samples=None):
         self.root = root
-        self.quality = quality
+        self.quality = 'gtFine' if quality == 'fine' else 'gtCoarse'
         self.mode = mode
         self.maxSkip = maxSkip
         self.joint_transform_list = joint_transform_list
@@ -396,6 +396,11 @@ class CityScapesUniform(data.Dataset):
 
         self.imgs, self.aug_imgs = make_dataset(self.root, mode, self.maxSkip, cv_split=self.cv_split)
         assert len(self.imgs), 'Found 0 images, please check the data set'
+
+        # Limit numbers of Dataset
+        if num_samples is not None and num_samples < len(self.imgs):
+            idx = np.random.choice(len(self.imgs), num_samples)
+            self.imgs = [self.imgs[i] for i in idx]
 
         # Centroids for fine data
         json_fn = 'cityscapes_{}_cv{}_tile{}.json'.format(
