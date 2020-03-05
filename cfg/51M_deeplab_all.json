@@ -1,5 +1,5 @@
 {
-    "name": "KnowledgeDistillation",
+    "name": "Reduce51M_DeepWV3Plus_All_layers_at_once",
     "n_gpu": 1,
     "teacher": {
         "type": "DeepWV3Plus",
@@ -30,8 +30,7 @@
             "num_workers": 0,
             "split": "train",
             "mode": "fine",
-            "target_type": "semantic",
-            "num_samples": 2048
+            "target_type": "semantic"
         }
     },
     "val_data_loader": {
@@ -65,7 +64,7 @@
     "optimizer": {
         "type": "RAdam",
         "args": {
-            "lr": 0.01
+            "lr": 0.005
         }
     },
     "supervised_loss": {
@@ -89,12 +88,12 @@
         }
     },
     "metrics": [],
-    "lr_scheduler": {
+     "lr_scheduler": {
         "type": "MyReduceLROnPlateau",
         "args": {
             "mode": "min",
-            "threshold": 0.02,
-            "factor": 0.1,
+            "threshold": 0.01,
+            "factor": 0.5,
             "patience": 0,
             "verbose": true,
             "min_lr": 1e-05,
@@ -102,105 +101,132 @@
         }
     },
     "trainer": {
-        "name": "ATAKDPTrainer",
+        "name": "LayerwiseTrainer",
         "epochs": 1000,
         "save_dir": "saved/",
-        "save_period": 1,
+        "save_period": 3,
         "verbosity": 2,
         "monitor": "min val_mIoU",
         "early_stop": 1000,
         "accumulation_steps": 1,
         "log_step": 5,
-        "do_validation_interval": 4,
+        "do_validation_interval": 100,
         "lr_scheduler_step_interval": 15,
-        "len_epoch": 200,
+        "len_epoch": 100,
         "tensorboard": true
     },
     "pruning": {
         "pruner": {
-            "dilation": 12,
-            "padding": 12,
-            "kernel_size": 3
+            "dilation": 5,
+            "padding": 20,
+            "kernel_size": 9
         },
-        "compress_rate": 0.2,
-        "auxiliary_num_layers": 6,
-        "unfreeze": [
-          "mod4.block2",
-          "mod4.block3",
-          "mod4.block4",
-          "mod4.block5",
-          "mod4.block6",
-          "mod5.block2",
-          "mod7.block1.convs.conv2",
-          "mod7.block1.convs.conv3",
-          "aspp.features"
-        ],
-        "hint": [
-          "mod5.block1.convs.conv1",
-          "mod7.block1.convs.conv3",
-          "aspp.features"
-        ],
         "pruning_plan": [
             {
                 "name": "mod4.block2.convs.conv2",
-                "compress_rate": 0,
                 "epoch": 1
             },
             {
                 "name": "mod4.block3.convs.conv1",
-                "compress_rate": 0,
                 "epoch": 1
             },
             {
                 "name": "mod4.block3.convs.conv2",
-                "compress_rate": 0,
                 "epoch": 1
             },
             {
                 "name": "mod4.block4.convs.conv2",
-                "compress_rate": 0,
-                "epoch": 1
-            },
-            {
-                "name": "mod4.block5.convs.conv2",
-                "compress_rate": 0,
                 "epoch": 1
             },
             {
                 "name": "mod4.block6.convs.conv2",
-                "compress_rate": 0,
-                "epoch": 1
-            },
-            {
-                "name": "mod5.block2.convs.conv2",
-                "compress_rate": 0,
                 "epoch": 1
             },
             {
                 "name": "mod7.block1.convs.conv2",
-                "compress_rate": 0,
                 "epoch": 1
             },
             {
                 "name": "aspp.features.1.0",
-                "compress_rate": 0,
                 "epoch": 1
             },
             {
                 "name": "aspp.features.2.0",
-                "compress_rate": 0,
                 "epoch": 1
             },
             {
                 "name": "aspp.features.3.0",
-                "compress_rate": 0,
+                "epoch": 1
+            }
+        ],
+        "hint": [
+            {
+                "name": "mod4.block3",
+                "epoch": 1
+            },
+            {
+                "name": "mod4.block4",
+                "epoch": 1
+            },
+            {
+                "name": "mod4.block4",
+                "epoch": 1
+            },
+            {
+                "name": "mod4.block5",
+                "epoch": 1
+            },
+            {
+                "name": "mod4.block6",
+                "epoch": 1
+            },
+            {
+                "name": "mod7.block1",
+                "epoch": 1
+            },
+            {
+                "name": "aspp",
+                "epoch": 1
+            }
+        ],
+        "unfreeze": [
+            {
+                "name": "mod4.block2.convs.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "mod4.block3.convs.conv1",
+                "epoch": 1
+            },
+            {
+                "name": "mod4.block3.convs.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "mod4.block4.convs.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "mod4.block6.convs.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "mod7.block1.convs.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "aspp.features.1.0",
+                "epoch": 1
+            },
+            {
+                "name": "aspp.features.2.0",
+                "epoch": 1
+            },
+            {
+                "name": "aspp.features.3.0",
                 "epoch": 1
             }
         ]
-    },
-    "teaching_assistant": {
-        "interval": 10,
-        "tol": 0.01
     },
     "weight_scheduler": {
         "alpha": {

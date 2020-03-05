@@ -1,29 +1,70 @@
 from torchvision.utils import make_grid
 from functools import reduce
-from utils import inf_loop, MetricTracker, visualize, CityscapesMetricTracker
-from .kd_trainer import KnowledgeDistillationTrainer
+from utils import inf_loop, MetricTracker, visualize, CityscapesMetricTracker, save_image
 from utils.optim.lr_scheduler import MyOneCycleLR, MyReduceLROnPlateau
 from utils.util import EarlyStopTracker
 from utils import optim as optim_module
-from models.students import WrappedStudent
+from models.students import DepthwiseStudent
 from models import forgiving_state_restore
+from base import BaseTrainer
 from utils import stat_cuda
+from torch import nn
 import numpy as np
+import os
+import gc
 import torch
 
 
-class LayerwiseTrainer(KnowledgeDistillationTrainer):
+class LayerwiseTrainer(BaseTrainer):
     """
-    Train each layer separately. Note that the later layer will be trained to reconstruct the TEACHER output, not the
-        TA's one i.e. we have to use WrappedStudent instead of BaseStudent
+    Trainer
     """
 
-    def __init__(self, model: WrappedStudent, criterions, metric_ftns, optimizer, config, train_data_loader,
+    def __init__(self, model: DepthwiseStudent, criterions, metric_ftns, optimizer, config, train_data_loader,
                  valid_data_loader=None, lr_scheduler=None, weight_scheduler=None):
-        super().__init__(model, criterions, metric_ftns, optimizer, config, train_data_loader,
-                         valid_data_loader, lr_scheduler, weight_scheduler)
+        super().__init__(model, None, metric_ftns, optimizer, config)
+        self.config = config
+        self.train_data_loader = train_data_loader
+        self.valid_data_loader = valid_data_loader
+        self.do_validation = self.valid_data_loader is not None
+        self.do_validation_interval = self.config['trainer']['do_validation_interval']
+        self.lr_scheduler = lr_scheduler
+        self.weight_scheduler = weight_scheduler
+        self.log_step = config['trainer']['log_step']
+        if "len_epoch" in self.config['trainer']:
+            # iteration-based training
+            self.train_data_loader = inf_loop(train_data_loader)
+            self.len_epoch = self.config['trainer']['len_epoch']
+        else:
+            # epoch-based training
+            self.len_epoch = len(self.train_data_loader)
 
+        # Metrics 
+        # Train 
+        self.train_metrics = MetricTracker('loss', 'supervised_loss', 'kd_loss', 'hint_loss', 'teacher_loss',
+                                           *[m.__name__ for m in self.metric_ftns], writer=self.writer)
+        self.train_iou_metrics = CityscapesMetricTracker(writer=self.writer)
+        self.train_teacher_iou_metrics = CityscapesMetricTracker(writer=self.writer)
+        # Valid 
+        self.valid_metrics = MetricTracker('loss', 'supervised_loss', 'kd_loss', 'hint_loss', 'teacher_loss',
+                                           *[m.__name__ for m in self.metric_ftns], writer=self.writer)
+        self.valid_iou_metrics = CityscapesMetricTracker(writer=self.writer)
+        # Test
+        self.test_metrics = MetricTracker('loss', 'supervised_loss', 'kd_loss', 'hint_loss', 'teacher_loss',
+                                           *[m.__name__ for m in self.metric_ftns], writer=self.writer)
+        self.test_iou_metrics = CityscapesMetricTracker(writer=self.writer)
+
+        # Tracker for early stop if val miou doesn't increase
         self.val_iou_tracker = EarlyStopTracker('best', 'max', 0.01, 'rel')
+
+        # Only used list of criterions and remove the unused property
+        self.criterions = criterions
+        self.criterions = nn.ModuleList(self.criterions).to(self.device)
+        if isinstance(self.model, nn.DataParallel):
+            self.criterions = nn.DataParallel(self.criterions)
+        del self.criterion
+
+        # Resume checkpoint if path is available in config
         if 'resume_path' in self.config['trainer']: 
             self.resume(self.config['trainer']['resume_path'])
 
@@ -237,7 +278,10 @@ class LayerwiseTrainer(KnowledgeDistillationTrainer):
                 self.lr_scheduler.step(self.train_metrics.avg('loss'))
             else:
                 self.lr_scheduler.step()
-
+                self.logger.debug('stepped lr')
+                for param_group in self.optimizer.param_groups:
+                    self.logger.debug(param_group['lr'])
+                    
         # anneal weight between losses
         self.weight_scheduler.step()
 
@@ -257,7 +301,7 @@ class LayerwiseTrainer(KnowledgeDistillationTrainer):
         with torch.no_grad():
             for batch_idx, (data, target) in enumerate(self.valid_data_loader):
                 data, target = data.to(self.device), target.to(self.device)
-                output, _ = self.model(data)
+                output = self.model.inference(data)
                 supervised_loss = self.criterions[0](output, target)
                 self.writer.set_step((epoch - 1) * len(self.valid_data_loader) + batch_idx, 'valid')
                 self.valid_metrics.update('supervised_loss', supervised_loss.item())
@@ -266,12 +310,73 @@ class LayerwiseTrainer(KnowledgeDistillationTrainer):
 
                 for met in self.metric_ftns:
                     self.valid_metrics.update(met.__name__, met(output, target))
-                #self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
+        result = self.valid_metrics.result()
+        result['mIoU'] = self.valid_iou_metrics.get_iou()
 
-        # add histogram of models parameters to the tensorboard
-        # for name, p in self.model.named_parameters():
-        #     self.writer.add_histogram(name, p, bins='auto')
-        return self.valid_metrics.result()
+        return result
+
+    def _test_epoch(self, epoch):
+        # cleaning up memory
+        self._clean_cache()
+        self.model.training = False
+        self.model.cpu()
+        self.model.student.to(self.device)
+    
+        # prepare before running submission
+        self.test_metrics.reset()
+        self.test_iou_metrics.reset()
+        args = self.config['test']['args']
+        save_4_sm = self.config['submission']['save_output']
+        path_output = self.config['submission']['path_output']
+        if save_4_sm and not os.path.exists(path_output):
+            os.mkdir(path_output)
+        n_samples = len(self.valid_data_loader)
+        
+        with torch.no_grad():
+            for batch_idx, (img_name, data, target) in enumerate(self.valid_data_loader):
+                self.logger.info('{}/{}'.format(batch_idx, n_samples))
+                data, target = data.to(self.device), target.to(self.device)
+                output = self.model.inference_test(data, args)
+                if save_4_sm:
+                    self.save_for_submission(output, img_name[0])
+                supervised_loss = self.criterions[0](output, target)
+                self.writer.set_step((epoch - 1) * len(self.valid_data_loader) + batch_idx, 'test')
+                self.test_metrics.update('supervised_loss', supervised_loss.item())
+                self.test_iou_metrics.update(output.detach().cpu(), target)
+
+                for met in self.metric_ftns:
+                    self.test_metrics.update(met.__name__, met(output, target))
+        
+        result = self.test_metrics.result()
+        result['mIoU'] = self.test_iou_metrics.get_iou()
+
+        return result
+
+    def save_for_submission(self, output, image_name, img_type=np.uint8):
+        args = self.config['submission']
+        path_output = args['path_output']
+        image_save = '{}.{}'.format(image_name, args['ext'])
+        path_save = os.path.join(path_output, image_save)
+        result = torch.argmax(output, dim=1)
+        result_mapped = self.re_map_for_submission(result)
+        if output.size()[0] == 1:
+            result_mapped = result_mapped[0]
+
+        save_image(result_mapped.cpu().numpy().astype(img_type), path_save)
+        print('Saved output of test data: {}'.format(image_save))
+
+    def re_map_for_submission(self, output):
+        mapping = self.valid_data_loader.dataset.id_to_trainid
+        cp_output = torch.zeros(output.size())
+        for k, v in mapping.items():
+            cp_output[output == v] = k
+
+        return cp_output
+
+    def _clean_cache(self):
+        self.model.student_hidden_outputs, self.model.teacher_hidden_outputs = list(), list()
+        gc.collect()
+        torch.cuda.empty_cache()
 
     def resume(self, checkpoint_path):
         self.logger.info("Loading checkpoint: {} ...".format(checkpoint_path))
@@ -282,8 +387,18 @@ class LayerwiseTrainer(KnowledgeDistillationTrainer):
         config = checkpoint['config']  # config of checkpoint
         epoch = checkpoint['epoch']  # stopped epoch
 
-        # reconstruct the network architecture
+        # load model state from checkpoint
+        # first, align the network by replacing depthwise separable for student 
         for i in range(1, epoch+1):
             self.prepare_train_epoch(i, config)
+        # load weight
         forgiving_state_restore(self.model, checkpoint['state_dict'])
-        self.logger.info("Loaded model's state dict successfully")
+        self.logger.info("Loaded model's state dict")
+
+        # load optimizer state from checkpoint only when optimizer type is not changed.
+        if checkpoint['config']['optimizer']['type'] != self.config['optimizer']['type']:
+            self.logger.warning("Warning: Optimizer type given in config file is different from that of checkpoint. "
+                                "Optimizer parameters not being resumed.")
+        else:
+            self.optimizer.load_state_dict(checkpoint['optimizer'])
+            self.logger.info("Loaded optimizer state dict")

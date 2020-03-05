@@ -1,5 +1,4 @@
 from .deeplabv3 import DeepWV3Plus
-from .deeplabv3 import get_distil_model
 from .gscnn import GSCNN
 from . import cifar_models
 from functools import reduce

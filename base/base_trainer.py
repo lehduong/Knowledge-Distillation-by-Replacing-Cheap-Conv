@@ -58,6 +58,24 @@ class BaseTrainer:
         """
         raise NotImplementedError
 
+    @abstractmethod
+    def _valid_epoch(self, epoch):
+        """
+        Training logic for an epoch
+
+        :param epoch: Current epoch number
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def _test_epoch(self, epoch):
+        """
+        Training logic for an epoch
+
+        :param epoch: Current epoch number
+        """
+        raise NotImplementedError
+
     def train(self):
         """
         Full training logic
@@ -101,6 +119,28 @@ class BaseTrainer:
 
             if epoch % self.save_period == 0:
                 self._save_checkpoint(epoch, save_best=best)
+
+    def eval(self):
+        result = self._valid_epoch(1)
+
+        # save logged informations into log dict
+        log = {}
+        log.update(result)
+
+        # print logged informations to the screen
+        for key, value in log.items():
+            self.logger.info('    {:15s}: {}'.format(str(key), value))
+
+    def test(self):
+        result = self._test_epoch(1)
+
+        # save logged informations into log dict
+        log = {}
+        log.update(result)
+
+        # print logged informations to the screen
+        for key, value in log.items():
+            self.logger.info('    {:15s}: {}'.format(str(key), value))
 
     def _prepare_device(self, n_gpu_use):
         """

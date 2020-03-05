@@ -7,12 +7,13 @@ from functools import reduce
 from torch import nn
 from base import BaseModel
 from beautifultable import BeautifulTable
-from pruning.PFEC import DepthwiseSeparableBlock
+from .transform_blocks import DepthwiseSeparableBlock
+from utils import *
 
 BLOCKS_LEVEL_SPLIT_CHAR = '.'
 
 
-class WrappedStudent(BaseModel):
+class DepthwiseStudent(BaseModel):
     def __init__(self, teacher_model, config):
         """
         :param teacher_model: nn.Module object - pretrained model that need to be distilled
@@ -62,16 +63,20 @@ class WrappedStudent(BaseModel):
             # get teacher and student block 
             teacher_block = self.get_block(block_name, self.teacher)
             student_block = self.get_block(block_name, self.student)
+
             # teacher's hook
             def teacher_handle(m, inp, out):
                 if self.training:
                     self.teacher_hidden_outputs.append(out)
+
             teacher_handler = teacher_block.register_forward_hook(teacher_handle)
             self._teacher_hook_handlers.append(teacher_handler)
+
             # student's hook
             def student_handle(m, inp, out):
                 if self.training:
                     self.student_hidden_outputs.append(out)
+
             student_handler = student_block.register_forward_hook(student_handle)
             self._student_hook_handlers.append(student_handler)
         gc.collect()
@@ -101,7 +106,7 @@ class WrappedStudent(BaseModel):
                                                     padding=self.padding,
                                                     dilation=self.dilation,
                                                     groups=teacher_block.in_channels,
-                                                    bias=teacher_block.bias)
+                                                    bias=teacher_block.bias).cuda()
             self.student_blocks.append(replace_block)
             self._set_block(block_name, replace_block, self.student)
 
@@ -140,6 +145,7 @@ class WrappedStudent(BaseModel):
         :param model: nn.Module - which model that block would be drawn from
         :return: nn.Module - required block
         """
+
         def _get_block(acc, elem):
             if elem.isdigit():
                 layer = acc[int(elem)]
@@ -159,6 +165,35 @@ class WrappedStudent(BaseModel):
             teacher_pred = self.teacher(x)
         student_pred = self.student(x)
         return student_pred, teacher_pred
+
+    def inference(self, x):
+        # flush the output of last forward
+        self.student_hidden_outputs = []
+        self.teacher_hidden_outputs = []
+
+        student_pred = self.student(x)
+        return student_pred
+
+    def inference_test(self, data, args):
+        self.student_hidden_outputs = []
+        self.teacher_hidden_outputs = []
+
+        to_PIL = transforms.ToPILImage()
+        # TODO: Fixing really bad code here
+        mean_std = ([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+
+        result = []
+        images = [to_PIL(x.cpu()) for x in data]
+        for image in images:
+            image_data = scale_and_flip_image(image, mean_std, args['scales'])
+            ori_size, mapping, tensors = get_crops_image(image_data, args['scales'], crop_size=args['crop_size'])
+            results_model = self.student(tensors.cuda()).data.cpu().numpy()
+            outputs = reverse_mapping(mapping, results_model, ori_size)
+            outputs_mean_for_scales = np.mean(outputs, axis=0)
+            result.append(np.expand_dims(outputs_mean_for_scales, axis=0))
+
+        result_arr = np.concatenate(result, axis=0)
+        return torch.from_numpy(result_arr).cuda()
 
     @staticmethod
     def __get_number_param(mod):

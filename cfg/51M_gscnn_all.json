@@ -1,12 +1,12 @@
 {
-    "name": "KnowledgeDistillation",
+    "name": "Reduce51M_GSCNN_All_layers_at_once",
     "n_gpu": 1,
     "teacher": {
-        "type": "DeepWV3Plus",
+        "type": "GSCNN",
         "args": {
             "num_classes": 19
         },
-        "snapshot": "checkpoints/cityscapes_best.pth"
+        "snapshot": "checkpoints/gscnn.pth"
     },
     "transforms": {
         "joint_transforms": {
@@ -89,17 +89,22 @@
     },
     "metrics": [],
     "lr_scheduler": {
-        "type": "StepLR",
-        "args": {
-            "step_size": 1,
-            "gamma": 0.8
-        }
-    },
+       "type": "MyReduceLROnPlateau",
+       "args": {
+           "mode": "min",
+           "threshold": 0.01,
+           "factor": 0.5,
+           "patience": 0,
+           "verbose": true,
+           "min_lr": 1e-05,
+           "threshold_mode": "rel"
+       }
+   },
     "trainer": {
         "name": "LayerwiseTrainer",
         "epochs": 1000,
         "save_dir": "saved/",
-        "save_period": 1,
+        "save_period": 3,
         "verbosity": 2,
         "monitor": "min val_mIoU",
         "early_stop": 1000,
@@ -123,43 +128,35 @@
             },
             {
                 "name": "mod4.block3.convs.conv1",
-                "epoch": 4
+                "epoch": 1
             },
             {
                 "name": "mod4.block3.convs.conv2",
-                "epoch": 7
+                "epoch": 1
             },
             {
                 "name": "mod4.block4.convs.conv2",
-                "epoch": 10
-            },
-            {
-                "name": "mod4.block5.convs.conv2",
-                "epoch": 13
+                "epoch": 1
             },
             {
                 "name": "mod4.block6.convs.conv2",
-                "epoch":  16
-            },
-            {
-                "name": "mod5.block2.convs.conv2",
-                "epoch": 19
+                "epoch": 1
             },
             {
                 "name": "mod7.block1.convs.conv2",
-                "epoch": 22
+                "epoch": 1
             },
             {
                 "name": "aspp.features.1.0",
-                "epoch": 25
+                "epoch": 1
             },
             {
                 "name": "aspp.features.2.0",
-                "epoch": 28
+                "epoch": 1
             },
             {
                 "name": "aspp.features.3.0",
-                "epoch": 31
+                "epoch": 1
             }
         ],
         "hint": [
@@ -169,43 +166,27 @@
             },
             {
                 "name": "mod4.block4",
-                "epoch": 4
+                "epoch": 1
             },
             {
                 "name": "mod4.block4",
-                "epoch": 7
+                "epoch": 1
             },
             {
                 "name": "mod4.block5",
-                "epoch": 10
+                "epoch": 1
             },
             {
                 "name": "mod4.block6",
-                "epoch": 13
-            },
-            {
-                "name": "mod5.block1",
-                "epoch": 16
-            },
-            {
-                "name": "mod6.block1",
-                "epoch": 19
+                "epoch": 1
             },
             {
                 "name": "mod7.block1",
-                "epoch": 22
+                "epoch": 1
             },
             {
                 "name": "aspp",
-                "epoch": 25
-            },
-            {
-                "name": "aspp",
-                "epoch": 28
-            },
-            {
-                "name": "aspp",
-                "epoch": 31
+                "epoch": 1
             }
         ],
         "unfreeze": [
@@ -215,47 +196,35 @@
             },
             {
                 "name": "mod4.block3.convs.conv1",
-                "epoch": 4
+                "epoch": 1
             },
             {
                 "name": "mod4.block3.convs.conv2",
-                "epoch": 7
+                "epoch": 1
             },
             {
-                "name": "mod4.block4.convs",
-                "epoch": 10
+                "name": "mod4.block4.convs.conv2",
+                "epoch": 1
             },
             {
-                "name": "mod4.block5.convs",
-                "epoch": 13
-            },
-            {
-                "name": "mod4.block6.convs",
-                "epoch": 16
-            },
-            {
-                "name": "mod5.block2.convs",
-                "epoch": 19
-            },
-            {
-                "name": "mod7.block1.convs.conv1",
-                "epoch": 22
+                "name": "mod4.block6.convs.conv2",
+                "epoch": 1
             },
             {
                 "name": "mod7.block1.convs.conv2",
-                "epoch": 22
+                "epoch": 1
             },
             {
                 "name": "aspp.features.1.0",
-                "epoch": 25
+                "epoch": 1
             },
             {
                 "name": "aspp.features.2.0",
-                "epoch": 28
+                "epoch": 1
             },
             {
                 "name": "aspp.features.3.0",
-                "epoch": 31
+                "epoch": 1
             }
         ]
     },

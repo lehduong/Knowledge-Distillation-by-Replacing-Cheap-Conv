@@ -7,18 +7,17 @@ import losses as module_loss
 import models.metric as module_metric
 import models as module_arch
 import utils.optim as module_optim
-from models.students import BaseStudent, AuxStudent
+from models.students import DepthwiseStudent
 from data_loader import _create_transform
 from parse_config import ConfigParser
-from trainer import KDPTrainer, TAKDPTrainer, ATAKDPTrainer, LayerCompressibleTrainer
-from pruning import PFEC
+from trainer import LayerwiseTrainer
 from utils import WeightScheduler
 
 # fix random seeds for reproducibility
 SEED = 123
 torch.manual_seed(SEED)
 torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark = False
+torch.backends.cudnn.benchmark = True
 np.random.seed(SEED)
 
 
@@ -36,13 +35,10 @@ def main(config):
     teacher = config.restore_snapshot('teacher', module_arch)
     teacher = teacher.cpu()  # saved some memory as student network will use a (deep) copy of teacher model
 
-    # build models architecture, then print to console
-    args = []
-    if config['trainer']['name'] != 'ATAKDPTrainer':
-        student = BaseStudent(teacher, args)
+    if config['trainer']['name'] == 'LayerwiseTrainer':
+        student = DepthwiseStudent(teacher, config)
     else:
-        aux_args = []
-        student = AuxStudent(teacher, args, aux_args)
+        raise NotImplementedError("Supported: Layerwise Trainer")
 
     # get function handles of loss and metrics
     supervised_criterion = config.init_obj('supervised_loss', module_loss)
@@ -58,21 +54,11 @@ def main(config):
     weight_scheduler = WeightScheduler(config['weight_scheduler'])
 
     # Knowledge Distillation only
-    pruner = PFEC(student, config)
-    if config['trainer']['name'] == 'LayerCompressibleTrainer':
-        trainer = LayerCompressibleTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
-                                           valid_data_loader, lr_scheduler, weight_scheduler)
-    elif config['trainer']['name'] == "TAKDPTrainer":
-        trainer = TAKDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
-                               valid_data_loader, lr_scheduler, weight_scheduler)
-    elif config['trainer']['name'] == 'KDPTrainer':
-        trainer = KDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
-                             valid_data_loader, lr_scheduler, weight_scheduler)
-    elif config['trainer']['name'] == 'ATAKDPTrainer':
-        trainer = ATAKDPTrainer(student, pruner, criterions, metrics, optimizer, config, train_data_loader,
-                                valid_data_loader, lr_scheduler, weight_scheduler)
+    if config['trainer']['name'] == 'LayerwiseTrainer':
+        trainer = LayerwiseTrainer(student, criterions, metrics, optimizer, config, train_data_loader,
+                                   valid_data_loader, lr_scheduler, weight_scheduler)
     else:
-        raise Exception("Unsupported trainer")
+        raise NotImplementedError("Unsupported trainer")
 
     trainer.eval()
 
