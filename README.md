@@ -29,7 +29,7 @@ You can resume from a previously saved checkpoint by adding `resume_path` in `tr
 
 ## Results
 
-In our experiments, the student networks are finetuned with **unlabeled** images requires **less than 2 hours** (on single P100 GPU) to achieve the results below. 
+In our experiments, the student networks are finetuned with **unlabeled** images and usually requires **less than 2 hours** (on single P100 GPU) to achieve the results below. 
 
 ### Cityscapes
 
