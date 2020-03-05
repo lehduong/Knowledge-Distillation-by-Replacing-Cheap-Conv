@@ -9,16 +9,41 @@ Follow below instructions for running knowledge distillation in DeepWV3Plus mode
 
 3. Try `python train.py -c config.json` to run code with default settings.
 
-### Resuming from checkpoints
-You can resume from a previously saved checkpoint by:
+## Supports
 
-  ```
-  python train.py --resume path/to/checkpoint
-  ```
+### Resuming from checkpoints
+You can resume from a previously saved checkpoint by adding `resume_path` in `trainer` of `config.json` such as:
+```
+"metrics": [],
+"trainer": {
+        ...
+        "do_validation_interval": 100,
+        "lr_scheduler_step_interval": 15,
+        "len_epoch": 100,
+        "resume_path": "checkpoint-epoch20.pth",
+        "tensorboard": true
+    },
+"lr_scheduler": {
+...
+```
 
 ## Results
 
-To be updated ....
+In our experiments, the student networks are finetuned with **unlabeled** images requires **less than 2 hours** (on single P100 GPU) to achieve the results below. 
+
+### Cityscapes
+
+Results on **Test** set. Note that all the submission are augmented with *sliding* windows and crop size of 1024.
+
+|  Model | Teacher Param | Student Param | Teacher mIoU | Student mIoU |
+| ------ | ------------- | ------------- | ------------ | ------------ |
+| Deeplabv3+ (Wideresnet38) Video augmented |  137M | 92M | 83.4 | 82.1 |
+| Deeplabv3+ (Wideresnet38) Video augmented |  137M | 79M | 83.4 | 81.3 |
+
+Results on **Val** set. We **don't** use test-time augmentation on val set.
+|  Model | Teacher Param | Student Param | Teacher mIoU | Student mIoU |
+| ------ | ------------- | ------------- | ------------ | ------------ |
+| Gated-SCNN |  137M | 86M | 80.9 | 79.6 |
 
 ## Acknowledgements
 This repository is borrowed from the project [Pytorch-Template](https://github.com/victoresque/pytorch-template) and [NVIDIA semantic-segmentation](https://github.com/NVIDIA/semantic-segmentation)
