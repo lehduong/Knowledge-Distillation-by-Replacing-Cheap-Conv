@@ -7,7 +7,6 @@ from operator import getitem
 from datetime import datetime
 from logger import setup_logging
 from utils import read_json, write_json
-from torch import nn
 
 class ConfigParser:
     def __init__(self, config, resume=None, modification=None, run_id=None):

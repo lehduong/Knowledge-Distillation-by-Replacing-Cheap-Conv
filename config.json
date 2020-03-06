@@ -2,11 +2,11 @@
     "name": "KnowledgeDistillation",
     "n_gpu": 1,
     "teacher": {
-        "type": "DeepWV3Plus",
+        "type": "HighResolutionNet",
         "args": {
-            "num_classes": 19
+                "num_classes": 19
         },
-        "snapshot": "checkpoints/cityscapes_best.pth"
+        "snapshot": "checkpoints/hrnet_ocr_cs_trainval_8227_torch11_rename_dict.pth"
     },
     "transforms": {
         "joint_transforms": {
