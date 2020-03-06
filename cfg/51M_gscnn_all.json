@@ -89,17 +89,17 @@
     },
     "metrics": [],
     "lr_scheduler": {
-       "type": "MyReduceLROnPlateau",
-       "args": {
-           "mode": "min",
-           "threshold": 0.01,
-           "factor": 0.5,
-           "patience": 0,
-           "verbose": true,
-           "min_lr": 1e-05,
-           "threshold_mode": "rel"
-       }
-   },
+        "type": "MyReduceLROnPlateau",
+        "args": {
+            "mode": "min",
+            "threshold": 0.01,
+            "factor": 0.5,
+            "patience": 0,
+            "verbose": true,
+            "min_lr": 1e-05,
+            "threshold_mode": "rel"
+        }
+    },
     "trainer": {
         "name": "LayerwiseTrainer",
         "epochs": 1000,
@@ -161,31 +161,39 @@
         ],
         "hint": [
             {
-                "name": "mod4.block3",
+                "name": "mod4.block2.convs.conv2",
                 "epoch": 1
             },
             {
-                "name": "mod4.block4",
+                "name": "mod4.block3.convs.conv1",
                 "epoch": 1
             },
             {
-                "name": "mod4.block4",
+                "name": "mod4.block3.convs.conv2",
                 "epoch": 1
             },
             {
-                "name": "mod4.block5",
+                "name": "mod4.block4.convs.conv2",
                 "epoch": 1
             },
             {
-                "name": "mod4.block6",
+                "name": "mod4.block6.convs.conv2",
                 "epoch": 1
             },
             {
-                "name": "mod7.block1",
+                "name": "mod7.block1.convs.conv2",
                 "epoch": 1
             },
             {
-                "name": "aspp",
+                "name": "aspp.features.1.0",
+                "epoch": 1
+            },
+            {
+                "name": "aspp.features.2.0",
+                "epoch": 1
+            },
+            {
+                "name": "aspp.features.3.0",
                 "epoch": 1
             }
         ],
@@ -247,7 +255,9 @@
     "test": {
         "type": "sliding",
         "args": {
-            "scales": [1.0],
+            "scales": [
+                1.0
+            ],
             "crop_size": 1024
         }
     },

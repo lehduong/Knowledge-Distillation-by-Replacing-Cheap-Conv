@@ -102,7 +102,7 @@ class CityscapesUniformDataloader(BaseDataLoader):
                  class_uniform_pct=0.5, class_uniform_tile = 1024, num_samples=None, return_image_name=False):
         self.data_dir = data_dir
         if split == 'train_val':
-            pass
+            raise ValueError("Only support train split for Uniform Cityscapes")
         else:
             self.dataset = CityScapesUniform(root=self.data_dir, quality=mode, mode=split,
                                              joint_transform_list=transforms, transform=transform,

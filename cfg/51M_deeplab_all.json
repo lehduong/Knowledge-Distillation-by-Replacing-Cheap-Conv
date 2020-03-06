@@ -161,31 +161,39 @@
         ],
         "hint": [
             {
-                "name": "mod4.block3",
+                "name": "mod4.block2.convs.conv2",
                 "epoch": 1
             },
             {
-                "name": "mod4.block4",
+                "name": "mod4.block3.convs.conv1",
                 "epoch": 1
             },
             {
-                "name": "mod4.block4",
+                "name": "mod4.block3.convs.conv2",
                 "epoch": 1
             },
             {
-                "name": "mod4.block5",
+                "name": "mod4.block4.convs.conv2",
                 "epoch": 1
             },
             {
-                "name": "mod4.block6",
+                "name": "mod4.block6.convs.conv2",
                 "epoch": 1
             },
             {
-                "name": "mod7.block1",
+                "name": "mod7.block1.convs.conv2",
                 "epoch": 1
             },
             {
-                "name": "aspp",
+                "name": "aspp.features.1.0",
+                "epoch": 1
+            },
+            {
+                "name": "aspp.features.2.0",
+                "epoch": 1
+            },
+            {
+                "name": "aspp.features.3.0",
                 "epoch": 1
             }
         ],
