@@ -269,10 +269,10 @@ def make_dataset(root, mode, maxSkip=0, cv_split=0):
         if mode == 'test':
             cv_splits = make_test_split(root)
             add_items(items, cv_splits, img_path, mask_path,
-                      mask_postfix, mode, maxSkip)
+                      mask_postfix)
         else:
             add_items(items, cv_splits[cv_split][mode], img_path, mask_path,
-                      mask_postfix, mode, maxSkip)
+                      mask_postfix)
 
     return items, aug_items
 
@@ -379,13 +379,13 @@ class CityScapesUniform(data.Dataset):
     id_to_trainid = {elem.id: elem.train_id for elem in classes}
 
     def __init__(self, root, quality, mode, maxSkip=0, joint_transform_list=None, sliding_crop=None,
-                 transform=None, target_transform=None, class_uniform_pct=0.5,
-                 class_uniform_tile=1024, coarse_boost_classes=None, num_samples=None):
+                 transform=None, target_transform=None, class_uniform_pct=0.5, class_uniform_tile=1024,
+                 coarse_boost_classes=None, num_samples=None, return_image_name=False):
         self.root = root
         self.quality = 'gtFine' if quality == 'fine' else 'gtCoarse'
         self.mode = mode
         self.maxSkip = maxSkip
-        self.joint_transform_list = joint_transform_list
+        self.joint_transform_list = joint_transform_list.transforms
         self.sliding_crop = sliding_crop
         self.transform = transform
         self.target_transform = target_transform
@@ -393,6 +393,7 @@ class CityScapesUniform(data.Dataset):
         self.class_uniform_tile = class_uniform_tile
         self.coarse_boost_classes = coarse_boost_classes
         self.cv_split = 0
+        self.rt_img_name = return_image_name
 
         self.imgs, self.aug_imgs = make_dataset(self.root, mode, self.maxSkip, cv_split=self.cv_split)
         assert len(self.imgs), 'Found 0 images, please check the data set'
@@ -486,12 +487,12 @@ class CityScapesUniform(data.Dataset):
                 self.imgs_uniform = uniform.build_epoch(self.imgs,
                                                         self.fine_centroids,
                                                         self.num_classes,
-                                                        CLASS_UNIFORM_PCT)
+                                                        self.class_uniform_pct)
             else:
                 self.imgs_uniform = uniform.build_epoch(self.imgs + self.aug_imgs,
                                                         self.centroids,
                                                         self.num_classes,
-                                                        CLASS_UNIFORM_PCT)
+                                                        self.class_uniform_pct)
         else:
             self.imgs_uniform = self.imgs
 
@@ -527,7 +528,9 @@ class CityScapesUniform(data.Dataset):
         if self.target_transform is not None:
             mask = self.target_transform(mask)
 
-        return img, mask, img_name
+        if self.rt_img_name:
+            return img, mask, img_name
+        return img, mask
 
     def __len__(self):
         return len(self.imgs_uniform)

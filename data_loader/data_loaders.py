@@ -98,15 +98,17 @@ class CityscapesDataloader(BaseDataLoader):
 
 class CityscapesUniformDataloader(BaseDataLoader):
     def __init__(self, data_dir, batch_size, shuffle=True, validation_split=0.0, num_workers=0, split='train',
-                 transform=None, target_transform=None, transforms=None, mode='fine', class_uniform_pct=0.5,
-                 class_uniform_tile = 1024, num_samples=None):
+                 transform=None, target_transform=None, transforms=None, mode='fine', target_type='semantic',
+                 class_uniform_pct=0.5, class_uniform_tile = 1024, num_samples=None, return_image_name=False):
+        self.data_dir = data_dir
         if split == 'train_val':
             pass
         else:
             self.dataset = CityScapesUniform(root=self.data_dir, quality=mode, mode=split,
                                              joint_transform_list=transforms, transform=transform,
                                              target_transform=target_transform, class_uniform_pct=class_uniform_pct,
-                                             class_uniform_tile=class_uniform_tile, num_samples=num_samples)
+                                             class_uniform_tile=class_uniform_tile, num_samples=num_samples,
+                                             return_image_name=return_image_name)
 
         super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers)
 
