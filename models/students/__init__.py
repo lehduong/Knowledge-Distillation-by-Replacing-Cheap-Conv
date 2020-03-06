@@ -1,1 +1,2 @@
 from .depthwise_student import DepthwiseStudent
+from .analysis_student import AnalysisStudent

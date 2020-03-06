@@ -121,7 +121,14 @@ class LayerwiseTrainer(BaseTrainer):
         self.logger.info('Replaced layers: ' + str(replaced_layers))
         self.logger.info('Hint layers: ' + str(hint_layers))
         self.logger.info('Unfreeze layers: ' + str(unfreeze_layers))
-        self.model.replace(replaced_layers)  # replace those layers with depthwise separable conv
+        # Avoid error when loading deprecate checkpoint which don't have 'args' in config.pruning
+        if 'args' in config['pruning']:
+            kwargs = config['pruning']['args']
+        else:
+            self.logger.warning('Using deprecate checkpoint...')
+            kwargs = config['pruning']['pruner']
+
+        self.model.replace(replaced_layers, **kwargs)  # replace those layers with depthwise separable conv
         self.model.register_hint_layers(hint_layers)  # assign which layers output would be used as hint loss
         self.model.unfreeze(unfreeze_layers)  # unfreeze chosen layers
 

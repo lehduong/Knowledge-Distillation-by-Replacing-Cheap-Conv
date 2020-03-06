@@ -29,11 +29,6 @@ class DepthwiseStudent(BaseModel):
         # create student net
         self.model = self.student = copy.deepcopy(self.teacher)
 
-        # pruning info
-        self.padding = self.config['pruning']['pruner']['padding']
-        self.kernel_size = self.config['pruning']['pruner']['kernel_size']
-        self.dilation = self.config['pruning']['pruner']['dilation']
-
         # distillation args contain the distillation information such as block name, ...
         self.replaced_block_names = []
         # store list of student and teacher block to dump info
@@ -88,12 +83,14 @@ class DepthwiseStudent(BaseModel):
             for param in block.parameters():
                 param.requires_grad = True
 
-    def replace(self, block_names):
+    def replace(self, block_names, **kwargs):
         """
         Replace a block with depthwise conv
         :param block_names: str
+        :param **kwargs: other specifications such as dilation, padding,...
         :return:
         """
+        # TODO: Fixed kernel size and padding with kwargs
         for block_name in block_names:
             self.replaced_block_names.append(block_name)
             # get teacher block to retrieve information such as channel dim,...
@@ -102,9 +99,9 @@ class DepthwiseStudent(BaseModel):
             # replace student block with depth-wise separable block
             replace_block = DepthwiseSeparableBlock(in_channels=teacher_block.in_channels,
                                                     out_channels=teacher_block.out_channels,
-                                                    kernel_size=self.kernel_size,
-                                                    padding=self.padding,
-                                                    dilation=self.dilation,
+                                                    kernel_size=kwargs['kernel_size'],
+                                                    padding=kwargs['padding'],
+                                                    dilation=kwargs['dilation'],
                                                     groups=teacher_block.in_channels,
                                                     bias=teacher_block.bias).cuda()
             self.student_blocks.append(replace_block)

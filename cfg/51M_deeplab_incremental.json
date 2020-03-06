@@ -106,17 +106,16 @@
         "save_dir": "saved/",
         "save_period": 3,
         "verbosity": 2,
-        "monitor": "min val_mIoU",
-        "early_stop": 1000,
+        "monitor": "max val_mIoU",
+        "early_stop": 10,
         "accumulation_steps": 1,
         "log_step": 5,
         "do_validation_interval": 100,
-        "lr_scheduler_step_interval": 15,
         "len_epoch": 100,
         "tensorboard": true
     },
     "pruning": {
-        "pruner": {
+        "args": {
             "dilation": 5,
             "padding": 20,
             "kernel_size": 9
@@ -128,65 +127,73 @@
             },
             {
                 "name": "mod4.block3.convs.conv1",
-                "epoch": 1
+                "epoch": 4
             },
             {
                 "name": "mod4.block3.convs.conv2",
-                "epoch": 1
+                "epoch": 7
             },
             {
                 "name": "mod4.block4.convs.conv2",
-                "epoch": 1
+                "epoch": 10
             },
             {
                 "name": "mod4.block6.convs.conv2",
-                "epoch": 1
+                "epoch": 13
             },
             {
                 "name": "mod7.block1.convs.conv2",
-                "epoch": 1
+                "epoch": 16
             },
             {
                 "name": "aspp.features.1.0",
-                "epoch": 1
+                "epoch": 19
             },
             {
                 "name": "aspp.features.2.0",
-                "epoch": 1
+                "epoch": 22
             },
             {
                 "name": "aspp.features.3.0",
-                "epoch": 1
+                "epoch": 25
             }
         ],
         "hint": [
             {
-                "name": "mod4.block3",
+                "name": "mod4.block2.convs",
                 "epoch": 1
             },
             {
-                "name": "mod4.block4",
-                "epoch": 1
+                "name": "mod4.block3.convs",
+                "epoch": 4
             },
             {
-                "name": "mod4.block4",
-                "epoch": 1
+                "name": "mod4.block3.convs",
+                "epoch": 7
             },
             {
-                "name": "mod4.block5",
-                "epoch": 1
+                "name": "mod4.block4.convs",
+                "epoch": 10
             },
             {
-                "name": "mod4.block6",
-                "epoch": 1
+                "name": "mod4.block6.convs",
+                "epoch": 13
             },
             {
                 "name": "mod7.block1",
-                "epoch": 1
+                "epoch": 16
             },
             {
                 "name": "aspp",
-                "epoch": 1
+                "epoch": 19
+            },
+            {
+                "name": "aspp",
+                "epoch": 22
+            },
+            {
+                "name": "aspp",
+                "epoch": 25
             }
         ],
         "unfreeze": [
@@ -196,35 +203,35 @@
             },
             {
                 "name": "mod4.block3.convs.conv1",
-                "epoch": 1
+                "epoch": 4
             },
             {
                 "name": "mod4.block3.convs.conv2",
-                "epoch": 1
+                "epoch": 7
             },
             {
                 "name": "mod4.block4.convs.conv2",
-                "epoch": 1
+                "epoch": 10
             },
             {
                 "name": "mod4.block6.convs.conv2",
-                "epoch": 1
+                "epoch": 13
             },
             {
                 "name": "mod7.block1.convs.conv2",
-                "epoch": 1
+                "epoch": 16
             },
             {
                 "name": "aspp.features.1.0",
-                "epoch": 1
+                "epoch": 19
             },
             {
                 "name": "aspp.features.2.0",
-                "epoch": 1
+                "epoch": 22
             },
             {
                 "name": "aspp.features.3.0",
-                "epoch": 1
+                "epoch": 25
             }
         ]
     },
