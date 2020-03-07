@@ -1,12 +1,13 @@
 from .depthwise_student import DepthwiseStudent
 from .transform_blocks import *
+from models.encoders.wider_resnet import bnrelu
 from torch import nn
 import copy
 import torch 
 import gc 
 
 
-class AnalysisStudent(DepthwiseStudent):
+class NoisyStudent(DepthwiseStudent):
     """
         To determine the redundant of a layers we suggest 
     """
@@ -29,10 +30,19 @@ class AnalysisStudent(DepthwiseStudent):
             self.teacher_blocks.append(teacher_block)
             # replace student block with teacher block and heavy dropout
             cp_teacher_block = copy.deepcopy(teacher_block)
-            # FIXME: bias true or false?
+            # unfreeze the teacher weights
+            for param in cp_teacher_block.parameters():
+                param.requires_grad = True 
+            # create larger teacher for knowledge expansion
             replace_block = nn.Sequential(cp_teacher_block,
+                                          bnrelu(teacher_block.out_channels),
                                           nn.Dropout(droprate),
-                                          nn.Conv2d(teacher_block.out_channels, teacher_block.out_channels, 1, bias=True)
+                                          nn.Conv2d(teacher_block.out_channels, 
+                                                    teacher_block.out_channels, 
+                                                    kernel_size=kwargs['kernel_size'],
+                                                    padding=kwargs['padding'],
+                                                    dilation=kwargs['dilation'],
+                                                    bias=True)
                                          ).cuda()
             self.student_blocks.append(replace_block)
             self._set_block(block_name, replace_block, self.student)
@@ -40,18 +50,4 @@ class AnalysisStudent(DepthwiseStudent):
         # free memory of unused layer i.e. the layer of student before replacing
         gc.collect()
         torch.cuda.empty_cache()
-
-    def reset(self):
-        # remove hint layers
-        self._remove_hooks()
-        self.logger.info('Remove all hint layers')
-        # remove replaced layers
-        while self.replaced_block_names:
-            block_name = self.replaced_block_names.pop()
-            teacher_block  = self.get_block(block_name, self.teacher)
-            student_block = copy.deepcopy(teacher_block)
-            self._set_block(block_name, student_block, self.student)
-            self.logger.debug("Replaced block {} in student".format(block_name))
-            
-        self.logger.info('Remove all replaced layer')
         
