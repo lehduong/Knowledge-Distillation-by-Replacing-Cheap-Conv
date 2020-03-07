@@ -1,12 +1,12 @@
 {
-    "name": "DeepWV3Plus_Layer_Compressible",
+    "name": "GSCNN_Wideresnet38_Layer_Compressible",
     "n_gpu": 1,
     "teacher": {
-        "type": "DeepWV3Plus",
+        "type": "GSCNN",
         "args": {
             "num_classes": 19
         },
-        "snapshot": "checkpoints/cityscapes_best.pth"
+        "snapshot": "checkpoints/gscnn.pth"
     },
     "transforms": {
         "joint_transforms": {
