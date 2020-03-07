@@ -28,6 +28,7 @@ class AnalysisStudent(DepthwiseStudent):
             teacher_block = self.get_block(block_name, self.teacher)
             self.teacher_blocks.append(teacher_block)
             # replace student block with teacher block and heavy dropout
+            # the copied teacher block's parameters are fixed by default
             cp_teacher_block = copy.deepcopy(teacher_block)
             # FIXME: bias true or false?
             replace_block = nn.Sequential(cp_teacher_block,
