@@ -80,26 +80,41 @@ class DepthwiseStudent(BaseModel):
             for param in block.parameters():
                 param.requires_grad = True
 
-    def replace(self, block_names, **kwargs):
+    def replace(self, blocks, **kwargs):
         """
         Replace a block with depthwise conv
-        :param block_names: str
+        :param block_names: list of dictionary, each dictionary should have following format:\
+            {"name": 'abcd', "epoch": 5, "args"(optional): {"padding": 5, "dilation":3, "kernel_size":10}}
         :param **kwargs: other specifications such as dilation, padding,...
         :return:
         """
-        # TODO: Fixed kernel size and padding with kwargs
-        for block_name in block_names:
+        for block in blocks:
+            block_name = block['name']
             self.replaced_block_names.append(block_name)
+
             # get teacher block to retrieve information such as channel dim,...
             teacher_block = self.get_block(block_name, self.teacher)
+
             # replace student block with depth-wise separable block
+            # if the argument is specified for each block than use that argument o.w. use default 
+            #   i.e. config['pruning']['args']
+            if "args" in block:
+                kernel_size = block['args']['kernel_size']
+                padding = block['args']['padding']
+                dilation = block['args']['dilation']
+            else:
+                kernel_size = kwargs['kernel_size']
+                padding = kwargs['padding']
+                dilation = kwargs['dilation']
+            # create atrous depthwise separable convolution             
             replace_block = DepthwiseSeparableBlock(in_channels=teacher_block.in_channels,
                                                     out_channels=teacher_block.out_channels,
-                                                    kernel_size=kwargs['kernel_size'],
-                                                    padding=kwargs['padding'],
-                                                    dilation=kwargs['dilation'],
+                                                    kernel_size=kernel_size,
+                                                    padding=padding,
+                                                    dilation=dilation,
                                                     groups=teacher_block.in_channels,
                                                     bias=teacher_block.bias).cuda()
+            # replaced that newly created layer to student network
             self._set_block(block_name, replace_block, self.student)
 
         gc.collect()

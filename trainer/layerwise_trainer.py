@@ -75,9 +75,9 @@ class LayerwiseTrainer(BaseTrainer):
         :param config: a config object that contain pruning_plan, hint, unfreeze information
         :return: 
         """
-        #  if the config is not set (training normaly, then set config to current trainer config)
-        #  if the config is set (in resume case) then use that config to replace layers in student in order 
-        # to match it with saved checkpoint  
+        # if the config is not set (training normaly, then set config to current trainer config)
+        # if the config is set (in case you're resuming a checkpoint) then use saved config to replace 
+        #    layers in student so that it would have identical archecture with saved checkpoint  
         if config is None:
             config = self.config 
 
@@ -100,11 +100,9 @@ class LayerwiseTrainer(BaseTrainer):
         #     param.requires_grad = False
 
         # layers that would be replaced by depthwise separable conv
-        replaced_layers = list(map(lambda x: x['name'],
-                                   filter(lambda x: x['epoch'] == epoch,
-                                          config['pruning']['pruning_plan'])
-                                   )
-                               )
+        replaced_layers = list(filter(lambda x: x['epoch'] == epoch,
+                                      config['pruning']['pruning_plan'])
+                              )
         # layers which outputs will be used as loss
         hint_layers = list(map(lambda x: x['name'],
                                filter(lambda x: x['epoch'] == epoch,
