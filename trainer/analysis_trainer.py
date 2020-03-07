@@ -6,7 +6,8 @@ from functools import reduce
 class AnalysisTrainer(LayerwiseTrainer):
     def __init__(self, model: AnalysisStudent, criterions, metric_ftns, optimizer, config, train_data_loader,
                  valid_data_loader=None, lr_scheduler=None, weight_scheduler=None):
-        super().__init__(model, None, metric_ftns, optimizer, config)
+        super().__init__(model, criterions, metric_ftns, optimizer, config, train_data_loader,
+                         valid_data_loader, lr_scheduler, weight_scheduler)
 
 
     def train(self):
@@ -15,7 +16,6 @@ class AnalysisTrainer(LayerwiseTrainer):
             lrs = layer['lrs']
             args = layer['args']
 
-            self.logger.info(self.model.dump_student_teacher_blocks_info())
             for lr in lrs:
                 self.logger.info(f'Replacing layer: {layer_name} learning rate: {lr:.6f}')
                 # Replace chosen layer
@@ -30,12 +30,14 @@ class AnalysisTrainer(LayerwiseTrainer):
                 self.create_new_optimizer()
                 for param_group in self.optimizer.param_groups:
                     param_group['lr'] = lr
+                # logging 
+                self.logger.info(self.model.dump_student_teacher_blocks_info())
                 # start finetuning 
                 for epoch in range(1, self.epochs):
-                    self._train_epoch(epoch)
+                    self._train_epoch(epoch, lr=lr, layer_name=layer_name)
                 self.model.reset()
 
-    def _train_epoch(self, epoch):
+    def _train_epoch(self, epoch, **kwargs):
         # reset
         self.model.training = True  # hack: save hidden output if training is set to true
         self.train_metrics.reset()
@@ -80,6 +82,13 @@ class AnalysisTrainer(LayerwiseTrainer):
                 self.train_metrics.update(met.__name__, met(output_st, target))
 
             if batch_idx % self.log_step == 0:
+                # save the result to tensorboard
+                # miou, loss, miou gap between teacher and student network
+                self.writer.add_scalars("mIoU/" + kwargs['layer_name'].replace('.', '_'), {str(kwargs['lr']): self.train_iou_metrics.get_iou()}, batch_idx)
+                self.writer.add_scalars("loss/" + kwargs['layer_name'].replace('.', '_'), {str(kwargs['lr']): loss.item()}, batch_idx)
+                iou_gap = self.train_teacher_iou_metrics.get_iou() - self.train_iou_metrics.get_iou()
+                self.writer.add_scalars("student_teacher_iou_gap/" + kwargs['layer_name'].replace('.', '_'), { str(kwargs['lr']): iou_gap}, batch_idx)
+                # logging result
                 self.logger.info(
                     'Train Epoch: {} [{}]/[{}] Loss: {:.6f} mIoU: {:.6f} Teacher mIoU: {:.6f} Supervised Loss: {:.6f} '
                     'Knowledge Distillation loss: '

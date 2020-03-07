@@ -27,7 +27,6 @@ class NoisyStudent(DepthwiseStudent):
             self.replaced_block_names.append(block_name)
             # get teacher block to retrieve information such as channel dim,...
             teacher_block = self.get_block(block_name, self.teacher)
-            self.teacher_blocks.append(teacher_block)
             # replace student block with teacher block and heavy dropout
             cp_teacher_block = copy.deepcopy(teacher_block)
             # unfreeze the teacher weights
@@ -44,7 +43,6 @@ class NoisyStudent(DepthwiseStudent):
                                                     dilation=kwargs['dilation'],
                                                     bias=True)
                                          ).cuda()
-            self.student_blocks.append(replace_block)
             self._set_block(block_name, replace_block, self.student)
 
         # free memory of unused layer i.e. the layer of student before replacing
