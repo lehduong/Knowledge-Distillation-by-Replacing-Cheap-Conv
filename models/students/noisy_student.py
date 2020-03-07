@@ -36,7 +36,7 @@ class NoisyStudent(DepthwiseStudent):
             # create larger teacher for knowledge expansion
             replace_block = nn.Sequential(cp_teacher_block,
                                           bnrelu(teacher_block.out_channels),
-                                          nn.Dropout(droprate),
+                                          nn.Dropout2d(droprate),
                                           nn.Conv2d(teacher_block.out_channels, 
                                                     teacher_block.out_channels, 
                                                     kernel_size=kwargs['kernel_size'],
