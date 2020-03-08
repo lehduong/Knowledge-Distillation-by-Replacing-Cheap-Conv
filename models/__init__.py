@@ -1,6 +1,7 @@
 from .deeplabv3 import DeepWV3Plus
-from .gscnn import GSCNN
+from .hrnet_ocr import HighResolutionNet, get_seg_model
 from . import cifar_models
+from .gscnn import GSCNN
 from functools import reduce
 from torch import nn
 import torch

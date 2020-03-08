@@ -18,7 +18,6 @@ You can resume from a previously saved checkpoint by adding `resume_path` in `tr
 "trainer": {
         ...
         "do_validation_interval": 100,
-        "lr_scheduler_step_interval": 15,
         "len_epoch": 100,
         "resume_path": "checkpoint-epoch20.pth",
         "tensorboard": true

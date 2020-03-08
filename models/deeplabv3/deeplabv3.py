@@ -264,13 +264,10 @@ class DeepV3Plus(nn.Module):
         dec1 = self.final(dec0)
         main_out = Upsample(dec1, x_size[2:])
 
-        if self.training:
-            return self.criterion(main_out, gts)
-
         return main_out
 
 
-def DeepSRNX50V3PlusD_m1(num_classes, criterion):
+def DeepSRNX50V3PlusD_m1(num_classes, criterion=None):
     """
     SEResNeXt-50 Based Network
     """
@@ -278,14 +275,14 @@ def DeepSRNX50V3PlusD_m1(num_classes, criterion):
                       skip='m1')
 
 
-def DeepR50V3PlusD_m1(num_classes, criterion):
+def DeepR50V3PlusD_m1(num_classes, criterion=None):
     """
     ResNet-50 Based Network
     """
     return DeepV3Plus(num_classes, trunk='resnet-50', criterion=criterion, variant='D', skip='m1')
 
 
-def DeepSRNX101V3PlusD_m1(num_classes, criterion):
+def DeepSRNX101V3PlusD_m1(num_classes, criterion=None):
     """
     SEResNeXt-101 Based Network
     """

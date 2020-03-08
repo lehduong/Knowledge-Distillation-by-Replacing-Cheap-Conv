@@ -75,24 +75,24 @@ class LayerwiseTrainer(BaseTrainer):
         :param config: a config object that contain pruning_plan, hint, unfreeze information
         :return: 
         """
-        #  if the config is not set (training normaly, then set config to current trainer config)
-        #  if the config is set (in resume case) then use that config to replace layers in student in order 
-        # to match it with saved checkpoint  
+        # if the config is not set (training normaly, then set config to current trainer config)
+        # if the config is set (in case you're resuming a checkpoint) then use saved config to replace 
+        #    layers in student so that it would have identical archecture with saved checkpoint  
         if config is None:
             config = self.config 
 
-        # Check if there is any layer that would be replaced in this epoch
+        # Check if there is any layer that would any update in current epoch
         # list of epochs that would have an update on student networks
-        epochs = list(map(lambda x: x['epoch'], self.config['pruning']['pruning_plan']+
-                                                self.config['pruning']['hint']+
-                                                self.config['pruning']['unfreeze']))
-        # if not:
+        epochs = list(map(lambda x: x['epoch'], config['pruning']['pruning_plan']+
+                                                config['pruning']['hint']+
+                                                config['pruning']['unfreeze']))
+        # if there isn't any update then simply return 
         if epoch not in epochs:
             self.logger.info('EPOCH: ' + str(epoch))
             self.logger.info('There is no update ...')
             return
 
-        # there is at least 1 layer would be replaced then:
+        # there is at least 1 layer would be replaced/add as hint/unfreeze then:
         # freeze all previous layers
         # TODO: Verify if we should freeze previous layer or not 
         # self.logger.debug('Freeze all weight of student network')
@@ -100,11 +100,9 @@ class LayerwiseTrainer(BaseTrainer):
         #     param.requires_grad = False
 
         # layers that would be replaced by depthwise separable conv
-        replaced_layers = list(map(lambda x: x['name'],
-                                   filter(lambda x: x['epoch'] == epoch,
-                                          config['pruning']['pruning_plan'])
-                                   )
-                               )
+        replaced_layers = list(filter(lambda x: x['epoch'] == epoch,
+                                      config['pruning']['pruning_plan'])
+                              )
         # layers which outputs will be used as loss
         hint_layers = list(map(lambda x: x['name'],
                                filter(lambda x: x['epoch'] == epoch,
@@ -121,7 +119,14 @@ class LayerwiseTrainer(BaseTrainer):
         self.logger.info('Replaced layers: ' + str(replaced_layers))
         self.logger.info('Hint layers: ' + str(hint_layers))
         self.logger.info('Unfreeze layers: ' + str(unfreeze_layers))
-        self.model.replace(replaced_layers)  # replace those layers with depthwise separable conv
+        # Avoid error when loading deprecate checkpoint which don't have 'args' in config.pruning
+        if 'args' in config['pruning']:
+            kwargs = config['pruning']['args']
+        else:
+            self.logger.warning('Using deprecate checkpoint...')
+            kwargs = config['pruning']['pruner']
+
+        self.model.replace(replaced_layers, **kwargs)  # replace those layers with depthwise separable conv
         self.model.register_hint_layers(hint_layers)  # assign which layers output would be used as hint loss
         self.model.unfreeze(unfreeze_layers)  # unfreeze chosen layers
 

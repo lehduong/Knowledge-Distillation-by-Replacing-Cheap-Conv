@@ -29,16 +29,8 @@ class DepthwiseStudent(BaseModel):
         # create student net
         self.model = self.student = copy.deepcopy(self.teacher)
 
-        # pruning info
-        self.padding = self.config['pruning']['pruner']['padding']
-        self.kernel_size = self.config['pruning']['pruner']['kernel_size']
-        self.dilation = self.config['pruning']['pruner']['dilation']
-
         # distillation args contain the distillation information such as block name, ...
         self.replaced_block_names = []
-        # store list of student and teacher block to dump info
-        self.student_blocks = list()
-        self.teacher_blocks = list()
         # stored output of intermediate layers when
         self.student_hidden_outputs = list()
         self.teacher_hidden_outputs = list()
@@ -88,26 +80,41 @@ class DepthwiseStudent(BaseModel):
             for param in block.parameters():
                 param.requires_grad = True
 
-    def replace(self, block_names):
+    def replace(self, blocks, **kwargs):
         """
         Replace a block with depthwise conv
-        :param block_names: str
+        :param block_names: list of dictionary, each dictionary should have following format:\
+            {"name": 'abcd', "epoch": 5, "args"(optional): {"padding": 5, "dilation":3, "kernel_size":10}}
+        :param **kwargs: other specifications such as dilation, padding,...
         :return:
         """
-        for block_name in block_names:
+        for block in blocks:
+            block_name = block['name']
             self.replaced_block_names.append(block_name)
+
             # get teacher block to retrieve information such as channel dim,...
             teacher_block = self.get_block(block_name, self.teacher)
-            self.teacher_blocks.append(teacher_block)
+
             # replace student block with depth-wise separable block
+            # if the argument is specified for each block than use that argument o.w. use default 
+            #   i.e. config['pruning']['args']
+            if "args" in block:
+                kernel_size = block['args']['kernel_size']
+                padding = block['args']['padding']
+                dilation = block['args']['dilation']
+            else:
+                kernel_size = kwargs['kernel_size']
+                padding = kwargs['padding']
+                dilation = kwargs['dilation']
+            # create atrous depthwise separable convolution             
             replace_block = DepthwiseSeparableBlock(in_channels=teacher_block.in_channels,
                                                     out_channels=teacher_block.out_channels,
-                                                    kernel_size=self.kernel_size,
-                                                    padding=self.padding,
-                                                    dilation=self.dilation,
+                                                    kernel_size=kernel_size,
+                                                    padding=padding,
+                                                    dilation=dilation,
                                                     groups=teacher_block.in_channels,
                                                     bias=teacher_block.bias).cuda()
-            self.student_blocks.append(replace_block)
+            # replaced that newly created layer to student network
             self._set_block(block_name, replace_block, self.student)
 
         gc.collect()
@@ -228,12 +235,17 @@ class DepthwiseStudent(BaseModel):
         table.left_padding_widths['number params new blk'] = 1
         table.right_padding_widths['number params new blk'] = 1
 
-        for i in range(len(self.student_blocks)):
+        # get student teacher blocks 
+        teacher_blocks = [self.get_block(block_name, self.teacher) for block_name in self.replaced_block_names]
+        student_blocks = [self.get_block(block_name, self.student) for block_name in self.replaced_block_names]
+        # get info of student/teacher blocks 
+        for i in range(len(self.replaced_block_names)):
+            block_name = self.replaced_block_names[i]
             table.append_row([self.replaced_block_names[i],
-                              self.__dump_module_name(self.teacher_blocks[i]),
-                              str(self.__get_number_param(self.teacher_blocks[i])),
-                              self.__dump_module_name(self.student_blocks[i]),
-                              str(self.__get_number_param(self.student_blocks[i]))])
+                              self.__dump_module_name(teacher_blocks[i]),
+                              str(self.__get_number_param(teacher_blocks[i])),
+                              self.__dump_module_name(student_blocks[i]),
+                              str(self.__get_number_param(student_blocks[i]))])
         return str(table)
 
     def __str__(self):
