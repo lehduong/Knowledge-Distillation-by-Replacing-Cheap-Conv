@@ -235,10 +235,12 @@ class DepthwiseStudent(BaseModel):
         table.left_padding_widths['number params new blk'] = 1
         table.right_padding_widths['number params new blk'] = 1
 
+        # get student teacher blocks 
+        teacher_blocks = [self.get_block(block_name, self.teacher) for block_name in self.replaced_block_names]
+        student_blocks = [self.get_block(block_name, self.student) for block_name in self.replaced_block_names]
+        # get info of student/teacher blocks 
         for i in range(len(self.replaced_block_names)):
             block_name = self.replaced_block_names[i]
-            teacher_blocks = [self.get_block(block_name, self.teacher)]
-            student_blocks = [self.get_block(block_name, self.student)]
             table.append_row([self.replaced_block_names[i],
                               self.__dump_module_name(teacher_blocks[i]),
                               str(self.__get_number_param(teacher_blocks[i])),
