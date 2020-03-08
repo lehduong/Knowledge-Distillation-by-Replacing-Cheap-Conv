@@ -81,18 +81,18 @@ class LayerwiseTrainer(BaseTrainer):
         if config is None:
             config = self.config 
 
-        # Check if there is any layer that would be replaced in this epoch
+        # Check if there is any layer that would any update in current epoch
         # list of epochs that would have an update on student networks
-        epochs = list(map(lambda x: x['epoch'], self.config['pruning']['pruning_plan']+
-                                                self.config['pruning']['hint']+
-                                                self.config['pruning']['unfreeze']))
-        # if not:
+        epochs = list(map(lambda x: x['epoch'], config['pruning']['pruning_plan']+
+                                                config['pruning']['hint']+
+                                                config['pruning']['unfreeze']))
+        # if there isn't any update then simply return 
         if epoch not in epochs:
             self.logger.info('EPOCH: ' + str(epoch))
             self.logger.info('There is no update ...')
             return
 
-        # there is at least 1 layer would be replaced then:
+        # there is at least 1 layer would be replaced/add as hint/unfreeze then:
         # freeze all previous layers
         # TODO: Verify if we should freeze previous layer or not 
         # self.logger.debug('Freeze all weight of student network')

@@ -135,140 +135,140 @@
         "layer_name": "mod4.block2.convs.conv1",
         "lrs": [ 0.01, 0.005, 0.001, 0.0005, 0.0001],
         "args": {
-          "droprate": 0.75
+          "droprate":  0.85
         }
       },
       {
         "layer_name": "mod4.block2.convs.conv2",
         "lrs": [ 0.01, 0.005, 0.001, 0.0005, 0.0001],
         "args": {
-          "droprate": 0.75
+          "droprate":  0.85
         }
       },
       {
         "layer_name": "mod4.block3.convs.conv1",
         "lrs": [ 0.01, 0.005, 0.001, 0.0005, 0.0001],
         "args": {
-          "droprate": 0.75
+          "droprate":  0.85
         }
       },
       {
         "layer_name": "mod4.block3.convs.conv2",
         "lrs": [ 0.01, 0.005, 0.001, 0.0005, 0.0001],
         "args": {
-          "droprate": 0.75
+          "droprate":  0.85
         }
       },
       {
         "layer_name": "mod4.block4.convs.conv1",
         "lrs": [ 0.01, 0.005, 0.001, 0.0005, 0.0001],
         "args": {
-          "droprate": 0.75
+          "droprate":  0.85
         }
       },
       {
         "layer_name": "mod4.block4.convs.conv2",
         "lrs": [ 0.01, 0.005, 0.001, 0.0005, 0.0001],
         "args": {
-          "droprate": 0.75
+          "droprate":  0.85
         }
       },
       {
         "layer_name": "mod4.block5.convs.conv1",
         "lrs": [ 0.01, 0.005, 0.001, 0.0005, 0.0001],
         "args": {
-          "droprate": 0.75
+          "droprate":  0.85
         }
       },
       {
         "layer_name": "mod4.block5.convs.conv2",
         "lrs": [ 0.01, 0.005, 0.001, 0.0005, 0.0001],
         "args": {
-          "droprate": 0.75
+          "droprate":  0.85
         }
       },
       {
         "layer_name": "mod4.block6.convs.conv1",
         "lrs": [ 0.01, 0.005, 0.001, 0.0005, 0.0001],
         "args": {
-          "droprate": 0.75
+          "droprate":  0.85
         }
       },
       {
         "layer_name": "mod4.block6.convs.conv2",
         "lrs": [ 0.01, 0.005, 0.001, 0.0005, 0.0001],
         "args": {
-          "droprate": 0.75
+          "droprate":  0.85
         }
       },
       {
         "layer_name": "mod5.block1.convs.conv1",
         "lrs": [ 0.01, 0.005, 0.001, 0.0005, 0.0001],
         "args": {
-          "droprate": 0.75
+          "droprate":  0.85
         }
       },
       {
         "layer_name": "mod5.block1.convs.conv2",
         "lrs": [ 0.01, 0.005, 0.001, 0.0005, 0.0001],
         "args": {
-          "droprate": 0.75
+          "droprate":  0.85
         }
       },
       {
         "layer_name": "mod5.block2.convs.conv1",
         "lrs": [ 0.01, 0.005, 0.001, 0.0005, 0.0001],
         "args": {
-          "droprate": 0.75
+          "droprate":  0.85
         }
       },
       {
         "layer_name": "mod5.block2.convs.conv2",
         "lrs": [ 0.01, 0.005, 0.001, 0.0005, 0.0001],
         "args": {
-          "droprate": 0.75
+          "droprate":  0.85
         }
       },
       {
         "layer_name": "aspp.features.1.0",
         "lrs": [0.01, 0.005, 0.001, 0.0005, 0.0001],
         "args": {
-          "droprate": 0.75
+          "droprate":  0.85
         }
       },
       {
         "layer_name": "aspp.features.2.0",
         "lrs": [0.01, 0.005, 0.001, 0.0005, 0.0001],
         "args": {
-          "droprate": 0.75
+          "droprate":  0.85
         }
       },
       {
         "layer_name": "aspp.features.3.0",
         "lrs": [0.01, 0.005, 0.001, 0.0005, 0.0001],
         "args": {
-          "droprate": 0.75
+          "droprate":  0.85
         }
       },
       {
         "layer_name": "mod7.block1.convs.conv2",
         "lrs": [0.01, 0.005, 0.001, 0.0005, 0.0001],
         "args": {
-          "droprate": 0.75
+          "droprate":  0.85
         }
       },
       {
         "layer_name": "mod7.block1.convs.conv1",
         "lrs": [0.01, 0.005, 0.001, 0.0005, 0.0001],
         "args": {
-          "droprate": 0.75
+          "droprate":  0.85
         }
       },
       {
         "layer_name": "mod7.block1.convs.conv3",
         "lrs": [0.01, 0.005, 0.001, 0.0005, 0.0001],
         "args": {
-          "droprate": 0.75
+          "droprate":  0.85
         }
       }
     ]
