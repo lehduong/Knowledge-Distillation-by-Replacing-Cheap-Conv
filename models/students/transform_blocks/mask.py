@@ -5,10 +5,11 @@ import numpy as np
 
 class RandomMask2d(nn.Module):
     """
-        A mask layer that drop some filters of an input, use this instead of dropout for encourage the
-         network learning to map from the intrinsic filters to ghost filters
+        A mask layer that drop some filters of an 3D input (BatchxCxHxW), use this instead of dropout for encourage the
+          network learning to map from the intrinsic filters to ghost filters
+        Since the mask is always fixed, then we have to provide the in_channels explicitly 
     """
-    def __init__(self, in_channels, droprate=0.5):
+    def __init__(self, in_channels, droprate=0.9):
         super().__init__()
         self.in_channels = in_channels
         self.droprate = droprate 
