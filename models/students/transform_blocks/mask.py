@@ -1,4 +1,5 @@
 from torch import nn
+from torch.autograd import Variable
 import torch
 import numpy as np 
 
@@ -20,10 +21,10 @@ class RandomMask2d(nn.Module):
             Randomly create a mask to drop some layer 
         """
         num_dropped_filters = int(self.in_channels*self.droprate)
-        mask = np.ones((1, self.in_channels, 1, 1))
+        mask = np.ones((1, self.in_channels, 1, 1), dtype=np.float32)
         dropped_idx = np.random.choice(self.in_channels, num_dropped_filters, False)
         mask[0][dropped_idx] = 0
-        mask = torch.FloatTensor(mask)
+        mask = torch.cuda.FloatTensor(mask)
 
         return mask 
 
