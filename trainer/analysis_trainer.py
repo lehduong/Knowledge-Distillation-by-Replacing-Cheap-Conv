@@ -23,7 +23,7 @@ class AnalysisTrainer(LayerwiseTrainer):
                 # Register hints layer
                 self.model.register_hint_layers([layer_name])
                 # Unfreeze
-                self.model.unfreeze([layer_name])
+                # self.model.unfreeze([layer_name])
                 # reset scheduler
                 self.reset_scheduler()
                 # create new optimizer and set its learning rate 
@@ -31,6 +31,7 @@ class AnalysisTrainer(LayerwiseTrainer):
                 for param_group in self.optimizer.param_groups:
                     param_group['lr'] = lr
                 # logging 
+                self.logger.info(self.model.dump_trainable_params())
                 self.logger.info(self.model.dump_student_teacher_blocks_info())
                 # start finetuning 
                 for epoch in range(1, self.epochs):

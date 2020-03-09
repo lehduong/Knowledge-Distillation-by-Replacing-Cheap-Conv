@@ -31,8 +31,11 @@ class AnalysisStudent(DepthwiseStudent):
             cp_teacher_block = copy.deepcopy(teacher_block)
             # FIXME: bias true or false?
             replace_block = nn.Sequential(cp_teacher_block,
-                                          nn.Dropout2d(droprate),
-                                          nn.Conv2d(teacher_block.out_channels, teacher_block.out_channels, 1, bias=True)
+                                          RandomMask2d(teacher_block.out_channels, droprate),
+                                          nn.Conv2d(teacher_block.out_channels, 
+                                                    teacher_block.out_channels, 
+                                                    kernel_size=1, 
+                                                    bias=False)
                                          ).cuda()
             self._set_block(block_name, replace_block, self.student)
 
