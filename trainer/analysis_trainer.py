@@ -23,7 +23,7 @@ class AnalysisTrainer(LayerwiseTrainer):
                 # Register hints layer
                 self.model.register_hint_layers([layer_name])
                 # Unfreeze
-                self.model.unfreeze([layer_name])
+                # self.model.unfreeze([layer_name])
                 # reset scheduler
                 self.reset_scheduler()
                 # create new optimizer and set its learning rate 
