@@ -211,12 +211,14 @@ class LayerwiseTrainer(BaseTrainer):
 
             supervised_loss = self.criterions[0](output_st, target) / self.accumulation_steps
             kd_loss = self.criterions[1](output_st, output_tc) / self.accumulation_steps
-
-            hint_loss = reduce(lambda acc, elem: acc + self.criterions[2](elem[0], elem[1]),
-                               zip(self.model.student_hidden_outputs, self.model.teacher_hidden_outputs),
-                               0) / self.accumulation_steps
-
             teacher_loss = self.criterions[0](output_tc, target)  # for comparision
+            teacher_loss.backward() # for importance computation
+
+            importance_list = self.model.get_importance_of_teacher_block()
+            hint_loss = reduce(lambda acc, elem: acc + self.criterions[2](elem[0], elem[1], elem[2]),
+                               zip(self.model.student_hidden_outputs, self.model.teacher_hidden_outputs,
+                                   importance_list), 0) / self.accumulation_steps
+
 
             # Only use hint loss
             loss = hint_loss

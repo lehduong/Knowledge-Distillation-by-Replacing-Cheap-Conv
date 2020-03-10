@@ -120,6 +120,16 @@ class DepthwiseStudent(BaseModel):
         gc.collect()
         torch.cuda.empty_cache()
 
+    def get_importance_of_teacher_block(self):
+        importance_list = []
+        for block_name in self.replaced_block_names:
+            block = self.get_block(block_name, self.teacher)
+            grad = block.grad
+            importance = ((block*grad)**2).sum(dim=(-1, -2, -3))
+            importance_list.append(importance)
+
+        return importance_list
+
     def _remove_hooks(self):
         while self._student_hook_handlers:
             handler = self._student_hook_handlers.pop()
