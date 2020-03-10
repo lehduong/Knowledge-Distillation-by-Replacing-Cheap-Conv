@@ -1,19 +1,22 @@
 from .layerwise_trainer import LayerwiseTrainer
-from models.students import AnalysisStudent
 from utils.optim.lr_scheduler import MyOneCycleLR, MyReduceLROnPlateau 
-from functools import reduce 
+from functools import reduce
+from utils import MetricTracker 
 
-class ClassifcationTrainer(LayerwiseTrainer):
-    def __init__(self, model: AnalysisStudent, criterions, metric_ftns, optimizer, config, train_data_loader,
-                 valid_data_loader=None, lr_scheduler=None, weight_scheduler=None):
+class ClassificationTrainer(LayerwiseTrainer):
+    def __init__(self, model, criterions, metric_ftns, optimizer, config, train_data_loader,
+                 valid_data_loader=None, lr_scheduler=None, weight_scheduler=None, test_data_loader=None):
         super().__init__(model, criterions, metric_ftns, optimizer, config, train_data_loader,
                          valid_data_loader, lr_scheduler, weight_scheduler)
 
+        self.train_teacher_metrics = MetricTracker(*[m.__name__ for m in self.metric_ftns], writer=self.writer)
+        self.test_data_loader = test_data_loader
 
     def _train_epoch(self, epoch):
-        self.model.student.train()
+        self.prepare_train_epoch(epoch)
+
+        self.model.student.training = True
         self.train_metrics.reset()
-        self.train_teacher_metrics.reset()
         self._clean_cache()
 
         for batch_idx, (data, target) in enumerate(self.train_data_loader):
@@ -30,9 +33,10 @@ class ClassifcationTrainer(LayerwiseTrainer):
 
             teacher_loss = self.criterions[0](output_tc, target)  # for comparision
 
-            loss = 0.5*hint_loss+0.5*kd_loss
+            # Only use hint loss
+            loss = hint_loss
             loss.backward()
-
+            
             if (batch_idx + 1) % self.accumulation_steps == 0:
                 self.optimizer.step()
                 self.optimizer.zero_grad()
@@ -102,7 +106,7 @@ class ClassifcationTrainer(LayerwiseTrainer):
         :param epoch: Integer, current training epoch.
         :return: A log that contains information about validation
         """
-        self.model.student.eval()
+        self.model.student.training = False
         self.valid_metrics.reset()
         with torch.no_grad():
             for batch_idx, (data, target) in enumerate(self.valid_data_loader):
@@ -125,7 +129,7 @@ class ClassifcationTrainer(LayerwiseTrainer):
         :param epoch: Integer, current training epoch.
         :return: A log that contains information about validation
         """
-        self.model.student.eval()
+        self.model.student.training = False
         self.test_metrics.reset()
         with torch.no_grad():
             for batch_idx, (data, target) in enumerate(self.test_data_loader):

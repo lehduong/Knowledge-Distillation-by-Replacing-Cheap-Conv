@@ -1,3 +1,3 @@
 from . layerwise_trainer import LayerwiseTrainer
 from .analysis_trainer import AnalysisTrainer
-from .classfication_trainer import ClassifcationTrainer
+from .classification_trainer import ClassificationTrainer
