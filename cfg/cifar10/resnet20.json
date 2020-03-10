@@ -5,7 +5,7 @@
         "type": "resnet20",
         "args": {
         },
-        "snapshot": "checkpoints/resnet20.th"
+        "snapshot": "checkpoints/cifar10/resnet20.th"
     },
     "train_data_loader": {
         "type": "Cifar10Dataloader",
@@ -32,7 +32,7 @@
     "optimizer": {
         "type": "RAdam",
         "args": {
-            "lr": 0.001
+            "lr": 0.01
         }
     },
     "supervised_loss": {
@@ -52,7 +52,7 @@
         "type": "MSELoss",
         "args": {
             "reduction": "mean",
-            "num_classes": 1000
+            "num_classes": 1
         }
     },
     "metrics": ["accuracy", "top_k_acc"],
@@ -64,7 +64,7 @@
             "factor": 0.5,
             "patience": 0,
             "verbose": true,
-            "min_lr": 1e-05,
+            "min_lr": 1e-06,
             "threshold_mode": "rel"
         }
     },
@@ -90,30 +90,14 @@
         },
         "hint": [
             {
-                "name": "layer3.0.conv2",
+                "name": "linear",
                 "epoch": 1
-            },
-            {
-                "name": "layer3.1.conv1",
-                "epoch": 10
-            },
-            {
-                "name": "layer3.1.conv2",
-                "epoch": 20
             }
         ],
         "unfreeze": [
             {
-                "name": "layer3.0.conv2",
+                "name": "layer3",
                 "epoch": 1
-            },
-            {
-                "name": "layer3.1.conv1",
-                "epoch": 10
-            },
-            {
-                "name": "layer3.1.conv2",
-                "epoch": 20
             }
         ],
         "pruning_plan": [
@@ -123,11 +107,11 @@
             },
             {
                 "name": "layer3.1.conv1",
-                "epoch": 10
+                "epoch": 1
             },
             {
                 "name": "layer3.1.conv2",
-                "epoch": 20
+                "epoch": 1
             }
         ]
     },

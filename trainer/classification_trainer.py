@@ -2,6 +2,7 @@ from .layerwise_trainer import LayerwiseTrainer
 from utils.optim.lr_scheduler import MyOneCycleLR, MyReduceLROnPlateau 
 from functools import reduce
 from utils import MetricTracker 
+import torch 
 
 class ClassificationTrainer(LayerwiseTrainer):
     def __init__(self, model, criterions, metric_ftns, optimizer, config, train_data_loader,

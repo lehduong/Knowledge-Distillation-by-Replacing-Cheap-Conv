@@ -5,7 +5,7 @@ import numpy as np
 import data_loader as module_data
 import losses as module_loss
 import models.metric as module_metric
-import models as module_arch
+import models.cifar_models as module_arch
 import utils.optim as module_optim
 from models.students import DepthwiseStudent, AnalysisStudent
 from parse_config import ConfigParser
@@ -32,7 +32,7 @@ def main(config):
     teacher = teacher.cpu()  # saved some memory as student network will use a (deep) copy of teacher model
 
     # build models architecture, then print to console
-    if config['trainer']['name'] == 'LayerwiseTrainer':
+    if config['trainer']['name'] == 'ClassificationTrainer':
         student = DepthwiseStudent(teacher, config)
     elif config['trainer']['name'] == 'AnalysisTrainer':
         student = AnalysisStudent(teacher, config)
@@ -57,7 +57,7 @@ def main(config):
 
     # Run trainer
     trainer = ClassificationTrainer(student, criterions, metrics, optimizer, config, train_data_loader,
-                                    valid_data_loader, lr_scheduler, weight_scheduler)
+                                    valid_data_loader, lr_scheduler, weight_scheduler, test_data_loader)
 
     trainer.train()
 
