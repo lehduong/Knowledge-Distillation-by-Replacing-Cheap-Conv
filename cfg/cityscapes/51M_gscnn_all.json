@@ -1,0 +1,268 @@
+{
+    "name": "Reduce51M_GSCNN_All_layers_at_once",
+    "n_gpu": 1,
+    "teacher": {
+        "type": "GSCNN",
+        "args": {
+            "num_classes": 19
+        },
+        "snapshot": "checkpoints/gscnn.pth"
+    },
+    "transforms": {
+        "joint_transforms": {
+            "crop_size": 512,
+            "scale_min": 0.5,
+            "scale_max": 2,
+            "ignore_label": 255
+        },
+        "extended_transforms": {
+            "color_aug": 0.2,
+            "blur": "gaussian"
+        }
+    },
+    "train_data_loader": {
+        "type": "CityscapesDataloader",
+        "args": {
+            "data_dir": "data/",
+            "batch_size": 4,
+            "shuffle": true,
+            "validation_split": 0.0,
+            "num_workers": 0,
+            "split": "train",
+            "mode": "fine",
+            "target_type": "semantic"
+        }
+    },
+    "val_data_loader": {
+        "type": "CityscapesDataloader",
+        "args": {
+            "data_dir": "data/",
+            "batch_size": 1,
+            "shuffle": false,
+            "validation_split": 0,
+            "num_workers": 0,
+            "split": "val",
+            "mode": "fine",
+            "target_type": "semantic",
+            "num_samples": 50
+        }
+    },
+    "test_data_loader": {
+        "type": "CityscapesDataloader",
+        "args": {
+            "data_dir": "data/",
+            "batch_size": 1,
+            "shuffle": false,
+            "validation_split": 0,
+            "num_workers": 0,
+            "split": "test",
+            "mode": "fine",
+            "target_type": "semantic",
+            "num_samples": 50
+        }
+    },
+    "optimizer": {
+        "type": "RAdam",
+        "args": {
+            "lr": 0.005
+        }
+    },
+    "supervised_loss": {
+        "type": "CrossEntropyLoss2d",
+        "args": {
+            "ignore_index": 255
+        }
+    },
+    "kd_loss": {
+        "type": "MSELoss",
+        "args": {
+            "reduction": "mean",
+            "num_classes": 1
+        }
+    },
+    "hint_loss": {
+        "type": "MSELoss",
+        "args": {
+            "reduction": "mean",
+            "num_classes": 1000
+        }
+    },
+    "metrics": [],
+    "lr_scheduler": {
+        "type": "MyReduceLROnPlateau",
+        "args": {
+            "mode": "min",
+            "threshold": 0.01,
+            "factor": 0.5,
+            "patience": 0,
+            "verbose": true,
+            "min_lr": 1e-05,
+            "threshold_mode": "rel"
+        }
+    },
+    "trainer": {
+        "name": "LayerwiseTrainer",
+        "epochs": 1000,
+        "save_dir": "saved/",
+        "save_period": 3,
+        "verbosity": 2,
+        "monitor": "max val_mIoU",
+        "early_stop": 10,
+        "accumulation_steps": 1,
+        "log_step": 5,
+        "do_validation_interval": 100,
+        "len_epoch": 100,
+        "tensorboard": true
+    },
+    "pruning": {
+        "args": {
+            "dilation": 5,
+            "padding": 20,
+            "kernel_size": 9
+        },
+        "pruning_plan": [
+            {
+                "name": "mod4.block2.convs.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "mod4.block3.convs.conv1",
+                "epoch": 1
+            },
+            {
+                "name": "mod4.block3.convs.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "mod4.block4.convs.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "mod4.block6.convs.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "mod7.block1.convs.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "aspp.features.1.0",
+                "epoch": 1
+            },
+            {
+                "name": "aspp.features.2.0",
+                "epoch": 1
+            },
+            {
+                "name": "aspp.features.3.0",
+                "epoch": 1
+            }
+        ],
+        "hint": [
+            {
+                "name": "mod4.block2.convs.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "mod4.block3.convs.conv1",
+                "epoch": 1
+            },
+            {
+                "name": "mod4.block3.convs.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "mod4.block4.convs.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "mod4.block6.convs.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "mod7.block1.convs.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "aspp.features.1.0",
+                "epoch": 1
+            },
+            {
+                "name": "aspp.features.2.0",
+                "epoch": 1
+            },
+            {
+                "name": "aspp.features.3.0",
+                "epoch": 1
+            }
+        ],
+        "unfreeze": [
+            {
+                "name": "mod4.block2.convs.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "mod4.block3.convs.conv1",
+                "epoch": 1
+            },
+            {
+                "name": "mod4.block3.convs.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "mod4.block4.convs.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "mod4.block6.convs.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "mod7.block1.convs.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "aspp.features.1.0",
+                "epoch": 1
+            },
+            {
+                "name": "aspp.features.2.0",
+                "epoch": 1
+            },
+            {
+                "name": "aspp.features.3.0",
+                "epoch": 1
+            }
+        ]
+    },
+    "weight_scheduler": {
+        "alpha": {
+            "value": 0.0001,
+            "anneal_rate": 2,
+            "max": 0
+        },
+        "beta": {
+            "value": 0.99,
+            "anneal_rate": 0.95,
+            "min": 0.99
+        },
+        "gamma": {
+            "value": 1,
+            "anneal_rate": 1
+        }
+    },
+    "test": {
+        "type": "sliding",
+        "args": {
+            "scales": [
+                1.0
+            ],
+            "crop_size": 1024
+        }
+    },
+    "submission": {
+        "save_output": true,
+        "path_output": "submission/",
+        "ext": "png"
+    }
+}

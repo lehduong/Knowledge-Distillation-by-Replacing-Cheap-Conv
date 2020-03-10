@@ -5,21 +5,6 @@ from .cityscapes import Cityscapes, CityScapesUniform
 from torch.utils.data import ConcatDataset
 
 
-class MnistDataLoader(BaseDataLoader):
-    """
-    MNIST data loading demo using BaseDataLoader
-    """
-
-    def __init__(self, data_dir, batch_size, shuffle=True, validation_split=0.0, num_workers=1, training=True):
-        trsfm = tfs.Compose([
-            tfs.ToTensor(),
-            tfs.Normalize((0.1307,), (0.3081,))
-        ])
-        self.data_dir = data_dir
-        self.dataset = datasets.MNIST(self.data_dir, train=training, download=True, transform=trsfm)
-        super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers)
-
-
 class Cifar100Dataloader(BaseDataLoader):
     """
     CIFAR100 data loading using BaseDataloder
@@ -35,37 +20,19 @@ class Cifar100Dataloader(BaseDataLoader):
         super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers)
 
 
-class TinyImageNetDataloader(BaseDataLoader):
+class Cifar10Dataloader(BaseDataLoader):
     """
-    Stanford Tiny Imagenet data loading using BaseDataloder
+    CIFAR10 data loading using BaseDataloder
     """
 
     def __init__(self, data_dir, batch_size, shuffle=True, validation_split=0.0, num_workers=1, training=True):
         trsfm = tfs.Compose([
-            tfs.RandomResizedCrop(224),
-            tfs.RandomHorizontalFlip(),
             tfs.ToTensor(),
-            tfs.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+            tfs.Normalize(mean=[0.491, 0.482, 0.447],
+                          std=[0.247, 0.243, 0.262])
         ])
         self.data_dir = data_dir
-        self.dataset = datasets.ImageFolder(self.data_dir, transform=trsfm)
-        super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers)
-
-
-class ImageNetDataloader(BaseDataLoader):
-    """
-    ImageNet data loading using BaseDataloader
-    """
-
-    def __init__(self, data_dir, batch_size, shuffle=True, validation_split=0.0, num_workers=1):
-        trsfm = tfs.Compose([
-            tfs.RandomResizedCrop(224),
-            tfs.RandomHorizontalFlip(),
-            tfs.ToTensor(),
-            tfs.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
-        ])
-        self.data_dir = data_dir
-        self.dataset = datasets.ImageFolder(self.data_dir, transform=trsfm)
+        self.dataset = datasets.CIFAR10(self.data_dir, train=training, download=True, transform=trsfm)
         super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers)
 
 
