@@ -130,6 +130,9 @@ class LayerwiseTrainer(BaseTrainer):
         self.model.register_hint_layers(hint_layers)  # assign which layers output would be used as hint loss
         self.model.unfreeze(unfreeze_layers)  # unfreeze chosen layers
 
+        # unfreeze to get gradient of teacher model corresponding to replaced block
+        self.model.unfreeze(unfreeze_layers, student=False)
+
         # TODO: Verify if we should unfreeze the trained layer or not 
         if epoch == 1:
             self.create_new_optimizer() # create new optimizer to remove the effect of momentum
