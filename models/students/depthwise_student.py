@@ -74,12 +74,9 @@ class DepthwiseStudent(BaseModel):
         gc.collect()
         torch.cuda.empty_cache()
 
-    def unfreeze(self, block_names, student=True):
+    def unfreeze(self, block_names):
         for block_name in block_names:
-            if student:
-                block = self.get_block(block_name, self.student)
-            else:
-                block = self.get_block(block_name, self.teacher)
+            block = self.get_block(block_name, self.student)
             for param in block.parameters():
                 param.requires_grad = True
 
