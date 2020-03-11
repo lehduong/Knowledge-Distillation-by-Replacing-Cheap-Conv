@@ -194,6 +194,7 @@ class ImportanceFilterTracker:
         self.importance_dict = dict()
         self.counter = dict()
         self.temperature = 1
+        self.scale_factor = 1e5
 
     def update_importance_list(self, added_gates):
         for name, gate_layer in added_gates.items():
@@ -209,6 +210,6 @@ class ImportanceFilterTracker:
         result = dict()
         for name, vector in self.importance_dict.items():
             result[name] = vector / self.counter[name]
-            result[name] = softmax(result[name] / self.temperature)
+            result[name] = softmax(result[name] * self.scale_factor / self.temperature)
 
         return result

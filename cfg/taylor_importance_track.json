@@ -163,7 +163,7 @@
                 "num_features": 256
             },
             {
-                "name": "aspp.features.3.0",
+                "name": "aspp.features.3.2",
                 "epoch": 25,
                 "num_features": 256
             }

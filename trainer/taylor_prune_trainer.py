@@ -251,9 +251,9 @@ class TaylorPruneTrainer(BaseTrainer):
                 self.logger.info('Importance of filters in layers')
                 for name, vector in importance_hitherto.items():
                     self.logger.info('{}: {}'.format(name, vector))
-                    filename = 'importance_filter_ep{}_batch_idx{}'.format(epoch, batch_idx)
-                    file_path = os.path.join(self.checkpoint_dir, filename)
-                    torch.save(importance_hitherto, file_path)
+                filename = 'importance_filter_ep{}_batch_idx{}.pth'.format(epoch, batch_idx)
+                file_path = os.path.join(self.checkpoint_dir, filename)
+                torch.save(importance_hitherto, file_path)
 
             if batch_idx == self.len_epoch:
                 break
