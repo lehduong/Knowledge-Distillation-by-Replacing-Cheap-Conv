@@ -1,6 +1,6 @@
 from torchvision.utils import make_grid
 from functools import reduce
-from utils import inf_loop, MetricTracker, visualize, CityscapesMetricTracker, save_image
+from utils import inf_loop, MetricTracker, visualize, CityscapesMetricTracker, save_image, ImportanceFilterTracker
 from utils.optim.lr_scheduler import MyOneCycleLR, MyReduceLROnPlateau
 from utils.util import EarlyStopTracker
 from utils import optim as optim_module
@@ -15,7 +15,7 @@ import gc
 import torch
 
 
-class LayerwiseTrainer(BaseTrainer):
+class TaylorPruneTrainer(BaseTrainer):
     """
     Trainer
     """
@@ -31,6 +31,7 @@ class LayerwiseTrainer(BaseTrainer):
         self.lr_scheduler = lr_scheduler
         self.weight_scheduler = weight_scheduler
         self.log_step = config['trainer']['log_step']
+        self.importance_log_interval = self.config['trainer']['importance_log_interval']
         if "len_epoch" in self.config['trainer']:
             # iteration-based training
             self.train_data_loader = inf_loop(train_data_loader)
@@ -39,23 +40,25 @@ class LayerwiseTrainer(BaseTrainer):
             # epoch-based training
             self.len_epoch = len(self.train_data_loader)
 
-        # Metrics 
-        # Train 
+        # Metrics
+        # Train
         self.train_metrics = MetricTracker('loss', 'supervised_loss', 'kd_loss', 'hint_loss', 'teacher_loss',
                                            *[m.__name__ for m in self.metric_ftns], writer=self.writer)
         self.train_iou_metrics = CityscapesMetricTracker(writer=self.writer)
         self.train_teacher_iou_metrics = CityscapesMetricTracker(writer=self.writer)
-        # Valid 
+        # Valid
         self.valid_metrics = MetricTracker('loss', 'supervised_loss', 'kd_loss', 'hint_loss', 'teacher_loss',
                                            *[m.__name__ for m in self.metric_ftns], writer=self.writer)
         self.valid_iou_metrics = CityscapesMetricTracker(writer=self.writer)
         # Test
         self.test_metrics = MetricTracker('loss', 'supervised_loss', 'kd_loss', 'hint_loss', 'teacher_loss',
-                                           *[m.__name__ for m in self.metric_ftns], writer=self.writer)
+                                          *[m.__name__ for m in self.metric_ftns], writer=self.writer)
         self.test_iou_metrics = CityscapesMetricTracker(writer=self.writer)
 
         # Tracker for early stop if val miou doesn't increase
         self.val_iou_tracker = EarlyStopTracker('best', 'max', 0.01, 'rel')
+        # Tracker for importance of filter in layer
+        self.importance_tracker = ImportanceFilterTracker(writer=self.writer)
 
         # Only used list of criterions and remove the unused property
         self.criterions = criterions
@@ -65,7 +68,7 @@ class LayerwiseTrainer(BaseTrainer):
         del self.criterion
 
         # Resume checkpoint if path is available in config
-        if 'resume_path' in self.config['trainer']: 
+        if 'resume_path' in self.config['trainer']:
             self.resume(self.config['trainer']['resume_path'])
 
     def prepare_train_epoch(self, epoch, config=None):
@@ -73,20 +76,20 @@ class LayerwiseTrainer(BaseTrainer):
         Prepare before training an epoch i.e. prune new layer, unfreeze some layers, create new optimizer ....
         :param epoch:  int - indicate which epoch the trainer's in
         :param config: a config object that contain pruning_plan, hint, unfreeze information
-        :return: 
+        :return:
         """
         # if the config is not set (training normaly, then set config to current trainer config)
-        # if the config is set (in case you're resuming a checkpoint) then use saved config to replace 
-        #    layers in student so that it would have identical archecture with saved checkpoint  
+        # if the config is set (in case you're resuming a checkpoint) then use saved config to replace
+        #    layers in student so that it would have identical archecture with saved checkpoint
         if config is None:
-            config = self.config 
+            config = self.config
 
-        # Check if there is any layer that would any update in current epoch
+            # Check if there is any layer that would any update in current epoch
         # list of epochs that would have an update on student networks
-        epochs = list(map(lambda x: x['epoch'], config['pruning']['pruning_plan']+
-                                                config['pruning']['hint']+
-                                                config['pruning']['unfreeze']))
-        # if there isn't any update then simply return 
+        epochs = list(map(lambda x: x['epoch'], config['pruning']['pruning_plan'] +
+                          config['pruning']['hint'] +
+                          config['pruning']['unfreeze']))
+        # if there isn't any update then simply return
         if epoch not in epochs:
             self.logger.info('EPOCH: ' + str(epoch))
             self.logger.info('There is no update ...')
@@ -94,7 +97,7 @@ class LayerwiseTrainer(BaseTrainer):
 
         # there is at least 1 layer would be replaced/add as hint/unfreeze then:
         # freeze all previous layers
-        # TODO: Verify if we should freeze previous layer or not 
+        # TODO: Verify if we should freeze previous layer or not
         # self.logger.debug('Freeze all weight of student network')
         # for param in self.model.parameters():
         #     param.requires_grad = False
@@ -102,23 +105,10 @@ class LayerwiseTrainer(BaseTrainer):
         # layers that would be replaced by depthwise separable conv
         replaced_layers = list(filter(lambda x: x['epoch'] == epoch,
                                       config['pruning']['pruning_plan'])
-                              )
-        # layers which outputs will be used as loss
-        hint_layers = list(map(lambda x: x['name'],
-                               filter(lambda x: x['epoch'] == epoch,
-                                      config['pruning']['hint'])
                                )
-                           )
-        # layers that would be trained in this epoch
-        unfreeze_layers = list(map(lambda x: x['name'],
-                                   filter(lambda x: x['epoch'] == epoch,
-                                          config['pruning']['unfreeze'])
-                                   )
-                               )
+
         self.logger.info('EPOCH: ' + str(epoch))
         self.logger.info('Replaced layers: ' + str(replaced_layers))
-        self.logger.info('Hint layers: ' + str(hint_layers))
-        self.logger.info('Unfreeze layers: ' + str(unfreeze_layers))
         # Avoid error when loading deprecate checkpoint which don't have 'args' in config.pruning
         if 'args' in config['pruning']:
             kwargs = config['pruning']['args']
@@ -127,28 +117,25 @@ class LayerwiseTrainer(BaseTrainer):
             kwargs = config['pruning']['pruner']
 
         self.model.replace(replaced_layers, **kwargs)  # replace those layers with depthwise separable conv
-        self.model.register_hint_layers(hint_layers)  # assign which layers output would be used as hint loss
-        self.model.unfreeze(unfreeze_layers)  # unfreeze chosen layers
+        # initialize importance vector for layer
+        self.importance_tracker.update_importance_list(self.model.added_gates)
 
-        # unfreeze to get gradient of teacher model corresponding to replaced block
-        self.model.unfreeze(unfreeze_layers, student=False)
-
-        # TODO: Verify if we should unfreeze the trained layer or not 
+        # TODO: Verify if we should unfreeze the trained layer or not
         if epoch == 1:
-            self.create_new_optimizer() # create new optimizer to remove the effect of momentum
+            self.create_new_optimizer()  # create new optimizer to remove the effect of momentum
         else:
-            self.update_optimizer(list(filter(lambda x: x['epoch']==epoch, config['pruning']['unfreeze'])))
-        
+            self.update_optimizer(list(filter(lambda x: x['epoch'] == epoch, config['pruning']['unfreeze'])))
+
         self.logger.info(self.model.dump_trainable_params())
         self.logger.info(self.model.dump_student_teacher_blocks_info())
         self.reset_scheduler()
-    
+
     def update_optimizer(self, unfreeze_config):
         """
         Update param groups for optimizer with unfreezed layers of this epoch
         :param unfreeze_config - list of arg. Each arg is the dictionary with following format:
             {'name': 'layer1', 'epoch':1, 'lr'(optional): 0.01}
-        return: 
+        return:
         """
         self.logger.debug('Updating optimizer for new layer')
         for config in unfreeze_config:
@@ -157,11 +144,11 @@ class LayerwiseTrainer(BaseTrainer):
 
             layer = self.model.get_block(layer_name, self.model.student)  # actual layer i.e. nn.Module obj
             optimizer_arg = self.config['optimizer']['args']  # default args for optimizer
-            
-            # we can also specify layerwise learning ! 
+
+            # we can also specify layerwise learning !
             if "lr" in config:
                 optimizer_arg['lr'] = config['lr']
-            # add unfreezed layer's parameters to optimizer 
+            # add unfreezed layer's parameters to optimizer
             self.optimizer.add_param_group({'params': layer.parameters(),
                                             **optimizer_arg})
 
@@ -213,17 +200,15 @@ class LayerwiseTrainer(BaseTrainer):
             output_st, output_tc = self.model(data)
 
             supervised_loss = self.criterions[0](output_st, target) / self.accumulation_steps
-            kd_loss = self.criterions[1](output_st, output_tc) / self.accumulation_steps
             teacher_loss = self.criterions[0](output_tc, target)  # for comparision
 
-            hint_loss = reduce(lambda acc, elem: acc + self.criterions[2](elem[0], elem[1]),
-                               zip(self.model.student_hidden_outputs, self.model.teacher_hidden_outputs),
-                               0) / self.accumulation_steps
-
-
-            # Only use hint loss
-            loss = hint_loss
+            # Only use supervised loss
+            loss = supervised_loss
             loss.backward()
+
+            # Update tracker to track importance of filter in layer
+            importance_dict = self.model.get_gate_importance()
+            self.importance_tracker.update(importance_dict)
 
             if batch_idx % self.accumulation_steps == 0:
                 self.optimizer.step()
@@ -234,8 +219,6 @@ class LayerwiseTrainer(BaseTrainer):
             # update metrics
             self.train_metrics.update('loss', loss.item() * self.accumulation_steps)
             self.train_metrics.update('supervised_loss', supervised_loss.item() * self.accumulation_steps)
-            self.train_metrics.update('kd_loss', kd_loss.item() * self.accumulation_steps)
-            self.train_metrics.update('hint_loss', hint_loss.item() * self.accumulation_steps)
             self.train_metrics.update('teacher_loss', teacher_loss.item())
             self.train_iou_metrics.update(output_st.detach().cpu(), target.cpu())
             self.train_teacher_iou_metrics.update(output_tc.cpu(), target.cpu())
@@ -278,6 +261,14 @@ class LayerwiseTrainer(BaseTrainer):
             log.update(**{'val_mIoU': self.valid_iou_metrics.get_iou()})
             self.val_iou_tracker.update(self.valid_iou_metrics.get_iou())
 
+        if batch_idx % self.importance_log_interval == 0:
+            importance_hitherto = self.importance_tracker.average()
+            self.logger.info('Importance of filters in layers')
+            for name, vector in importance_hitherto:
+                self.logger.info('{}: {}'.format(name, vector))
+                filename = 'importance_filter_ep{}_batch_idx{}'.format(epoch, batch_idx)
+                torch.save(importance_hitherto, filename)
+
         self._teacher_student_iou_gap = self.train_teacher_iou_metrics.get_iou() - self.train_iou_metrics.get_iou()
 
         # step lr scheduler
@@ -289,7 +280,7 @@ class LayerwiseTrainer(BaseTrainer):
                 self.logger.debug('stepped lr')
                 for param_group in self.optimizer.param_groups:
                     self.logger.debug(param_group['lr'])
-                    
+
         # anneal weight between losses
         self.weight_scheduler.step()
 
@@ -303,7 +294,7 @@ class LayerwiseTrainer(BaseTrainer):
         :return: A log that contains information about validation
         """
         self._clean_cache()
-        self.model.training = False  # Hack: do not save hidden output if training is set to false 
+        self.model.training = False  # Hack: do not save hidden output if training is set to false
         self.valid_metrics.reset()
         self.valid_iou_metrics.reset()
         with torch.no_grad():
@@ -329,7 +320,7 @@ class LayerwiseTrainer(BaseTrainer):
         self.model.training = False
         self.model.cpu()
         self.model.student.to(self.device)
-    
+
         # prepare before running submission
         self.test_metrics.reset()
         self.test_iou_metrics.reset()
@@ -339,7 +330,7 @@ class LayerwiseTrainer(BaseTrainer):
         if save_4_sm and not os.path.exists(path_output):
             os.mkdir(path_output)
         n_samples = len(self.valid_data_loader)
-        
+
         with torch.no_grad():
             for batch_idx, (img_name, data, target) in enumerate(self.valid_data_loader):
                 self.logger.info('{}/{}'.format(batch_idx, n_samples))
@@ -354,7 +345,7 @@ class LayerwiseTrainer(BaseTrainer):
 
                 for met in self.metric_ftns:
                     self.test_metrics.update(met.__name__, met(output, target))
-        
+
         result = self.test_metrics.result()
         result['mIoU'] = self.test_iou_metrics.get_iou()
 
@@ -396,8 +387,8 @@ class LayerwiseTrainer(BaseTrainer):
         epoch = checkpoint['epoch']  # stopped epoch
 
         # load model state from checkpoint
-        # first, align the network by replacing depthwise separable for student 
-        for i in range(1, epoch+1):
+        # first, align the network by replacing depthwise separable for student
+        for i in range(1, epoch + 1):
             self.prepare_train_epoch(i, config)
         # load weight
         forgiving_state_restore(self.model, checkpoint['state_dict'])

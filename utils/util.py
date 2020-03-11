@@ -187,3 +187,22 @@ class EarlyStopTracker:
         self.last_update_success = True
 
 
+class ImportanceFilterTracker:
+    def __init__(self, writer):
+        self.writer = writer
+        self.importance_dict = list()
+
+    def update_importance_list(self, added_gates):
+        for name, gate_layer in added_gates.items():
+            self.importance_dict[name] = np.zeros(gate_layer.num_features)
+
+    def update(self, new_importance_dict):
+        for name, vector in new_importance_dict.items():
+            self.importance_dict[name] += vector
+
+    def average(self):
+        result = dict()
+        for name, vector in self.importance_dict.items():
+            result[name] = np.mean(vector)
+
+        return result
