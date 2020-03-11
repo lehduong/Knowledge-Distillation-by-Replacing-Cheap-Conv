@@ -26,11 +26,18 @@ class Cifar10Dataloader(BaseDataLoader):
     """
 
     def __init__(self, data_dir, batch_size, shuffle=True, validation_split=0.0, num_workers=1, training=True):
-        trsfm = tfs.Compose([
-            tfs.ToTensor(),
-            tfs.Normalize(mean=[0.491, 0.482, 0.447],
-                          std=[0.247, 0.243, 0.262])
-        ])
+        if training:
+            trsfm = tfs.Compose([
+                tfs.RandomCrop(32, padding=4),
+                tfs.RandomHorizontalFlip(),
+                tfs.ToTensor(),
+                tfs.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+            ])
+        else:
+            trsfm = tfs.Compose([
+                tfs.ToTensor(),
+                tfs.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+            ])
         self.data_dir = data_dir
         self.dataset = datasets.CIFAR10(self.data_dir, train=training, download=True, transform=trsfm)
         super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers)
