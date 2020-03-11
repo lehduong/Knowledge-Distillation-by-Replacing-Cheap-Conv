@@ -41,6 +41,8 @@ class DepthwiseStudent(BaseModel):
         # auxiliary layer
         self.aux_block_names = list()
 
+        self.save_hidden = True 
+
     def register_hint_layers(self, block_names):
         """
         Register auxiliary layers for computing hint loss
@@ -58,7 +60,7 @@ class DepthwiseStudent(BaseModel):
 
             # teacher's hook
             def teacher_handle(m, inp, out):
-                if self.training:
+                if self.save_hidden:
                     self.teacher_hidden_outputs.append(out)
 
             teacher_handler = teacher_block.register_forward_hook(teacher_handle)
@@ -66,7 +68,7 @@ class DepthwiseStudent(BaseModel):
 
             # student's hook
             def student_handle(m, inp, out):
-                if self.training:
+                if self.save_hidden:
                     self.student_hidden_outputs.append(out)
 
             student_handler = student_block.register_forward_hook(student_handle)
