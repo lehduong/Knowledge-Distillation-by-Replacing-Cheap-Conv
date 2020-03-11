@@ -7,10 +7,10 @@ import losses as module_loss
 import models.metric as module_metric
 import models as module_arch
 import utils.optim as module_optim
-from models.students import DepthwiseStudent, AnalysisStudent
+from models.students import DepthwiseStudent, AnalysisStudent, TaylorPruneStudent
 from data_loader import _create_transform
 from parse_config import ConfigParser
-from trainer import LayerwiseTrainer, AnalysisTrainer
+from trainer import LayerwiseTrainer, AnalysisTrainer, TaylorPruneTrainer
 from utils import WeightScheduler
 
 # fix random seeds for reproducibility
@@ -39,6 +39,8 @@ def main(config):
         student = DepthwiseStudent(teacher, config)
     elif config['trainer']['name'] == 'AnalysisTrainer':
         student = AnalysisStudent(teacher, config)
+    elif config['trainer']['name'] == 'TaylorPruneTrainer':
+        student = TaylorPruneStudent(teacher, config)
     else:
         raise NotImplementedError("Supported: Layerwise Trainer")
 
@@ -62,6 +64,9 @@ def main(config):
     elif config['trainer']['name'] == 'AnalysisTrainer':
         trainer = AnalysisTrainer(student, criterions, metrics, optimizer, config, train_data_loader,
                                   valid_data_loader, lr_scheduler, weight_scheduler)
+    elif config['trainer']['name'] == 'TaylorPruneTrainer':
+        trainer = TaylorPruneTrainer(student, criterions, metrics, optimizer, config, train_data_loader,
+                                     valid_data_loader, lr_scheduler, weight_scheduler)
     else:
         raise NotImplementedError("Unsupported trainer")
 
