@@ -209,7 +209,8 @@ class ImportanceFilterTracker:
     def average(self):
         result = dict()
         for name, vector in self.importance_dict.items():
-            result[name] = vector / self.counter[name]
-            result[name] = softmax(result[name] * self.scale_factor / self.temperature)
+            mean_vector = vector / self.counter[name] * self.scale_factor
+            sum_importance = np.sum(mean_vector)
+            result[name] = mean_vector / sum_importance
 
         return result
