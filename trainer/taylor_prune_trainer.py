@@ -86,9 +86,7 @@ class TaylorPruneTrainer(BaseTrainer):
 
             # Check if there is any layer that would any update in current epoch
         # list of epochs that would have an update on student networks
-        epochs = list(map(lambda x: x['epoch'], config['pruning']['pruning_plan'] +
-                          config['pruning']['hint'] +
-                          config['pruning']['unfreeze']))
+        epochs = list(map(lambda x: x['epoch'], config['pruning']['pruning_plan']))
         # if there isn't any update then simply return
         if epoch not in epochs:
             self.logger.info('EPOCH: ' + str(epoch))
@@ -248,6 +246,15 @@ class TaylorPruneTrainer(BaseTrainer):
                         self.train_metrics.avg('teacher_loss'),
                     ))
 
+            if batch_idx % self.importance_log_interval == 0:
+                importance_hitherto = self.importance_tracker.average()
+                self.logger.info('Importance of filters in layers')
+                for name, vector in importance_hitherto.items():
+                    self.logger.info('{}: {}'.format(name, vector))
+                    filename = 'importance_filter_ep{}_batch_idx{}'.format(epoch, batch_idx)
+                    file_path = os.path.join(self.checkpoint_dir, filename)
+                    torch.save(importance_hitherto, file_path)
+
             if batch_idx == self.len_epoch:
                 break
 
@@ -260,14 +267,6 @@ class TaylorPruneTrainer(BaseTrainer):
             log.update(**{'val_' + k: v for k, v in val_log.items()})
             log.update(**{'val_mIoU': self.valid_iou_metrics.get_iou()})
             self.val_iou_tracker.update(self.valid_iou_metrics.get_iou())
-
-        if batch_idx % self.importance_log_interval == 0:
-            importance_hitherto = self.importance_tracker.average()
-            self.logger.info('Importance of filters in layers')
-            for name, vector in importance_hitherto:
-                self.logger.info('{}: {}'.format(name, vector))
-                filename = 'importance_filter_ep{}_batch_idx{}'.format(epoch, batch_idx)
-                torch.save(importance_hitherto, filename)
 
         self._teacher_student_iou_gap = self.train_teacher_iou_metrics.get_iou() - self.train_iou_metrics.get_iou()
 

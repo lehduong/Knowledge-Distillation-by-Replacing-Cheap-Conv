@@ -6,6 +6,7 @@ from pathlib import Path
 from itertools import repeat
 from collections import OrderedDict
 from PIL import Image
+from scipy.special import softmax
 
 
 def stat_cuda(msg):
@@ -190,19 +191,24 @@ class EarlyStopTracker:
 class ImportanceFilterTracker:
     def __init__(self, writer):
         self.writer = writer
-        self.importance_dict = list()
+        self.importance_dict = dict()
+        self.counter = dict()
+        self.temperature = 1
 
     def update_importance_list(self, added_gates):
         for name, gate_layer in added_gates.items():
             self.importance_dict[name] = np.zeros(gate_layer.num_features)
+            self.counter[name] = 0.
 
     def update(self, new_importance_dict):
         for name, vector in new_importance_dict.items():
             self.importance_dict[name] += vector
+            self.counter[name] += 1
 
     def average(self):
         result = dict()
         for name, vector in self.importance_dict.items():
-            result[name] = np.mean(vector)
+            result[name] = vector / self.counter[name]
+            result[name] = softmax(result[name] / self.temperature)
 
         return result

@@ -15,16 +15,17 @@ class TaylorPruneStudent(DepthwiseStudent):
         super().__init__(teacher_model, config)
         self.added_gates = dict()
 
-    def replace(self, block_names, **kwargs):
+    def replace(self, blocks, **kwargs):
         """
         Replace a block with itself + gate layer
-        :param block_names: str
+        :param blocks: dict
         :return:
         """
-        # gate is a vector with "num_features" element
-        num_features = kwargs['num_features']
 
-        for block_name in block_names:
+        for block in blocks:
+            block_name = block['name']
+            # gate is a vector with "num_features" element
+            num_features = block['num_features']
             self.replaced_block_names.append(block_name)
             # get teacher block to retrieve information such as channel dim,...
             teacher_block = self.get_block(block_name, self.teacher)
@@ -55,12 +56,12 @@ class TaylorPruneStudent(DepthwiseStudent):
         logger.debug("Reset completed...")
 
     def get_gate_importance(self):
-        importance_dict = ()
+        importance_dict = dict()
         for name, gate_layer in self.added_gates.items():
             gate_weight = gate_layer.weight
             gate_grad = gate_layer.weight.grad
             importance = (gate_weight*gate_grad)**2
-            importance_dict[name] = importance.cpu().numpy()
+            importance_dict[name] = importance.detach().cpu().numpy()
 
         return importance_dict
 
