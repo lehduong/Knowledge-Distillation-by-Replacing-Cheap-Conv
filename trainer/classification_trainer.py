@@ -16,7 +16,8 @@ class ClassificationTrainer(LayerwiseTrainer):
     def _train_epoch(self, epoch):
         self.prepare_train_epoch(epoch)
 
-        self.model.student.training = True
+        self.model.student.train()
+        self.model.save_hidden = True
         self.train_metrics.reset()
         self._clean_cache()
 
@@ -107,7 +108,8 @@ class ClassificationTrainer(LayerwiseTrainer):
         :param epoch: Integer, current training epoch.
         :return: A log that contains information about validation
         """
-        self.model.student.training = False
+        self.model.student.eval()
+        self.model.save_hidden = False 
         self.valid_metrics.reset()
         with torch.no_grad():
             for batch_idx, (data, target) in enumerate(self.valid_data_loader):

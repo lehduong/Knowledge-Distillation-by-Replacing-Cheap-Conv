@@ -1,8 +1,10 @@
 from .classification_trainer import ClassificationTrainer
-from utils.optim.lr_scheduler import MyOneCycleLR, MyReduceLROnPlateau 
+from utils.optim.lr_scheduler import MyOneCycleLR, MyReduceLROnPlateau
 from functools import reduce
-from utils import MetricTracker 
-import torch 
+from utils import MetricTracker
+from models import forgiving_state_restore
+import torch
+import copy
 
 class EnsembleTrainer(ClassificationTrainer):
     def __init__(self, model, criterions, metric_ftns, optimizer, config, train_data_loader,
@@ -12,6 +14,25 @@ class EnsembleTrainer(ClassificationTrainer):
 
         self.train_teacher_metrics = MetricTracker(*[m.__name__ for m in self.metric_ftns], writer=self.writer)
         self.test_data_loader = test_data_loader
+
+    def resume(self, checkpoint_paths):
+        self.models = []
+        for i, checkpoint_path in enumerate(checkpoint_paths):
+            self.logger.info("Loading checkpoint: {} ...".format(checkpoint_path))
+            checkpoint = torch.load(checkpoint_path, map_location=torch.device('cpu'))
+
+            config = checkpoint['config']  # config of checkpoint
+            epoch = checkpoint['epoch']  # stopped epoch
+
+            # load model state from checkpoint
+            # first, align the network by replacing depthwise separable for student
+            for i in range(1, epoch+1):
+                self.prepare_train_epoch(i, config)
+            # load weight
+            forgiving_state_restore(self.model, checkpoint['state_dict'])
+            self.logger.info("Loaded state dict for model {}".format(i))
+            self.models.append(self.model.student)
+            self.model.student = copy.deepcopy(self.model.teacher)
 
     def _train_epoch(self, epoch):
         self.prepare_train_epoch(epoch)
@@ -37,7 +58,7 @@ class EnsembleTrainer(ClassificationTrainer):
             # Only use hint loss
             loss = hint_loss
             loss.backward()
-            
+
             if (batch_idx + 1) % self.accumulation_steps == 0:
                 self.optimizer.step()
                 self.optimizer.zero_grad()

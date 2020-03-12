@@ -40,7 +40,8 @@ class AnalysisTrainer(LayerwiseTrainer):
 
     def _train_epoch(self, epoch, **kwargs):
         # reset
-        self.model.training = True  # hack: save hidden output if training is set to true
+        # self.model.student.train()
+        self.model.save_hidden = True  # hack: save hidden output if training is set to true
         self.train_metrics.reset()
         self.train_iou_metrics.reset()
         self.train_teacher_iou_metrics.reset()
