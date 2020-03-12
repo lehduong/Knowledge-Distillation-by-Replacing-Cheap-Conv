@@ -13,7 +13,7 @@
             "data_dir": "data/",
             "batch_size": 32,
             "shuffle": true,
-            "validation_split": 0.1,
+            "validation_split": 0.0001,
             "num_workers": 0,
             "training": true
         }
@@ -32,7 +32,7 @@
     "optimizer": {
         "type": "RAdam",
         "args": {
-            "lr": 0.01
+            "lr": 0.001
         }
     },
     "supervised_loss": {
@@ -42,10 +42,9 @@
         }
     },
     "kd_loss": {
-        "type": "MSELoss",
+        "type": "KLDivergenceLoss",
         "args": {
-            "reduction": "mean",
-            "num_classes": 1
+            "temperature": 5
         }
     },
     "hint_loss": {
@@ -60,9 +59,9 @@
         "type": "MyReduceLROnPlateau",
         "args": {
             "mode": "min",
-            "threshold": 0.02,
-            "factor": 0.5,
-            "patience": 0,
+            "threshold": 0.005,
+            "factor": 0.1,
+            "patience": 10,
             "verbose": true,
             "min_lr": 1e-06,
             "threshold_mode": "rel"
@@ -90,7 +89,7 @@
         },
         "hint": [
             {
-                "name": "linear",
+                "name": "layer3",
                 "epoch": 1
             }
         ],
@@ -102,15 +101,15 @@
         ],
         "pruning_plan": [
             {
-                "name": "layer3.0.conv2",
-                "epoch": 1
-            },
-            {
                 "name": "layer3.1.conv1",
                 "epoch": 1
             },
             {
                 "name": "layer3.1.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "layer3.0.conv2",
                 "epoch": 1
             }
         ]

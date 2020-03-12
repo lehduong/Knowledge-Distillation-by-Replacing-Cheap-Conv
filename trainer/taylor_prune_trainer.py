@@ -186,7 +186,8 @@ class TaylorPruneTrainer(BaseTrainer):
         self.prepare_train_epoch(epoch)
 
         # reset
-        self.model.training = True  # hack: save hidden output if training is set to true
+        #self.model.train() 
+        self.model.save_hidden = True
         self.train_metrics.reset()
         self.train_iou_metrics.reset()
         self.train_teacher_iou_metrics.reset()
@@ -294,7 +295,8 @@ class TaylorPruneTrainer(BaseTrainer):
         :return: A log that contains information about validation
         """
         self._clean_cache()
-        self.model.training = False  # Hack: do not save hidden output if training is set to false
+        #self.model.eval()
+        self.model.save_hidden = False
         self.valid_metrics.reset()
         self.valid_iou_metrics.reset()
         with torch.no_grad():
@@ -317,7 +319,8 @@ class TaylorPruneTrainer(BaseTrainer):
     def _test_epoch(self, epoch):
         # cleaning up memory
         self._clean_cache()
-        self.model.training = False
+        # self.model.eval()
+        self.model.save_hidden = False
         self.model.cpu()
         self.model.student.to(self.device)
 

@@ -198,7 +198,12 @@ class LayerwiseTrainer(BaseTrainer):
         self.prepare_train_epoch(epoch)
 
         # reset
-        self.model.training = True  # hack: save hidden output if training is set to true
+        # FIXME:
+        # as the teacher network contain batchnorm layer and our resources are limited to train with 
+        # large batch size we ALWAYS keep bn as training mode to prevent instable problem when having 
+        # small batch size
+        # self.model.train()
+        self.model.save_hidden = True  # saving hidden output to compute mimic loss
         self.train_metrics.reset()
         self.train_iou_metrics.reset()
         self.train_teacher_iou_metrics.reset()
@@ -300,7 +305,12 @@ class LayerwiseTrainer(BaseTrainer):
         :return: A log that contains information about validation
         """
         self._clean_cache()
-        self.model.training = False  # Hack: do not save hidden output if training is set to false 
+        # FIXME:
+        # as the teacher network contain batchnorm layer and our resources are limited to train with 
+        # large batch size we ALWAYS keep bn as training mode to prevent instable problem when having 
+        # small batch size
+        # self.model.eval()
+        self.model.save_hidden = False  # stop saving hidden output 
         self.valid_metrics.reset()
         self.valid_iou_metrics.reset()
         with torch.no_grad():
@@ -323,7 +333,8 @@ class LayerwiseTrainer(BaseTrainer):
     def _test_epoch(self, epoch):
         # cleaning up memory
         self._clean_cache()
-        self.model.training = False
+        # self.model.eval()
+        self.model.save_hidden = False
         self.model.cpu()
         self.model.student.to(self.device)
     

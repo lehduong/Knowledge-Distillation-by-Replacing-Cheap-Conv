@@ -50,7 +50,8 @@ class DepthwiseStudent(BaseModel):
         :return:
         """
         # remove all added hint layers....
-        self._remove_hooks()
+        if len(block_names) > 0:
+            self._remove_hooks()
         # add new hint layers
         for block_name in block_names:
             self.aux_block_names.append(block_name)
