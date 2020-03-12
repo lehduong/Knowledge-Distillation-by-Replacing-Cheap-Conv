@@ -9,7 +9,7 @@ import models.cifar_models as module_arch
 import utils.optim as module_optim
 from models.students import DepthwiseStudent, AnalysisStudent
 from parse_config import ConfigParser
-from trainer import ClassificationTrainer
+from trainer import ClassificationTrainer, EnsembleTrainer
 from utils import WeightScheduler
 
 # fix random seeds for reproducibility
@@ -34,6 +34,8 @@ def main(config):
     # build models architecture, then print to console
     if config['trainer']['name'] == 'ClassificationTrainer':
         student = DepthwiseStudent(teacher, config)
+    elif config['trainer']['name'] == 'EnsembleTrainer':
+        student = DepthwiseStudent(teacher, config)
     elif config['trainer']['name'] == 'AnalysisTrainer':
         student = AnalysisStudent(teacher, config)
     else:
@@ -56,9 +58,14 @@ def main(config):
     weight_scheduler = WeightScheduler(config['weight_scheduler'])
 
     # Run trainer
-    trainer = ClassificationTrainer(student, criterions, metrics, optimizer, config, train_data_loader,
-                                    valid_data_loader, lr_scheduler, weight_scheduler, test_data_loader)
-
+    if config['trainer']['name'] == 'ClassificationTrainer':
+        trainer = ClassificationTrainer(student, criterions, metrics, optimizer, config, train_data_loader,
+                                        valid_data_loader, lr_scheduler, weight_scheduler, test_data_loader)
+    elif config['trainer']['name'] == 'EnsembleTrainer':
+        trainer = EnsembleTrainer(student, criterions, metrics, optimizer, config, train_data_loader,
+                                  valid_data_loader, lr_scheduler, weight_scheduler, test_data_loader)
+    else:
+        raise NotImplementedError("Only support Classification, Ensemble Trainer")
     trainer.train()
 
 if __name__ == '__main__':
