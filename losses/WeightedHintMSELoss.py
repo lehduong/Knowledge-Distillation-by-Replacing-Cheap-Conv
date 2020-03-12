@@ -41,6 +41,6 @@ class TopkHintMSELoss(nn.Module):
 
         sq_diff = (inputs - targets) ** 2
         spatial_reduced = sq_diff.mean(dim=(-1, -2))
-        masked_loss = spatial_reduced*mask
+        masked_loss = spatial_reduced*mask.cuda()
         reduced_loss = masked_loss.sum() / mask.sum()
         return reduced_loss
