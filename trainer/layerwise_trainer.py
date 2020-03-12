@@ -333,7 +333,8 @@ class LayerwiseTrainer(BaseTrainer):
     def _test_epoch(self, epoch):
         # cleaning up memory
         self._clean_cache()
-        self.model.training = False
+        # self.model.eval()
+        self.model.save_hidden = False
         self.model.cpu()
         self.model.student.to(self.device)
     

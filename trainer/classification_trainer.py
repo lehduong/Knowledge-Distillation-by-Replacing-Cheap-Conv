@@ -16,7 +16,7 @@ class ClassificationTrainer(LayerwiseTrainer):
     def _train_epoch(self, epoch):
         self.prepare_train_epoch(epoch)
 
-        self.model.student.train()
+        self.model.train()
         self.model.save_hidden = True
         self.train_metrics.reset()
         self._clean_cache()
@@ -108,7 +108,7 @@ class ClassificationTrainer(LayerwiseTrainer):
         :param epoch: Integer, current training epoch.
         :return: A log that contains information about validation
         """
-        self.model.student.eval()
+        self.model.eval()
         self.model.save_hidden = False 
         self.valid_metrics.reset()
         with torch.no_grad():
@@ -132,17 +132,14 @@ class ClassificationTrainer(LayerwiseTrainer):
         :param epoch: Integer, current training epoch.
         :return: A log that contains information about validation
         """
-        self.model.student.training = False
+        self.model.eval()
+        self.model.save_hidden = False
         self.test_metrics.reset()
         with torch.no_grad():
             for batch_idx, (data, target) in enumerate(self.test_data_loader):
                 data, target = data.to(self.device), target.to(self.device)
                 output, _ = self.model(data)
-                supervised_loss = self.criterions[0](output, target)
-
                 self.writer.set_step((epoch - 1) * len(self.test_data_loader) + batch_idx, 'valid')
-                self.test_metrics.update('supervised_loss', supervised_loss.item())
-
                 for met in self.metric_ftns:
                     self.test_metrics.update(met.__name__, met(output, target))
 
