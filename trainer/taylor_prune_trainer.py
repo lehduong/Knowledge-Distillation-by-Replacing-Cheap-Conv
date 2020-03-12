@@ -197,7 +197,8 @@ class TaylorPruneTrainer(BaseTrainer):
 
             output_st, output_tc = self.model(data)
 
-            supervised_loss = self.criterions[0](output_st, target) / self.accumulation_steps
+            # do not divide accumulation_steps to keep value of gradient
+            supervised_loss = self.criterions[0](output_st, target)
             teacher_loss = self.criterions[0](output_tc, target)  # for comparision
 
             # Only use supervised loss

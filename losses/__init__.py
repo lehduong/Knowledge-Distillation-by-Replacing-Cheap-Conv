@@ -3,4 +3,4 @@ from .JSDiv import JSDivergenceLoss
 from .KLDiv import KLDivergenceLoss
 from .MSELoss import MSELoss
 from .FocalLoss import FocalLoss
-from .WeightedHintMSELoss import WeightedHintMSELoss
+from .WeightedHintMSELoss import WeightedHintMSELoss, TopkHintMSELoss
