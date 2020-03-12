@@ -36,7 +36,7 @@ class ClassificationTrainer(LayerwiseTrainer):
             teacher_loss = self.criterions[0](output_tc, target)  # for comparision
 
             # Only use hint loss
-            loss = hint_loss
+            loss = hint_loss + kd_loss
             loss.backward()
             
             if (batch_idx + 1) % self.accumulation_steps == 0:

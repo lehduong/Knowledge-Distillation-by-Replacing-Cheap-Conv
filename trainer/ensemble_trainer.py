@@ -6,6 +6,7 @@ from models import forgiving_state_restore
 from torch import nn
 import torch
 import copy
+from models.cifar_models import resnet20, resnet56,resnet110
 
 class EnsembleTrainer(ClassificationTrainer):
     """
@@ -19,7 +20,7 @@ class EnsembleTrainer(ClassificationTrainer):
         if not 'resume_paths' in self.config['trainer']:
             raise ValueError("Cannot find path to checkpoints, please specify them by adding 'resume_paths' in config.trainer")
         self.models = []
-        self.resume(self.config['resume_paths'])
+        self.resume(self.config['trainer']['resume_paths'])
 
     def resume(self, checkpoint_paths):
         for i, checkpoint_path in enumerate(checkpoint_paths):
@@ -61,16 +62,16 @@ class EnsembleTrainer(ClassificationTrainer):
             model.eval()
         self.test_metrics.reset()
         softmax = nn.Softmax(dim=1)
+        
         with torch.no_grad():
             for batch_idx, (data, target) in enumerate(self.test_data_loader):
                 data, target = data.to(self.device), target.to(self.device)
                 # Unweighted average predictions from list of models 
-                output = self.models[0](data)
-                for model in self.models[1:]:
-                    tmp, _ = model(data)
-                    tmp = softmax(tmp)
+                output = softmax(self.model.teacher(data))
+                for model in self.models:
+                    tmp = softmax(model(data))
                     output = output + tmp
-                output = output / len(self.models)
+                output = output/(len(self.models)+1)
                 # Update Metrics
                 self.writer.set_step((epoch - 1) * len(self.test_data_loader) + batch_idx, 'valid')
                 for met in self.metric_ftns:

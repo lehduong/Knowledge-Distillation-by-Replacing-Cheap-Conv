@@ -66,6 +66,11 @@ def main(config):
                                   valid_data_loader, lr_scheduler, weight_scheduler, test_data_loader)
     else:
         raise NotImplementedError("Only support Classification, Ensemble Trainer")
+
+    if config['trainer']['name'] == 'EnsembleTrainer':
+        trainer.test()
+        return 
+        
     trainer.train()
 
 if __name__ == '__main__':
