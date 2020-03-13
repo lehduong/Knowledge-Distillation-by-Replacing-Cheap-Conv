@@ -73,14 +73,18 @@ class EnsembleTrainer(ClassificationTrainer):
         for batch_idx, (data, target) in enumerate(self.train_data_loader):
             data, target = data.to(self.device), target.to(self.device)
 
-            output_st, _ = self.model(data)
-            ensemble_output = self.ensemble_predict(data, weight=0.1)
-
+            output_st, output_tc = self.model(data)
+            with torch.no_grad():
+                outputs = []
+                for model in self.models:
+                    outputs += model(data)
             supervised_loss = self.criterions[0](output_st, target) / self.accumulation_steps
-            kd_loss = self.criterions[1](output_st, ensemble_output)/ self.accumulation_steps
-            
+            weight = 1
+            kd_loss = reduce(lambda acc, elem: acc + weight*self.criterions[1](output_st, elem), outputs, 0) 
+            kd_loss += self.criterion[1](output_st, output_tc)
+            kd_loss = kd_loss/ (weight*len(outputs)+1) / (self.accumulation_steps)
             # Only use hint loss
-            loss = kd_loss
+            loss = kd_loss+supervised_loss
             loss.backward()
 
             if (batch_idx + 1) % self.accumulation_steps == 0:
@@ -164,7 +168,6 @@ class EnsembleTrainer(ClassificationTrainer):
     def _valid_epoch(self, epoch):
         """
         Validate after training an epoch
-
         :param epoch: Integer, current training epoch.
         :return: A log that contains information about validation
         """
@@ -197,9 +200,9 @@ class EnsembleTrainer(ClassificationTrainer):
         with torch.no_grad():
             for batch_idx, (data, target) in enumerate(self.test_data_loader):
                 data, target = data.to(self.device), target.to(self.device)
-                output = self.ensemble_predict(data, weight=0.1)
+                output = self.ensemble_predict(data)
                 # Update Metrics
-                self.writer.set_step((epoch - 1) * len(self.test_data_loader) + batch_idx, 'valid')
+                self.writer.set_step((epoch - 1) * len(self.test_data_loader) + batch_idx, 'test')
                 for met in self.metric_ftns:
                     self.test_metrics.update(met.__name__, met(output, target))
 
