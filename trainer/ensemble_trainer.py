@@ -187,6 +187,7 @@ class EnsembleTrainer(ClassificationTrainer):
         """
         for model in self.models:
             model.eval()
+        self.model.teacher.eval()
         self.test_metrics.reset()
         softmax = nn.Softmax(dim=1)
         
