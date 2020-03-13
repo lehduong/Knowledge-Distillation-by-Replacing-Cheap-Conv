@@ -1,5 +1,5 @@
 {
-    "name": "KnowledgeDistillation",
+    "name": "Cifar10_Resnet20_Config3",
     "n_gpu": 1,
     "teacher": {
         "type": "resnet20",
@@ -59,7 +59,7 @@
         "type": "MyReduceLROnPlateau",
         "args": {
             "mode": "min",
-            "threshold": 0.005,
+            "threshold": 0.05,
             "factor": 0.1,
             "patience": 10,
             "verbose": true,
@@ -73,11 +73,11 @@
         "save_dir": "saved/",
         "save_period": 1,
         "verbosity": 2,
-        "monitor": "max val_accuracy",
+        "monitor": "max test_accuracy",
         "early_stop": 1000,
         "accumulation_steps": 1,
         "log_step": 100,
-        "do_validation_interval": 4,
+        "do_validation_interval": 1,
         "lr_scheduler_step_interval": 15,
         "tensorboard": true
     },
@@ -89,27 +89,23 @@
         },
         "hint": [
             {
-                "name": "layer3",
+                "name": "layer3.2",
                 "epoch": 1
             }
         ],
         "unfreeze": [
             {
-                "name": "layer3",
+                "name": "layer3.2",
                 "epoch": 1
             }
         ],
         "pruning_plan": [
             {
-                "name": "layer3.1.conv1",
+                "name": "layer3.2.conv1",
                 "epoch": 1
             },
             {
-                "name": "layer3.1.conv2",
-                "epoch": 1
-            },
-            {
-                "name": "layer3.0.conv2",
+                "name": "layer3.2.conv2",
                 "epoch": 1
             }
         ]
