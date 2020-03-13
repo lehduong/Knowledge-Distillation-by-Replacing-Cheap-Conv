@@ -42,19 +42,146 @@ class EnsembleTrainer(ClassificationTrainer):
             self.models.append(self.model.student)
             # rewind the student network back to teacher
             self.model.student = copy.deepcopy(self.model.teacher)
-            
+            self.model.replaced_block_names = []
+        for param in self.model.student.parameters():
+            param.requires_grad = True 
         self.logger.info('loaded state dict for all models')
 
+    def prepare_models(self, epoch):
+        # freeze the teacher and unfreeze student
+        self.logger.debug('Freeze teacher and Unfreeze student networks')
+        for param in self.model.student.parameters():
+            param.requires_grad = True 
+        for param in self.model.teacher.parameters():
+            param.requires_grad = False 
+        # set teacher and other ensemble model to eval() 
+        self.logger.debug('Set ensemble model to eval mode and student model to train mode')
+        for model in self.models:
+            model.eval()
+        self.model.teacher.eval()
+        # student to train()
+        self.model.student.train()
+        # disable hint layer
+        self.model.save_hidden = False 
+        if epoch == 1:
+            self.create_new_optimizer()
+
     def _train_epoch(self, epoch):
-        raise NotImplementedError("Ensemble Trainer only support test method...")
+        self.prepare_models(epoch)
+        self.train_metrics.reset()
+        self._clean_cache()
+
+        for batch_idx, (data, target) in enumerate(self.train_data_loader):
+            data, target = data.to(self.device), target.to(self.device)
+
+            output_st, _ = self.model(data)
+            ensemble_output = self.ensemble_predict(data, weight=0.1)
+
+            supervised_loss = self.criterions[0](output_st, target) / self.accumulation_steps
+            kd_loss = self.criterions[1](output_st, ensemble_output)/ self.accumulation_steps
+            
+            # Only use hint loss
+            loss = kd_loss
+            loss.backward()
+
+            if (batch_idx + 1) % self.accumulation_steps == 0:
+                self.optimizer.step()
+                self.optimizer.zero_grad()
+
+            self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
+
+            # update metrics
+            self.train_metrics.update('loss', loss.item() * self.accumulation_steps)
+            self.train_metrics.update('supervised_loss', supervised_loss.item() * self.accumulation_steps)
+            self.train_metrics.update('kd_loss', kd_loss.item() * self.accumulation_steps)
+
+            for met in self.metric_ftns:
+                self.train_metrics.update(met.__name__, met(output_st, target))
+
+            for met in self.metric_ftns:
+                self.train_teacher_metrics.update(met.__name__, met(ensemble_output, target))
+
+            if batch_idx % self.log_step == 0:
+                # self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
+                self.logger.info(
+                    'Train Epoch: {} [{}]/[{}] acc: {:.6f} teacher_acc: {:.6f} Loss: {:.6f} Supervised Loss: {:.6f} '
+                    'Knowledge Distillation loss: {:.6f}'.format(
+                        epoch,
+                        batch_idx,
+                        self.len_epoch,
+                        self.train_metrics.avg('accuracy'),
+                        self.train_teacher_metrics.avg('accuracy'),
+                        self.train_metrics.avg('loss'),
+                        self.train_metrics.avg('supervised_loss'),
+                        self.train_metrics.avg('kd_loss'),
+                    ))
+
+            if batch_idx == self.len_epoch:
+                break
+
+        log = self.train_metrics.result()
+
+        if self.do_validation and ((epoch % self.do_validation_interval) == 0):
+            # clean cache to prevent out-of-memory with 1 gpu
+            self._clean_cache()
+            val_log = self._valid_epoch(epoch)
+            log.update(**{'val_' + k: v for k, v in val_log.items()})
+
+        if (self.lr_scheduler is not None) and (not isinstance(self.lr_scheduler, MyOneCycleLR)):
+            if isinstance(self.lr_scheduler, MyReduceLROnPlateau):
+                self.lr_scheduler.step(self.train_metrics.avg('loss'))
+            else:
+                self.lr_scheduler.step()
+
+        self.weight_scheduler.step()
+
+        return log
+
+    def ensemble_predict(self, data, weight=0.1):
+        """
+        :param data: Tensor of shape (Bx3xHxW)
+        :param weight: weight of student predictions
+        :return: ACTIVATED Tensor of shape (BxC) for classification or (BxCxHxW) for segmentation
+                by activated, I mean the tensor have already gone through softmax layer
+        """
+        # classification
+        # TODO: Only compatible with classification
+        softmax = nn.Softmax(dim=1)
+        with torch.no_grad():
+            # predict of teacher network
+            output = softmax(self.model.teacher(data))
+            # enhance the teacher prediction with student networks
+            for model in self.models:
+                tmp = softmax(model(data))
+                output = output + weight*tmp
+            # normalize 
+            output = output/(1+len(self.models)*weight)
+        return output 
 
     def _valid_epoch(self, epoch):
-        raise NotImplementedError("Ensemble Trainer only support test method...")
+        """
+        Validate after training an epoch
+
+        :param epoch: Integer, current training epoch.
+        :return: A log that contains information about validation
+        """
+        self.model.eval()
+        self.model.save_hidden = False 
+        self.valid_metrics.reset()
+        with torch.no_grad():
+            for batch_idx, (data, target) in enumerate(self.test_data_loader):
+                data, target = data.to(self.device), target.to(self.device)
+                output, _ = self.model(data)
+
+                self.writer.set_step((epoch - 1) * len(self.valid_data_loader) + batch_idx, 'valid')
+                for met in self.metric_ftns:
+                    self.valid_metrics.update(met.__name__, met(output, target))
+
+        return self.valid_metrics.result()
 
     def _test_epoch(self, epoch):
         """
-        Test after training an epoch
-
+        Testing with ensemble models
         :param epoch: Integer, current training epoch.
         :return: A log that contains information about validation
         """
@@ -66,12 +193,7 @@ class EnsembleTrainer(ClassificationTrainer):
         with torch.no_grad():
             for batch_idx, (data, target) in enumerate(self.test_data_loader):
                 data, target = data.to(self.device), target.to(self.device)
-                # Unweighted average predictions from list of models 
-                output = softmax(self.model.teacher(data))
-                for model in self.models:
-                    tmp = softmax(model(data))
-                    output = output + tmp
-                output = output/(len(self.models)+1)
+                output = self.ensemble_predict(data, weight=0.1)
                 # Update Metrics
                 self.writer.set_step((epoch - 1) * len(self.test_data_loader) + batch_idx, 'valid')
                 for met in self.metric_ftns:
