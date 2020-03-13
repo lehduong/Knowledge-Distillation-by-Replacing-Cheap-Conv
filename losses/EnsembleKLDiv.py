@@ -2,7 +2,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 
 
-class KLDivergenceLoss(nn.Module):
+class EnsembleKLDivergenceLoss(nn.Module):
     """
     Kullback-Leibler Divergence loss between 2 tensor
     return the KL divergence between distributions
@@ -13,7 +13,7 @@ class KLDivergenceLoss(nn.Module):
     """
 
     def __init__(self):
-        super(KLDivergenceLoss, self).__init__()
+        super(EnsembleKLDivergenceLoss, self).__init__()
 
     def forward(self, inputs, targets):
         p_s = F.log_softmax(inputs, dim=1)

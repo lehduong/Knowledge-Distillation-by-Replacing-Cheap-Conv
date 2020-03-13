@@ -20,9 +20,9 @@ class EnsembleTrainer(ClassificationTrainer):
         if not 'resume_paths' in self.config['trainer']:
             raise ValueError("Cannot find path to checkpoints, please specify them by adding 'resume_paths' in config.trainer")
         self.models = []
-        self.resume(self.config['trainer']['resume_paths'])
+        self.resume_ensemble(self.config['trainer']['resume_paths'])
 
-    def resume(self, checkpoint_paths):
+    def resume_ensemble(self, checkpoint_paths):
         for i, checkpoint_path in enumerate(checkpoint_paths):
             self.logger.info("Loading checkpoint: {} ...".format(checkpoint_path))
             checkpoint = torch.load(checkpoint_path, map_location=torch.device('cpu'))
@@ -43,8 +43,6 @@ class EnsembleTrainer(ClassificationTrainer):
             # rewind the student network back to teacher
             self.model.student = copy.deepcopy(self.model.teacher)
             self.model.replaced_block_names = []
-        for param in self.model.student.parameters():
-            param.requires_grad = True 
         self.logger.info('loaded state dict for all models')
 
     def prepare_models(self, epoch):
@@ -65,6 +63,7 @@ class EnsembleTrainer(ClassificationTrainer):
         self.model.save_hidden = False 
         if epoch == 1:
             self.create_new_optimizer()
+            self.logger.debug(self.model.student)
 
     def _train_epoch(self, epoch):
         self.prepare_models(epoch)
@@ -124,8 +123,12 @@ class EnsembleTrainer(ClassificationTrainer):
         if self.do_validation and ((epoch % self.do_validation_interval) == 0):
             # clean cache to prevent out-of-memory with 1 gpu
             self._clean_cache()
+            # single student model 
             val_log = self._valid_epoch(epoch)
             log.update(**{'val_' + k: v for k, v in val_log.items()})
+            # ensemble
+            tc_log = self._test_epoch(epoch)
+            log.update(**{'ensemble_' + k: v for k, v in tc_log.items()})
 
         if (self.lr_scheduler is not None) and (not isinstance(self.lr_scheduler, MyOneCycleLR)):
             if isinstance(self.lr_scheduler, MyReduceLROnPlateau):
