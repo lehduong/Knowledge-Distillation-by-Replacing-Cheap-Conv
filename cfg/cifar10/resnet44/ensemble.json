@@ -1,5 +1,5 @@
 {
-    "name": "Cifar10_Resnet44_Ensemble",
+    "name": "Cifar10_Resnet44_Config5",
     "n_gpu": 1,
     "teacher": {
         "type": "resnet44",
@@ -11,7 +11,7 @@
         "type": "Cifar10Dataloader",
         "args": {
             "data_dir": "data/",
-            "batch_size": 32,
+            "batch_size": 128,
             "shuffle": true,
             "validation_split": 0.0001,
             "num_workers": 0,
@@ -22,7 +22,7 @@
         "type": "Cifar10Dataloader",
         "args": {
             "data_dir": "data/",
-            "batch_size": 32,
+            "batch_size": 128,
             "shuffle": false,
             "validation_split": 0,
             "num_workers": 0,
@@ -30,9 +30,10 @@
         }
     },
     "optimizer": {
-        "type": "Adam",
+        "type": "SGD",
         "args": {
-            "lr": 0.0001
+            "lr": 0.001,
+            "momentum": 0.9
         }
     },
     "supervised_loss": {
@@ -42,8 +43,9 @@
         }
     },
     "kd_loss": {
-        "type": "EnsembleKLDivergenceLoss",
+        "type": "KLDivergenceLoss",
         "args": {
+          "temperature": 2
         }
     },
     "hint_loss": {
@@ -59,8 +61,8 @@
         "args": {
             "mode": "min",
             "threshold": 0.05,
-            "factor": 0.1,
-            "patience": 10,
+            "factor": 0.2,
+            "patience": 5,
             "verbose": true,
             "min_lr": 1e-06,
             "threshold_mode": "rel"

@@ -7,7 +7,7 @@ from torch import nn
 import torch
 import copy
 from models.cifar_models import resnet20, resnet56,resnet110
-
+WEIGHT = 0.1
 class EnsembleTrainer(ClassificationTrainer):
     """
         Used to run evaluation only
@@ -77,12 +77,11 @@ class EnsembleTrainer(ClassificationTrainer):
             with torch.no_grad():
                 outputs = []
                 for model in self.models:
-                    outputs += model(data)
+                    outputs += [model(data)]
             supervised_loss = self.criterions[0](output_st, target) / self.accumulation_steps
-            weight = 1
-            kd_loss = reduce(lambda acc, elem: acc + weight*self.criterions[1](output_st, elem), outputs, 0) 
-            kd_loss += self.criterion[1](output_st, output_tc)
-            kd_loss = kd_loss/ (weight*len(outputs)+1) / (self.accumulation_steps)
+            kd_loss = reduce(lambda acc, elem: acc + WEIGHT*self.criterions[1](output_st, elem), outputs, 0) 
+            kd_loss += self.criterions[1](output_st, output_tc)
+            kd_loss = kd_loss/ (WEIGHT*len(outputs)+1) / (self.accumulation_steps)
             # Only use hint loss
             loss = kd_loss+supervised_loss
             loss.backward()
@@ -102,7 +101,7 @@ class EnsembleTrainer(ClassificationTrainer):
                 self.train_metrics.update(met.__name__, met(output_st, target))
 
             for met in self.metric_ftns:
-                self.train_teacher_metrics.update(met.__name__, met(ensemble_output, target))
+                self.train_teacher_metrics.update(met.__name__, met(output_tc, target))
 
             if batch_idx % self.log_step == 0:
                 # self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
@@ -144,7 +143,7 @@ class EnsembleTrainer(ClassificationTrainer):
 
         return log
 
-    def ensemble_predict(self, data, weight=0.1):
+    def ensemble_predict(self, data, weight=WEIGHT):
         """
         :param data: Tensor of shape (Bx3xHxW)
         :param weight: weight of student predictions
@@ -195,7 +194,6 @@ class EnsembleTrainer(ClassificationTrainer):
             model.eval()
         self.model.teacher.eval()
         self.test_metrics.reset()
-        softmax = nn.Softmax(dim=1)
         
         with torch.no_grad():
             for batch_idx, (data, target) in enumerate(self.test_data_loader):
