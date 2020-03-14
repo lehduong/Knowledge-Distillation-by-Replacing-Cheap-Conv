@@ -1,5 +1,5 @@
 {
-    "name": "Cifar10_Resnet110_Config3",
+    "name": "Cifar10_Resnet110_Config1",
     "n_gpu": 1,
     "teacher": {
         "type": "resnet110",
@@ -11,7 +11,7 @@
         "type": "Cifar10Dataloader",
         "args": {
             "data_dir": "data/",
-            "batch_size": 32,
+            "batch_size": 128,
             "shuffle": true,
             "validation_split": 0.0001,
             "num_workers": 0,
@@ -22,7 +22,7 @@
         "type": "Cifar10Dataloader",
         "args": {
             "data_dir": "data/",
-            "batch_size": 32,
+            "batch_size": 128,
             "shuffle": false,
             "validation_split": 0,
             "num_workers": 0,
@@ -30,9 +30,10 @@
         }
     },
     "optimizer": {
-        "type": "RAdam",
+        "type": "SGD",
         "args": {
-            "lr": 0.001
+            "lr": 0.001,
+            "momentum": 0.9
         }
     },
     "supervised_loss": {
@@ -69,7 +70,7 @@
     },
     "trainer": {
         "name": "ClassificationTrainer",
-        "epochs": 1000,
+        "epochs": 20,
         "save_dir": "saved/",
         "save_period": 1,
         "verbosity": 2,
@@ -107,10 +108,6 @@
             {
                 "name": "layer3.15",
                 "epoch": 1
-            },
-            {
-                "name": "layer3.16",
-                "epoch": 1
             }
         ],
         "unfreeze": [
@@ -132,10 +129,6 @@
             },
             {
                 "name": "layer3.15",
-                "epoch": 1
-            },
-            {
-                "name": "layer3.16",
                 "epoch": 1
             }
         ],
@@ -179,16 +172,7 @@
             {
                 "name": "layer3.15.conv2",
                 "epoch": 1
-            },
-            {
-                "name": "layer3.16.conv1",
-                "epoch": 1
-            },
-            {
-                "name": "layer3.16.conv2",
-                "epoch": 1
             }
-            
         ]
     },
     "weight_scheduler": {

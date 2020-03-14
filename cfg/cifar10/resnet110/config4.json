@@ -1,5 +1,5 @@
 {
-    "name": "Cifar10_Resnet110_Config4",
+    "name": "Cifar10_Resnet110_Config1",
     "n_gpu": 1,
     "teacher": {
         "type": "resnet110",
@@ -11,7 +11,7 @@
         "type": "Cifar10Dataloader",
         "args": {
             "data_dir": "data/",
-            "batch_size": 32,
+            "batch_size": 128,
             "shuffle": true,
             "validation_split": 0.0001,
             "num_workers": 0,
@@ -22,7 +22,7 @@
         "type": "Cifar10Dataloader",
         "args": {
             "data_dir": "data/",
-            "batch_size": 32,
+            "batch_size": 128,
             "shuffle": false,
             "validation_split": 0,
             "num_workers": 0,
@@ -30,9 +30,10 @@
         }
     },
     "optimizer": {
-        "type": "RAdam",
+        "type": "SGD",
         "args": {
-            "lr": 0.001
+            "lr": 0.001,
+            "momentum": 0.9
         }
     },
     "supervised_loss": {
@@ -69,7 +70,7 @@
     },
     "trainer": {
         "name": "ClassificationTrainer",
-        "epochs": 1000,
+        "epochs": 20,
         "save_dir": "saved/",
         "save_period": 1,
         "verbosity": 2,
@@ -93,19 +94,11 @@
                 "epoch": 1
             },
             {
-                "name": "layer3.2",
-                "epoch": 1
-            },
-            {
                 "name": "layer3.3",
                 "epoch": 1
             },
             {
-                "name": "layer3.7",
-                "epoch": 1
-            },
-            {
-                "name": "layer3.8",
+                "name": "layer3.6",
                 "epoch": 1
             },
             {
@@ -113,11 +106,7 @@
                 "epoch": 1
             },
             {
-                "name": "layer3.10",
-                "epoch": 1
-            },
-            {
-                "name": "layer3.11",
+                "name": "layer3.18",
                 "epoch": 1
             }
         ],
@@ -127,19 +116,11 @@
                 "epoch": 1
             },
             {
-                "name": "layer3.2",
-                "epoch": 1
-            },
-            {
                 "name": "layer3.3",
                 "epoch": 1
             },
             {
-                "name": "layer3.7",
-                "epoch": 1
-            },
-            {
-                "name": "layer3.8",
+                "name": "layer3.6",
                 "epoch": 1
             },
             {
@@ -147,11 +128,7 @@
                 "epoch": 1
             },
             {
-                "name": "layer3.10",
-                "epoch": 1
-            },
-            {
-                "name": "layer3.11",
+                "name": "layer3.18",
                 "epoch": 1
             }
         ],
@@ -165,14 +142,6 @@
                 "epoch": 1
             },
             {
-                "name": "layer3.2.conv1",
-                "epoch": 1
-            },
-            {
-                "name": "layer3.2.conv2",
-                "epoch": 1
-            },
-            {
                 "name": "layer3.3.conv1",
                 "epoch": 1
             },
@@ -181,19 +150,11 @@
                 "epoch": 1
             },
             {
-                "name": "layer3.7.conv1",
+                "name": "layer3.6.conv1",
                 "epoch": 1
             },
             {
-                "name": "layer3.7.conv2",
-                "epoch": 1
-            },
-            {
-                "name": "layer3.8.conv1",
-                "epoch": 1
-            },
-            {
-                "name": "layer3.8.conv2",
+                "name": "layer3.6.conv2",
                 "epoch": 1
             },
             {
@@ -205,22 +166,13 @@
                 "epoch": 1
             },
             {
-                "name": "layer3.10.conv1",
+                "name": "layer3.18.conv1",
                 "epoch": 1
             },
             {
-                "name": "layer3.10.conv2",
-                "epoch": 1
-            },
-            {
-                "name": "layer3.11.conv1",
-                "epoch": 1
-            },
-            {
-                "name": "layer3.11.conv2",
+                "name": "layer3.18.conv2",
                 "epoch": 1
             }
-            
         ]
     },
     "weight_scheduler": {
