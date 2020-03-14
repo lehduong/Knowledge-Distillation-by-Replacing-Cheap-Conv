@@ -1,0 +1,202 @@
+{
+    "name": "Cifar10_Densenet121_Config4",
+    "n_gpu": 1,
+    "teacher": {
+        "type": "densenet121",
+        "args": {
+
+        },
+        "snapshot": "checkpoints/cifar10/densenet121.pt"
+    },
+    "train_data_loader": {
+        "type": "Cifar10Dataloader",
+        "args": {
+            "data_dir": "data/",
+            "batch_size": 32,
+            "shuffle": true,
+            "validation_split": 0.0001,
+            "num_workers": 0,
+            "training": true
+        }
+    },
+    "test_data_loader": {
+        "type": "Cifar10Dataloader",
+        "args": {
+            "data_dir": "data/",
+            "batch_size": 32,
+            "shuffle": false,
+            "validation_split": 0,
+            "num_workers": 0,
+            "training":  false
+        }
+    },
+    "optimizer": {
+        "type": "RAdam",
+        "args": {
+            "lr": 0.001
+        }
+    },
+    "supervised_loss": {
+        "type": "CrossEntropyLoss2d",
+        "args": {
+            "ignore_index": 255
+        }
+    },
+    "kd_loss": {
+        "type": "KLDivergenceLoss",
+        "args": {
+            "temperature": 5
+        }
+    },
+    "hint_loss": {
+        "type": "MSELoss",
+        "args": {
+            "reduction": "mean",
+            "num_classes": 1
+        }
+    },
+    "metrics": ["accuracy", "top_k_acc"],
+    "lr_scheduler": {
+        "type": "MyReduceLROnPlateau",
+        "args": {
+            "mode": "min",
+            "threshold": 0.05,
+            "factor": 0.1,
+            "patience": 10,
+            "verbose": true,
+            "min_lr": 1e-06,
+            "threshold_mode": "rel"
+        }
+    },
+    "trainer": {
+        "name": "ClassificationTrainer",
+        "epochs": 1000,
+        "save_dir": "saved/",
+        "save_period": 1,
+        "verbosity": 2,
+        "monitor": "max test_accuracy",
+        "early_stop": 1000,
+        "accumulation_steps": 1,
+        "log_step": 100,
+        "do_validation_interval": 1,
+        "lr_scheduler_step_interval": 15,
+        "tensorboard": true
+    },
+    "pruning": {
+        "args": {
+            "dilation": 1,
+            "padding": 1,
+            "kernel_size": 3
+        },
+        "hint": [
+            {
+                "name": "features.denseblock1.denselayer1.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "features.denseblock1.denselayer2.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "features.denseblock1.denselayer3.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "features.denseblock1.denselayer4.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "features.denseblock1.denselayer5.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "features.denseblock1.denselayer6.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "classifier",
+                "epoch": 1
+            }
+        ],
+        "unfreeze": [
+            {
+                "name": "features.denseblock1.denselayer1.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "features.denseblock1.denselayer2.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "features.denseblock1.denselayer3.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "features.denseblock1.denselayer4.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "features.denseblock1.denselayer5.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "features.denseblock1.denselayer6.conv2",
+                "epoch": 1
+            }
+        ],
+        "pruning_plan": [
+            {
+                "name": "features.denseblock1.denselayer1.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "features.denseblock1.denselayer2.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "features.denseblock1.denselayer3.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "features.denseblock1.denselayer4.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "features.denseblock1.denselayer5.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "features.denseblock1.denselayer6.conv2",
+                "epoch": 1
+            }
+        ]
+    },
+    "weight_scheduler": {
+        "alpha": {
+            "value": 0.0001,
+            "anneal_rate": 2,
+            "max": 0
+        },
+        "beta": {
+            "value": 0.99,
+            "anneal_rate": 0.95,
+            "min": 0.99
+        },
+        "gamma": {
+            "value": 1,
+            "anneal_rate": 1
+        }
+    },
+    "test": {
+        "type": "sliding",
+        "args": {
+            "scales": [1.0],
+            "crop_size": 1024
+        }
+    },
+    "submission": {
+        "save_output": true,
+        "path_output": "submission/",
+        "ext": "png"
+    }
+}

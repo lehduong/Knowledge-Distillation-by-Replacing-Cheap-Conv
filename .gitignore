@@ -111,3 +111,6 @@ datasets/
 .idea/
 __MACOSX/
 .DS_Store
+
+# debug file 
+trainer/ensemble_trainer_debug.py
