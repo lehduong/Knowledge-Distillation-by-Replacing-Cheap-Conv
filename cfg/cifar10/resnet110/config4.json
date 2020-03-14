@@ -1,5 +1,5 @@
 {
-    "name": "Cifar10_Resnet110_Config1",
+    "name": "Cifar10_Resnet110_Config4",
     "n_gpu": 1,
     "teacher": {
         "type": "resnet110",
@@ -106,7 +106,7 @@
                 "epoch": 1
             },
             {
-                "name": "layer3.18",
+                "name": "layer3.17",
                 "epoch": 1
             }
         ],
@@ -128,7 +128,7 @@
                 "epoch": 1
             },
             {
-                "name": "layer3.18",
+                "name": "layer3.17",
                 "epoch": 1
             }
         ],
@@ -166,11 +166,11 @@
                 "epoch": 1
             },
             {
-                "name": "layer3.18.conv1",
+                "name": "layer3.17.conv1",
                 "epoch": 1
             },
             {
-                "name": "layer3.18.conv2",
+                "name": "layer3.17.conv2",
                 "epoch": 1
             }
         ]

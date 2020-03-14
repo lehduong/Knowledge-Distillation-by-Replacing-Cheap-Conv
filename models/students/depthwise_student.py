@@ -27,7 +27,7 @@ class DepthwiseStudent(BaseModel):
         for param in self.teacher.parameters():
             param.requires_grad = False
         # create student net
-        self.model = self.student = copy.deepcopy(self.teacher)
+        self.student = copy.deepcopy(self.teacher)
 
         # distillation args contain the distillation information such as block name, ...
         self.replaced_block_names = []
@@ -142,7 +142,7 @@ class DepthwiseStudent(BaseModel):
         # suppose the blockname is abc.def.ghk then get module self.teacher.abc.def and set that object's attribute \
         # (in this case 'ghk') to block value
         if len(block_name_split) == 1:
-            setattr(self.model, block_name, block)
+            setattr(model, block_name, block)
         else:
             obj = self.get_block(BLOCKS_LEVEL_SPLIT_CHAR.join(block_name_split[:-1]), model)
             attr = block_name_split[-1]
@@ -257,3 +257,17 @@ class DepthwiseStudent(BaseModel):
         """
         table = self.dump_student_teacher_blocks_info()
         return super().__str__() + '\n' + table
+
+    def reset(self):
+        logger = self.config.get_logger('trainer', self.config['trainer']['verbosity'])
+        # remove hint layers
+        self._remove_hooks()
+        logger.debug('Removing all hint layers...')
+        # remove replaced layers
+        while self.replaced_block_names:
+            block_name = self.replaced_block_names.pop()
+            teacher_block  = self.get_block(block_name, self.teacher)
+            student_block = copy.deepcopy(teacher_block)
+            self._set_block(block_name, student_block, self.student)
+            logger.debug("Replace the layer {} back to teacher's block".format(block_name))
+        logger.debug("Reset completed...")

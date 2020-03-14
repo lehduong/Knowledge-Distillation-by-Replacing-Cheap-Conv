@@ -1,5 +1,5 @@
 {
-    "name": "Cifar10_Resnet110_Config1",
+    "name": "Cifar10_Resnet110_Config3",
     "n_gpu": 1,
     "teacher": {
         "type": "resnet110",

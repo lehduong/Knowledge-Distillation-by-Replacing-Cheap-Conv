@@ -36,13 +36,12 @@ class EnsembleTrainer(ClassificationTrainer):
                 self.prepare_train_epoch(i, config)
             # load weight
             forgiving_state_restore(self.model, checkpoint['state_dict'])
-            self.model._remove_hooks()
             self.logger.info("Loaded state dict for model {}".format(i))
-            # stor the student network
-            self.models.append(self.model.student)
-            # rewind the student network back to teacher
-            self.model.student = copy.deepcopy(self.model.teacher)
-            self.model.replaced_block_names = []
+            # store the pretrained student model
+            self.models.append(copy.deepcopy(self.model.student))
+            # reset the network to default settings
+            self.model.reset()
+
         self.logger.info('loaded state dict for all models')
 
     def prepare_models(self, epoch):
