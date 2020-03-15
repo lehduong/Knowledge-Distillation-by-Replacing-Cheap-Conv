@@ -1,5 +1,5 @@
 {
-    "name": "Cifar10_WRN2810_Config1",
+    "name": "Cifar10_WRN2810_Config2",
     "n_gpu": 1,
     "teacher": {
         "type": "wrn",
@@ -87,31 +87,35 @@
         },
         "hint": [
             {
-                "name": "block3.layer.0",
-                "epoch": 1
-            },
-            {
-                "name": "block3.layer.1",
+                "name": "block3.layer.3",
                 "epoch": 1
             }
         ],
         "unfreeze": [
             {
-                "name": "block3.layer.0",
+                "name": "block3.layer.1",
                 "epoch": 1
             },
             {
-                "name": "block3.layer.1",
+                "name": "block3.layer.2",
+                "epoch": 1
+            },
+            {
+                "name": "block3.layer.3",
                 "epoch": 1
             }
         ],
         "pruning_plan": [
             {
-                "name": "block3.layer.0.conv2",
+                "name": "block3.layer.1.conv2",
                 "epoch": 1
             },
             {
-                "name": "block3.layer.1.conv2",
+                "name": "block3.layer.2.conv2",
+                "epoch": 1
+            },
+            {
+                "name": "block3.layer.3.conv2",
                 "epoch": 1
             }
         ]

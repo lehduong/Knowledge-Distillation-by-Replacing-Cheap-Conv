@@ -69,7 +69,7 @@
         "name": "ClassificationTrainer",
         "epochs": 30,
         "save_dir": "saved/",
-        "save_period": 1,
+        "save_period": 5,
         "verbosity": 2,
         "monitor": "max test_accuracy",
         "early_stop": 1000,
@@ -99,7 +99,7 @@
         ],
         "pruning_plan": [
             {
-                "name": "block2.layer.1.conv2",
+                "name": "block2.layer.0.conv2",
                 "epoch": 1
             },
             {
