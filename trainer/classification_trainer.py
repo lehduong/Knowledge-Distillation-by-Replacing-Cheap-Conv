@@ -9,7 +9,6 @@ class ClassificationTrainer(LayerwiseTrainer):
                  valid_data_loader=None, lr_scheduler=None, weight_scheduler=None, test_data_loader=None):
         super().__init__(model, criterions, metric_ftns, optimizer, config, train_data_loader,
                          valid_data_loader, lr_scheduler, weight_scheduler)
-
         self.train_teacher_metrics = MetricTracker(*[m.__name__ for m in self.metric_ftns], writer=self.writer)
         self.test_data_loader = test_data_loader
 
@@ -17,8 +16,6 @@ class ClassificationTrainer(LayerwiseTrainer):
         self.prepare_train_epoch(epoch)
 
         self.model.train()
-        self.model.save_hidden = True
-        self.train_metrics.reset()
         self._clean_cache()
 
         for batch_idx, (data, target) in enumerate(self.train_data_loader):
@@ -31,10 +28,7 @@ class ClassificationTrainer(LayerwiseTrainer):
 
             hint_loss = reduce(lambda acc, elem: acc + self.criterions[2](elem[0], elem[1]),
                                zip(self.model.student_hidden_outputs, self.model.teacher_hidden_outputs),
-                               0) / self.accumulation_steps
-            # if there is no layers going to be replaced then set hint loss = 0
-            if len(self.model.student_hidden_outputs) == 0:
-                hint_loss = torch.Tensor(0)
+                               torch.tensor(0)) / self.accumulation_steps
             teacher_loss = self.criterions[0](output_tc, target)  # for comparision
 
             # Only use hint loss
@@ -46,7 +40,6 @@ class ClassificationTrainer(LayerwiseTrainer):
                 self.optimizer.zero_grad()
 
             self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
-
             # update metrics
             self.train_metrics.update('loss', loss.item() * self.accumulation_steps)
             self.train_metrics.update('supervised_loss', supervised_loss.item() * self.accumulation_steps)
@@ -111,7 +104,6 @@ class ClassificationTrainer(LayerwiseTrainer):
         :return: A log that contains information about validation
         """
         self.model.eval()
-        self.model.save_hidden = False 
         self.valid_metrics.reset()
         with torch.no_grad():
             for batch_idx, (data, target) in enumerate(self.valid_data_loader):
@@ -135,7 +127,6 @@ class ClassificationTrainer(LayerwiseTrainer):
         :return: A log that contains information about validation
         """
         self.model.eval()
-        self.model.save_hidden = False
         self.test_metrics.reset()
         with torch.no_grad():
             for batch_idx, (data, target) in enumerate(self.test_data_loader):

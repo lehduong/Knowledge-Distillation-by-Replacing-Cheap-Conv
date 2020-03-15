@@ -51,15 +51,14 @@ class EnsembleTrainer(ClassificationTrainer):
             param.requires_grad = True 
         for param in self.model.teacher.parameters():
             param.requires_grad = False 
+        for model in self.models:
+            for param in model.parameters():
+                param.requires_grad = False 
         # set teacher and other ensemble model to eval() 
         self.logger.debug('Set ensemble model to eval mode and student model to train mode')
         for model in self.models:
             model.eval()
-        self.model.teacher.eval()
-        # student to train()
-        self.model.student.train()
-        # disable hint layer
-        self.model.save_hidden = False 
+        self.model.train()
         if epoch == 1:
             self.create_new_optimizer()
             self.logger.debug(self.model.student)
