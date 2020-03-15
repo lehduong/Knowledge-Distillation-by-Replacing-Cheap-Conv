@@ -282,5 +282,5 @@ class DepthwiseStudent(BaseModel):
 
     def eval(self):
         self.save_hidden = False 
-        return super().eval()
+        return super().train(False)
         
