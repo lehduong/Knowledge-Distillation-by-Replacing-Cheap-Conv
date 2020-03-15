@@ -32,7 +32,9 @@ class ClassificationTrainer(LayerwiseTrainer):
             hint_loss = reduce(lambda acc, elem: acc + self.criterions[2](elem[0], elem[1]),
                                zip(self.model.student_hidden_outputs, self.model.teacher_hidden_outputs),
                                0) / self.accumulation_steps
-
+            # if there is no layers going to be replaced then set hint loss = 0
+            if len(self.model.student_hidden_outputs) == 0:
+                hint_loss = torch.Tensor(0)
             teacher_loss = self.criterions[0](output_tc, target)  # for comparision
 
             # Only use hint loss

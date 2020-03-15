@@ -80,6 +80,10 @@ class LayerwiseTrainer(BaseTrainer):
         #    layers in student so that it would have identical archecture with saved checkpoint  
         if config is None:
             config = self.config 
+        # there isn't any layer that would be replaced then unfreeze the whole network
+        if len(config['pruning']['pruning_plan']) == 0:
+            for param in self.model.student.paramters():
+                param.requires_grad = True
 
         # Check if there is any layer that would any update in current epoch
         # list of epochs that would have an update on student networks
@@ -221,7 +225,6 @@ class LayerwiseTrainer(BaseTrainer):
             hint_loss = reduce(lambda acc, elem: acc + self.criterions[2](elem[0], elem[1]),
                                zip(self.model.student_hidden_outputs, self.model.teacher_hidden_outputs),
                                0) / self.accumulation_steps
-
 
             # Only use hint loss
             loss = hint_loss

@@ -1,5 +1,5 @@
 {
-    "name": "Cifar10_WRN2810_Config2",
+    "name": "Cifar10_WRN2810_Config7",
     "n_gpu": 1,
     "teacher": {
         "type": "wrn",
