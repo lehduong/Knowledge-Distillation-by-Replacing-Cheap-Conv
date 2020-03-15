@@ -140,9 +140,11 @@ class ClassificationTrainer(LayerwiseTrainer):
         with torch.no_grad():
             for batch_idx, (data, target) in enumerate(self.test_data_loader):
                 data, target = data.to(self.device), target.to(self.device)
-                output, _ = self.model(data)
+                output, output_tc = self.model(data)
                 self.writer.set_step((epoch - 1) * len(self.test_data_loader) + batch_idx, 'valid')
                 for met in self.metric_ftns:
                     self.test_metrics.update(met.__name__, met(output, target))
+                for met in self.metric_ftns:
+                    self.test_metrics.update('teacher_'+met.__name__, met(output_tc, target))
 
         return self.test_metrics.result()

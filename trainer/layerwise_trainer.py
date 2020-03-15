@@ -51,7 +51,8 @@ class LayerwiseTrainer(BaseTrainer):
         self.valid_iou_metrics = CityscapesMetricTracker(writer=self.writer)
         # Test
         self.test_metrics = MetricTracker('loss', 'supervised_loss', 'kd_loss', 'hint_loss', 'teacher_loss',
-                                           *[m.__name__ for m in self.metric_ftns], writer=self.writer)
+                                           *[m.__name__ for m in self.metric_ftns],
+                                           *['teacher_'+m.__name__ for m in self.metric_ftns], writer=self.writer, )
         self.test_iou_metrics = CityscapesMetricTracker(writer=self.writer)
 
         # Tracker for early stop if val miou doesn't increase
