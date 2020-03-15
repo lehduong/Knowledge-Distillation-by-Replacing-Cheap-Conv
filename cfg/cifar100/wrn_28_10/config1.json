@@ -8,7 +8,7 @@
             "depth": 28,
             "widen_factor": 10
         },
-        "snapshot": "checkpoints/cifar100/wrn-28-10.th"
+        "snapshot": "checkpoints/cifar100/wrn-28-10.pth"
     },
     "train_data_loader": {
         "type": "Cifar100Dataloader",
