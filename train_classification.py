@@ -17,7 +17,7 @@ def main(config):
     logger = config.get_logger('train')
 
     # fix random seeds for reproducibility
-    seed = config['seed'] if 'seed' in config else 123
+    seed = config['seed']
     torch.manual_seed(seed)
     np.random.seed(seed)
     torch.backends.cudnn.deterministic = True

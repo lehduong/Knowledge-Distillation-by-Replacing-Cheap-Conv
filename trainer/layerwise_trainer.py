@@ -83,8 +83,11 @@ class LayerwiseTrainer(BaseTrainer):
             config = self.config 
         # reset_scheduler
         self.reset_scheduler()
-        # there isn't any layer that would be replaced then unfreeze the whole network
-        if (epoch == 1) and (len(config['pruning']['pruning_plan']) == 0):
+        # there isn't any layer that would be replaced or unfreeze or set as hint then unfreeze 
+        # the whole network
+        if (epoch == 1) and ((len(config['pruning']['pruning_plan'])+
+                              len(config['pruning']['hint'])+
+                              len(config['pruning']['unfreeze'])) == 0):
             self.logger.debug('Train a student with identical architecture with teacher')
             # unfreeze 
             for param in self.model.student.parameters():
@@ -153,7 +156,8 @@ class LayerwiseTrainer(BaseTrainer):
             {'name': 'layer1', 'epoch':1, 'lr'(optional): 0.01}
         return: 
         """
-        self.logger.debug('Updating optimizer for new layer')
+        if len(unfreeze_config) > 0:
+            self.logger.debug('Updating optimizer for new layer')
         for config in unfreeze_config:
             layer_name = config['name']  # layer that will be unfreezed
             self.logger.debug('Add parameters of layer: {} to optimizer'.format(layer_name))
