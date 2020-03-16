@@ -67,6 +67,7 @@ def forgiving_state_restore(net, loaded_dict):
     # check if state dict checkpoint saved nn.DataParallel module or not
     # if ALL modules state dict in checkpoints start with module. then this is a state dict of nn.DataParallel instance
     is_parallel = reduce(lambda acc, elem: acc and elem.startswith('module.'), list(loaded_dict.keys()))
+    print('Checkpoint state_dict is in nn.DataParallel mode')
     if is_parallel:
         net = nn.DataParallel(net)
 
