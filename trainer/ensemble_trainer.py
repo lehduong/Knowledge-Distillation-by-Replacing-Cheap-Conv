@@ -7,7 +7,8 @@ from torch import nn
 import torch
 import copy
 from models.cifar_models import resnet20, resnet56,resnet110
-WEIGHT = 0.1
+WEIGHT = 1
+TEMPERATURE = 1
 class EnsembleTrainer(ClassificationTrainer):
     """
         Used to run evaluation only
@@ -153,10 +154,10 @@ class EnsembleTrainer(ClassificationTrainer):
         softmax = nn.Softmax(dim=1)
         with torch.no_grad():
             # predict of teacher network
-            output = softmax(self.model.teacher(data))
+            output = softmax(self.model.teacher(data)/TEMPERATURE)
             # enhance the teacher prediction with student networks
             for model in self.models:
-                tmp = softmax(model(data))
+                tmp = softmax(model(data)/TEMPERATURE)
                 output = output + weight*tmp
             # normalize 
             output = output/(1+len(self.models)*weight)
@@ -172,7 +173,7 @@ class EnsembleTrainer(ClassificationTrainer):
         self.model.save_hidden = False 
         self.valid_metrics.reset()
         with torch.no_grad():
-            for batch_idx, (data, target) in enumerate(self.test_data_loader):
+            for batch_idx, (data, target) in enumerate(self.valid_data_loader):
                 data, target = data.to(self.device), target.to(self.device)
                 output, _ = self.model(data)
 
@@ -194,12 +195,11 @@ class EnsembleTrainer(ClassificationTrainer):
         self.test_metrics.reset()
         
         with torch.no_grad():
-            for batch_idx, (data, target) in enumerate(self.test_data_loader):
+            for batch_idx, (data, target) in enumerate(self.valid_data_loader):
                 data, target = data.to(self.device), target.to(self.device)
                 output = self.ensemble_predict(data)
                 # Update Metrics
-                self.writer.set_step((epoch - 1) * len(self.test_data_loader) + batch_idx, 'test')
                 for met in self.metric_ftns:
-                    self.test_metrics.update(met.__name__, met(output, target))
+                    self.test_metrics.update(met.__name__, met(output, target), data.shape[0])
 
         return self.test_metrics.result()

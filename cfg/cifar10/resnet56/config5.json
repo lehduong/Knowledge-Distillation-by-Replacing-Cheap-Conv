@@ -1,11 +1,11 @@
 {
-    "name": "Cifar10_Resnet20_Config4",
+    "name": "Cifar10_Resnet56_Config5",
     "n_gpu": 1,
-    "seed": 1024,
+    "seed": 5,
     "teacher": {
-        "type": "resnet20",
+        "type": "resnet56",
         "args": {},
-        "snapshot": "checkpoints/cifar10/resnet20.th"
+        "snapshot": "checkpoints/cifar10/resnet56.th"
     },
     "train_data_loader": {
         "type": "Cifar10Dataloader",
@@ -30,9 +30,10 @@
         }
     },
     "optimizer": {
-        "type": "Adam",
+        "type": "SGD",
         "args": {
-            "lr": 0.05
+            "lr": 0.02,
+            "momentum": 0.5
         }
     },
     "supervised_loss": {

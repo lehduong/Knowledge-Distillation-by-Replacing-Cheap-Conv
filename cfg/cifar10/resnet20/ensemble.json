@@ -1,10 +1,11 @@
 {
-    "name": "Cifar10_Resnet20_Config4",
+    "name": "Cifar10_Resnet20_Ensemble",
     "n_gpu": 1,
-    "seed": 1024,
+    "seed": 2048,
     "teacher": {
         "type": "resnet20",
-        "args": {},
+        "args": {
+        },
         "snapshot": "checkpoints/cifar10/resnet20.th"
     },
     "train_data_loader": {
@@ -13,7 +14,7 @@
             "data_dir": "data/",
             "batch_size": 32,
             "shuffle": true,
-            "validation_split": 0,
+            "validation_split": 0.0001,
             "num_workers": 0,
             "training": true
         }
@@ -26,13 +27,13 @@
             "shuffle": false,
             "validation_split": 0,
             "num_workers": 0,
-            "training": false
+            "training":  false
         }
     },
     "optimizer": {
         "type": "Adam",
         "args": {
-            "lr": 0.05
+            "lr": 0.03
         }
     },
     "supervised_loss": {
@@ -54,22 +55,16 @@
             "num_classes": 1
         }
     },
-    "metrics": [
-        "accuracy",
-        "top_k_acc"
-    ],
+    "metrics": ["accuracy", "top_k_acc"],
     "lr_scheduler": {
         "type": "MultiStepLR",
         "args": {
-            "milestones": [
-                15,
-                25
-            ],
+            "milestones": [20,30],
             "gamma": 0.2
         }
     },
     "trainer": {
-        "name": "ClassificationTrainer",
+        "name": "EnsembleTrainer",
         "epochs": 30,
         "save_dir": "saved/",
         "save_period": 1,
@@ -80,7 +75,14 @@
         "log_step": 100,
         "do_validation_interval": 1,
         "lr_scheduler_step_interval": 15,
-        "tensorboard": true
+        "tensorboard": true,
+        "resume_paths":[
+          "saved/models/Cifar10_Resnet20_Config1/0316_123556/checkpoint-epoch30.pth",
+          "saved/models/Cifar10_Resnet20_Config2/0316_130033/checkpoint-epoch30.pth",
+          "saved/models/Cifar10_Resnet20_Config3/0316_132444/checkpoint-epoch30.pth",
+          "saved/models/Cifar10_Resnet20_Config4/0316_140936/checkpoint-epoch30.pth",
+          "saved/models/Cifar10_Resnet20_Config5/0316_143653/checkpoint-epoch30.pth"
+        ]
     },
     "pruning": {
         "args": {
@@ -88,9 +90,12 @@
             "padding": 1,
             "kernel_size": 3
         },
-        "hint": [],
-        "unfreeze": [],
-        "pruning_plan": []
+        "hint": [
+        ],
+        "unfreeze": [
+        ],
+        "pruning_plan": [
+        ]
     },
     "weight_scheduler": {
         "alpha": {
@@ -111,9 +116,7 @@
     "test": {
         "type": "sliding",
         "args": {
-            "scales": [
-                1.0
-            ],
+            "scales": [1.0],
             "crop_size": 1024
         }
     },
