@@ -51,10 +51,10 @@ class ClassificationTrainer(LayerwiseTrainer):
             self.train_metrics.update('teacher_loss', teacher_loss.item())
 
             for met in self.metric_ftns:
-                self.train_metrics.update(met.__name__, met(output_st, target))
+                self.train_metrics.update(met.__name__, met(output_st, target), data.shape[0])
 
             for met in self.metric_ftns:
-                self.train_teacher_metrics.update(met.__name__, met(output_tc, target))
+                self.train_teacher_metrics.update(met.__name__, met(output_tc, target), data.shape[0])
 
             if batch_idx % self.log_step == 0:
                 # self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
@@ -110,8 +110,8 @@ class ClassificationTrainer(LayerwiseTrainer):
                 
                 self.writer.set_step((epoch - 1) * len(self.valid_data_loader) + batch_idx, 'valid')
                 for met in self.metric_ftns:
-                    self.valid_metrics.update(met.__name__, met(output, target))
+                    self.valid_metrics.update(met.__name__, met(output, target), data.shape[0])
                 for met in self.metric_ftns:
-                    self.valid_metrics.update('teacher_'+met.__name__, met(output_tc, target))
+                    self.valid_metrics.update('teacher_'+met.__name__, met(output_tc, target), data.shape[0])
 
         return self.valid_metrics.result()
