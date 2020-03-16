@@ -51,7 +51,8 @@ class LayerwiseTrainer(BaseTrainer):
         self.valid_iou_metrics = CityscapesMetricTracker(writer=self.writer)
         # Test
         self.test_metrics = MetricTracker('loss', 'supervised_loss', 'kd_loss', 'hint_loss', 'teacher_loss',
-                                           *[m.__name__ for m in self.metric_ftns], writer=self.writer)
+                                           *[m.__name__ for m in self.metric_ftns],
+                                           *['teacher_'+m.__name__ for m in self.metric_ftns], writer=self.writer, )
         self.test_iou_metrics = CityscapesMetricTracker(writer=self.writer)
 
         # Tracker for early stop if val miou doesn't increase
@@ -80,6 +81,23 @@ class LayerwiseTrainer(BaseTrainer):
         #    layers in student so that it would have identical archecture with saved checkpoint  
         if config is None:
             config = self.config 
+        # reset_scheduler
+        self.reset_scheduler()
+        # there isn't any layer that would be replaced or unfreeze or set as hint then unfreeze 
+        # the whole network
+        if (epoch == 1) and ((len(config['pruning']['pruning_plan'])+
+                              len(config['pruning']['hint'])+
+                              len(config['pruning']['unfreeze'])) == 0):
+            self.logger.debug('Train a student with identical architecture with teacher')
+            # unfreeze 
+            for param in self.model.student.parameters():
+                param.requires_grad = True
+            # debug
+            self.logger.info(self.model.dump_trainable_params())
+            # create optimizer for the network 
+            self.create_new_optimizer()
+            # ignore all below stuff
+            return 
 
         # Check if there is any layer that would any update in current epoch
         # list of epochs that would have an update on student networks
@@ -91,13 +109,6 @@ class LayerwiseTrainer(BaseTrainer):
             self.logger.info('EPOCH: ' + str(epoch))
             self.logger.info('There is no update ...')
             return
-
-        # there is at least 1 layer would be replaced/add as hint/unfreeze then:
-        # freeze all previous layers
-        # TODO: Verify if we should freeze previous layer or not 
-        # self.logger.debug('Freeze all weight of student network')
-        # for param in self.model.parameters():
-        #     param.requires_grad = False
 
         # layers that would be replaced by depthwise separable conv
         replaced_layers = list(filter(lambda x: x['epoch'] == epoch,
@@ -130,7 +141,6 @@ class LayerwiseTrainer(BaseTrainer):
         self.model.register_hint_layers(hint_layers)  # assign which layers output would be used as hint loss
         self.model.unfreeze(unfreeze_layers)  # unfreeze chosen layers
 
-        # TODO: Verify if we should unfreeze the trained layer or not 
         if epoch == 1:
             self.create_new_optimizer() # create new optimizer to remove the effect of momentum
         else:
@@ -138,7 +148,6 @@ class LayerwiseTrainer(BaseTrainer):
         
         self.logger.info(self.model.dump_trainable_params())
         self.logger.info(self.model.dump_student_teacher_blocks_info())
-        self.reset_scheduler()
     
     def update_optimizer(self, unfreeze_config):
         """
@@ -147,7 +156,8 @@ class LayerwiseTrainer(BaseTrainer):
             {'name': 'layer1', 'epoch':1, 'lr'(optional): 0.01}
         return: 
         """
-        self.logger.debug('Updating optimizer for new layer')
+        if len(unfreeze_config) > 0:
+            self.logger.debug('Updating optimizer for new layer')
         for config in unfreeze_config:
             layer_name = config['name']  # layer that will be unfreezed
             self.logger.debug('Add parameters of layer: {} to optimizer'.format(layer_name))
@@ -203,8 +213,6 @@ class LayerwiseTrainer(BaseTrainer):
         # large batch size we ALWAYS keep bn as training mode to prevent instable problem when having 
         # small batch size
         # self.model.train()
-        self.model.save_hidden = True  # saving hidden output to compute mimic loss
-        self.train_metrics.reset()
         self.train_iou_metrics.reset()
         self.train_teacher_iou_metrics.reset()
         self._clean_cache()
@@ -221,7 +229,6 @@ class LayerwiseTrainer(BaseTrainer):
             hint_loss = reduce(lambda acc, elem: acc + self.criterions[2](elem[0], elem[1]),
                                zip(self.model.student_hidden_outputs, self.model.teacher_hidden_outputs),
                                0) / self.accumulation_steps
-
 
             # Only use hint loss
             loss = hint_loss

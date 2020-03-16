@@ -271,3 +271,14 @@ class DepthwiseStudent(BaseModel):
             self._set_block(block_name, student_block, self.student)
             logger.debug("Replace the layer {} back to teacher's block".format(block_name))
         logger.debug("Reset completed...")
+
+    def train(self,mode=True):
+        if mode:
+            self.save_hidden = True
+        else:
+            self.save_hidden = False 
+        super().train(mode)
+        # teacher will always in eval mode
+        self.teacher.eval()
+
+        return self

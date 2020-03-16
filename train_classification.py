@@ -12,20 +12,19 @@ from parse_config import ConfigParser
 from trainer import ClassificationTrainer, EnsembleTrainer
 from utils import WeightScheduler
 
-# fix random seeds for reproducibility
-SEED = 123
-torch.manual_seed(SEED)
-torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark = True
-np.random.seed(SEED)
-
 
 def main(config):
     logger = config.get_logger('train')
 
+    # fix random seeds for reproducibility
+    seed = config['seed']
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = True
+
     train_data_loader = config.init_obj('train_data_loader', module_data)
-    valid_data_loader = train_data_loader.split_validation()
-    test_data_loader = config.init_obj('test_data_loader', module_data)
+    valid_data_loader = config.init_obj('test_data_loader', module_data)
 
     # Load pretrained teacher model
     teacher = config.restore_snapshot('teacher', module_arch)
@@ -60,10 +59,10 @@ def main(config):
     # Run trainer
     if config['trainer']['name'] == 'ClassificationTrainer':
         trainer = ClassificationTrainer(student, criterions, metrics, optimizer, config, train_data_loader,
-                                        valid_data_loader, lr_scheduler, weight_scheduler, test_data_loader)
+                                        valid_data_loader, lr_scheduler, weight_scheduler)
     elif config['trainer']['name'] == 'EnsembleTrainer':
         trainer = EnsembleTrainer(student, criterions, metrics, optimizer, config, train_data_loader,
-                                  valid_data_loader, lr_scheduler, weight_scheduler, test_data_loader)
+                                  valid_data_loader, lr_scheduler, weight_scheduler)
     else:
         raise NotImplementedError("Only support Classification, Ensemble Trainer")
 

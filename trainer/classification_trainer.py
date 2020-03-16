@@ -9,16 +9,16 @@ class ClassificationTrainer(LayerwiseTrainer):
                  valid_data_loader=None, lr_scheduler=None, weight_scheduler=None, test_data_loader=None):
         super().__init__(model, criterions, metric_ftns, optimizer, config, train_data_loader,
                          valid_data_loader, lr_scheduler, weight_scheduler)
-
         self.train_teacher_metrics = MetricTracker(*[m.__name__ for m in self.metric_ftns], writer=self.writer)
+        self.valid_metrics = MetricTracker('loss', 'supervised_loss', 'kd_loss', 'hint_loss', 'teacher_loss',
+                                           *[m.__name__ for m in self.metric_ftns],
+                                           *['teacher_'+m.__name__ for m in self.metric_ftns], writer=self.writer)
         self.test_data_loader = test_data_loader
 
     def _train_epoch(self, epoch):
         self.prepare_train_epoch(epoch)
 
         self.model.train()
-        self.model.save_hidden = True
-        self.train_metrics.reset()
         self._clean_cache()
 
         for batch_idx, (data, target) in enumerate(self.train_data_loader):
@@ -31,12 +31,11 @@ class ClassificationTrainer(LayerwiseTrainer):
 
             hint_loss = reduce(lambda acc, elem: acc + self.criterions[2](elem[0], elem[1]),
                                zip(self.model.student_hidden_outputs, self.model.teacher_hidden_outputs),
-                               0) / self.accumulation_steps
-
+                               torch.tensor(0)) / self.accumulation_steps
             teacher_loss = self.criterions[0](output_tc, target)  # for comparision
 
             # Only use hint loss
-            loss = supervised_loss + kd_loss
+            loss = kd_loss
             loss.backward()
             
             if (batch_idx + 1) % self.accumulation_steps == 0:
@@ -44,7 +43,6 @@ class ClassificationTrainer(LayerwiseTrainer):
                 self.optimizer.zero_grad()
 
             self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
-
             # update metrics
             self.train_metrics.update('loss', loss.item() * self.accumulation_steps)
             self.train_metrics.update('supervised_loss', supervised_loss.item() * self.accumulation_steps)
@@ -53,10 +51,10 @@ class ClassificationTrainer(LayerwiseTrainer):
             self.train_metrics.update('teacher_loss', teacher_loss.item())
 
             for met in self.metric_ftns:
-                self.train_metrics.update(met.__name__, met(output_st, target))
+                self.train_metrics.update(met.__name__, met(output_st, target), data.shape[0])
 
             for met in self.metric_ftns:
-                self.train_teacher_metrics.update(met.__name__, met(output_tc, target))
+                self.train_teacher_metrics.update(met.__name__, met(output_tc, target), data.shape[0])
 
             if batch_idx % self.log_step == 0:
                 # self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
@@ -86,11 +84,6 @@ class ClassificationTrainer(LayerwiseTrainer):
             val_log = self._valid_epoch(epoch)
             log.update(**{'val_' + k: v for k, v in val_log.items()})
 
-            if self.test_data_loader:
-                self._clean_cache()
-                test_log = self._test_epoch(epoch)
-                log.update(**{'test_' + k: v for k, v in test_log.items()})
-
         if (self.lr_scheduler is not None) and (not isinstance(self.lr_scheduler, MyOneCycleLR)):
             if isinstance(self.lr_scheduler, MyReduceLROnPlateau):
                 self.lr_scheduler.step(self.train_metrics.avg('loss'))
@@ -109,38 +102,16 @@ class ClassificationTrainer(LayerwiseTrainer):
         :return: A log that contains information about validation
         """
         self.model.eval()
-        self.model.save_hidden = False 
         self.valid_metrics.reset()
         with torch.no_grad():
             for batch_idx, (data, target) in enumerate(self.valid_data_loader):
                 data, target = data.to(self.device), target.to(self.device)
-                output, _ = self.model(data)
-                supervised_loss = self.criterions[0](output, target)
-
+                output, output_tc = self.model(data)
+                
                 self.writer.set_step((epoch - 1) * len(self.valid_data_loader) + batch_idx, 'valid')
-                self.valid_metrics.update('supervised_loss', supervised_loss.item())
-
                 for met in self.metric_ftns:
-                    self.valid_metrics.update(met.__name__, met(output, target))
+                    self.valid_metrics.update(met.__name__, met(output, target), data.shape[0])
+                for met in self.metric_ftns:
+                    self.valid_metrics.update('teacher_'+met.__name__, met(output_tc, target), data.shape[0])
 
         return self.valid_metrics.result()
-
-    def _test_epoch(self, epoch):
-        """
-        Test after training an epoch
-
-        :param epoch: Integer, current training epoch.
-        :return: A log that contains information about validation
-        """
-        self.model.eval()
-        self.model.save_hidden = False
-        self.test_metrics.reset()
-        with torch.no_grad():
-            for batch_idx, (data, target) in enumerate(self.test_data_loader):
-                data, target = data.to(self.device), target.to(self.device)
-                output, _ = self.model(data)
-                self.writer.set_step((epoch - 1) * len(self.test_data_loader) + batch_idx, 'valid')
-                for met in self.metric_ftns:
-                    self.test_metrics.update(met.__name__, met(output, target))
-
-        return self.test_metrics.result()

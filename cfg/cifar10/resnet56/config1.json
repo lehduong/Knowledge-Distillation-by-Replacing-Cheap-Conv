@@ -1,10 +1,10 @@
 {
     "name": "Cifar10_Resnet56_Config1",
     "n_gpu": 1,
+    "seed": 1,
     "teacher": {
         "type": "resnet56",
-        "args": {
-        },
+        "args": {},
         "snapshot": "checkpoints/cifar10/resnet56.th"
     },
     "train_data_loader": {
@@ -13,7 +13,7 @@
             "data_dir": "data/",
             "batch_size": 32,
             "shuffle": true,
-            "validation_split": 0.0001,
+            "validation_split": 0,
             "num_workers": 0,
             "training": true
         }
@@ -22,17 +22,17 @@
         "type": "Cifar10Dataloader",
         "args": {
             "data_dir": "data/",
-            "batch_size": 32,
+            "batch_size": 256,
             "shuffle": false,
             "validation_split": 0,
             "num_workers": 0,
-            "training":  false
+            "training": false
         }
     },
     "optimizer": {
-        "type": "RAdam",
+        "type": "Adam",
         "args": {
-            "lr": 0.001
+            "lr": 0.01
         }
     },
     "supervised_loss": {
@@ -54,22 +54,23 @@
             "num_classes": 1
         }
     },
-    "metrics": ["accuracy", "top_k_acc"],
+    "metrics": [
+        "accuracy",
+        "top_k_acc"
+    ],
     "lr_scheduler": {
-        "type": "MyReduceLROnPlateau",
+        "type": "MultiStepLR",
         "args": {
-            "mode": "min",
-            "threshold": 0.05,
-            "factor": 0.1,
-            "patience": 10,
-            "verbose": true,
-            "min_lr": 1e-06,
-            "threshold_mode": "rel"
+            "milestones": [
+                15,
+                25
+            ],
+            "gamma": 0.2
         }
     },
     "trainer": {
         "name": "ClassificationTrainer",
-        "epochs": 1000,
+        "epochs": 30,
         "save_dir": "saved/",
         "save_period": 1,
         "verbosity": 2,
@@ -87,108 +88,9 @@
             "padding": 1,
             "kernel_size": 3
         },
-        "hint": [
-            {
-                "name": "layer3.1",
-                "epoch": 1
-            },
-            {
-                "name": "layer3.2",
-                "epoch": 1
-            },
-            {
-                "name": "layer3.3",
-                "epoch": 1
-            },
-            {
-                "name": "layer3.4",
-                "epoch": 1
-            },
-            {
-                "name": "layer3.5",
-                "epoch": 1
-            },
-            {
-                "name": "layer3.6",
-                "epoch": 1
-            }
-        ],
-        "unfreeze": [
-            {
-                "name": "layer3.1",
-                "epoch": 1
-            },
-            {
-                "name": "layer3.2",
-                "epoch": 1
-            },
-            {
-                "name": "layer3.3",
-                "epoch": 1
-            },
-            {
-                "name": "layer3.4",
-                "epoch": 1
-            },
-            {
-                "name": "layer3.5",
-                "epoch": 1
-            },
-            {
-                "name": "layer3.6",
-                "epoch": 1
-            }
-        ],
-        "pruning_plan": [
-            {
-                "name": "layer3.1.conv1",
-                "epoch": 1
-            },
-            {
-                "name": "layer3.1.conv2",
-                "epoch": 1
-            },
-            {
-                "name": "layer3.2.conv1",
-                "epoch": 1
-            },
-            {
-                "name": "layer3.2.conv2",
-                "epoch": 1
-            },
-            {
-                "name": "layer3.3.conv1",
-                "epoch": 1
-            },
-            {
-                "name": "layer3.3.conv2",
-                "epoch": 1
-            },
-            {
-                "name": "layer3.4.conv1",
-                "epoch": 1
-            },
-            {
-                "name": "layer3.4.conv2",
-                "epoch": 1
-            },
-            {
-                "name": "layer3.5.conv1",
-                "epoch": 1
-            },
-            {
-                "name": "layer3.5.conv2",
-                "epoch": 1
-            },
-            {
-                "name": "layer3.6.conv1",
-                "epoch": 1
-            },
-            {
-                "name": "layer3.6.conv2",
-                "epoch": 1
-            }
-        ]
+        "hint": [],
+        "unfreeze": [],
+        "pruning_plan": []
     },
     "weight_scheduler": {
         "alpha": {
@@ -209,7 +111,9 @@
     "test": {
         "type": "sliding",
         "args": {
-            "scales": [1.0],
+            "scales": [
+                1.0
+            ],
             "crop_size": 1024
         }
     },
